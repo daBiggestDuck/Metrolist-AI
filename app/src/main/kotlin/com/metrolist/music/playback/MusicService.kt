@@ -130,6 +130,7 @@ import com.metrolist.music.constants.DiscordDetailsTemplateKey
 import com.metrolist.music.constants.DiscordStateTemplateKey
 import com.metrolist.music.constants.DiscordUserStatusKey
 import com.metrolist.music.constants.EnableDiscordRPCKey
+import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.discord.DiscordActivity
 import com.metrolist.music.discord.DiscordDefaults
 import com.metrolist.music.discord.DiscordRpcManager
@@ -251,6 +252,7 @@ import kotlinx.coroutines.plus
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import com.metrolist.music.ai.ListeningTasteTracker
 import timber.log.Timber
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -3892,6 +3894,28 @@ class MusicService :
                         ),
                     )
                 } catch (_: SQLException) {
+                }
+            }
+
+            // Continuous listening taste for Nano DJ (DataStore; respects exclusions).
+            val meta = mediaItem.metadata
+            if (meta != null) {
+                val enableNano = dataStore.get(EnableGeminiNanoKey, true)
+                val songId = mediaItem.mediaId
+                val title = meta.title
+                val artistNames = meta.artists.map { it.name }
+                scope.launch(Dispatchers.IO) {
+                    runCatching {
+                        ListeningTasteTracker.recordListen(
+                            context = this@MusicService,
+                            songId = songId,
+                            title = title,
+                            artists = artistNames,
+                            enableNano = enableNano,
+                        )
+                    }.onFailure {
+                        Timber.tag(TAG).w(it, "Listening taste update failed")
+                    }
                 }
             }
         }

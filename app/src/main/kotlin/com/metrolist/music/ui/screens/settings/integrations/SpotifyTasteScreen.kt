@@ -51,8 +51,15 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.constants.EnableGeminiNanoKey
+import com.metrolist.music.constants.ListeningTasteActiveLaneKey
+import com.metrolist.music.constants.ListeningTasteArtistsKey
+import com.metrolist.music.constants.ListeningTasteCategoriesKey
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
+import com.metrolist.music.constants.ListeningTasteSummaryKey
+import com.metrolist.music.constants.ListeningTasteTracksKey
 import com.metrolist.music.constants.NanoDjSpeakKey
 import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
@@ -79,6 +86,7 @@ import com.metrolist.music.ui.component.aura.AuraTrackRow
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -134,10 +142,54 @@ fun SpotifyTasteScreen(
     var tasteHints by rememberPreference(SpotifyTasteHintsKey, "")
     var topArtistsPref by rememberPreference(SpotifyTopArtistsKey, "")
     var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
+    val listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
+    val listeningArtistsPref by rememberPreference(ListeningTasteArtistsKey, "")
+    val listeningTracksPref by rememberPreference(ListeningTasteTracksKey, "")
+    val listeningCategoriesPref by rememberPreference(ListeningTasteCategoriesKey, "")
+    val listeningLaneId by rememberPreference(ListeningTasteActiveLaneKey, "")
+    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, emptySet<String>())
     val enableGeminiNano by rememberPreference(EnableGeminiNanoKey, true)
     val (nanoDjSpeak, _) = rememberPreference(NanoDjSpeakKey, true)
 
     val isConnected = !SpotifyTokenStore.retrieve().isNullOrBlank()
+
+    val listeningArtists =
+        remember(listeningArtistsPref) {
+            ListeningTasteTracker.decodeWeights(listeningArtistsPref)
+                .entries
+                .sortedByDescending { it.value }
+                .map { it.key }
+        }
+    val listeningTracks =
+        remember(listeningTracksPref) {
+            ListeningTasteTracker.decodeWeights(listeningTracksPref)
+                .entries
+                .sortedByDescending { it.value }
+                .map { (line, _) ->
+                    val sep = when {
+                        " — " in line -> " — "
+                        " - " in line -> " - "
+                        else -> null
+                    }
+                    if (sep != null) {
+                        val idx = line.indexOf(sep)
+                        line.substring(0, idx).trim() to line.substring(idx + sep.length).trim()
+                    } else {
+                        line to ""
+                    }
+                }
+        }
+    val listeningCategories =
+        remember(listeningCategoriesPref) {
+            ListeningTasteTracker.decodeWeights(listeningCategoriesPref)
+                .entries
+                .sortedByDescending { it.value }
+                .map { it.key }
+        }
+    val activeLane =
+        remember(listeningLaneId) {
+            ListeningTasteTracker.DjLane.fromId(listeningLaneId).displayName
+        }
 
     var artists by remember { mutableStateOf(emptyList<String>()) }
     var tracks by remember { mutableStateOf(emptyList<Pair<String, String>>()) }
@@ -300,6 +352,121 @@ fun SpotifyTasteScreen(
 
         AuraBanner(text = stringResource(R.string.spotify_oauth_premium_disclaimer))
 
+        AuraSectionLabel(stringResource(R.string.listening_taste_live_section))
+        Text(
+            text = stringResource(R.string.listening_taste_live_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        if (listeningSummary.isNotBlank() || listeningArtists.isNotEmpty() || listeningTracks.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.listening_taste_active_lane, activeLane),
+                style = MaterialTheme.typography.labelLarge,
+                color = AuraSpotifyGreen,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            if (listeningSummary.isNotBlank()) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF1A3A28), Color(0xFF181818)),
+                                ),
+                            )
+                            .padding(20.dp),
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.spotify_taste_summary),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = listeningSummary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            if (listeningArtists.isNotEmpty()) {
+                AuraSectionLabel(stringResource(R.string.spotify_taste_top_artists))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    itemsIndexed(listeningArtists.take(12)) { index, name ->
+                        AuraArtistAvatar(
+                            name = name,
+                            color = ArtistAvatarPalette[index % ArtistAvatarPalette.size],
+                        )
+                    }
+                }
+            }
+            if (listeningTracks.isNotEmpty()) {
+                AuraSectionLabel(stringResource(R.string.spotify_taste_top_tracks))
+                listeningTracks.take(8).forEachIndexed { index, (name, artist) ->
+                    AuraTrackRow(
+                        index = index + 1,
+                        title = name,
+                        artist = artist.takeIf { it.isNotBlank() },
+                    )
+                    if (index < minOf(7, listeningTracks.lastIndex)) AuraDivider()
+                }
+            }
+            AuraSectionLabel(stringResource(R.string.listening_taste_categories))
+            if (listeningCategories.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listeningCategories.forEach { cat ->
+                        AuraHintPill(text = cat)
+                    }
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.listening_taste_no_categories),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (excludedTasteIds.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                AuraSectionLabel(stringResource(R.string.listening_taste_excluded_section))
+                Text(
+                    text = stringResource(R.string.listening_taste_excluded_count, excludedTasteIds.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AuraSecondaryAction(
+                    text = stringResource(R.string.listening_taste_clear_exclusions),
+                    enabled = !isBusy,
+                    onClick = {
+                        scope.launch {
+                            context.safeDataStoreEdit {
+                                it[ListeningTasteExcludedSongIdsKey] = emptySet()
+                            }
+                        }
+                    },
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
         AuraSectionLabel(stringResource(R.string.spotify_file_import_section))
         AuraSecondaryAction(
             text = stringResource(R.string.spotify_file_import_choose),
@@ -342,7 +509,16 @@ fun SpotifyTasteScreen(
             }
         }
 
-        if (tasteSummary.isBlank() && artists.isEmpty() && tracks.isEmpty() && hints.isEmpty() && !isLoadingLive) {
+        if (
+            tasteSummary.isBlank() &&
+            artists.isEmpty() &&
+            tracks.isEmpty() &&
+            hints.isEmpty() &&
+            listeningSummary.isBlank() &&
+            listeningArtists.isEmpty() &&
+            listeningTracks.isEmpty() &&
+            !isLoadingLive
+        ) {
             Text(
                 text = stringResource(R.string.spotify_taste_no_data),
                 style = MaterialTheme.typography.bodyMedium,

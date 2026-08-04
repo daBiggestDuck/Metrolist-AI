@@ -10,6 +10,7 @@ import timber.log.Timber
 /**
  * On-device DJ brain powered by Gemini Nano — Metrolist's replacement for Spotify DJ.
  * Nano picks the next songs and writes short host commentary; YTM resolves playback.
+ * Uses continuous listening taste + mood/category lanes (chill, hype, focus, …).
  */
 object NanoDjEngine {
     private const val TAG = "NanoDJ"
@@ -19,6 +20,7 @@ object NanoDjEngine {
         /** "Title - Artist" style search queries for YouTube Music */
         val queries: List<String>,
         val usedAi: Boolean,
+        val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
     )
 
     data class DjContext(
@@ -27,6 +29,8 @@ object NanoDjEngine {
         val seedArtists: List<String>,
         val seedTracks: List<String>,
         val avoidTitles: List<String> = emptyList(),
+        val categories: List<String> = emptyList(),
+        val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
     )
 
     suspend fun pickNext(
@@ -44,25 +48,29 @@ object NanoDjEngine {
             return fallback
         }
 
+        val lane = context.lane
         val prompt =
             """
             You are Nano DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
             You are NOT a corporate assistant — you're a laid-back music nerd hyped to be hanging
             out with the listener between songs. Talk like a real person: casual, warm, first
             person ("I", "I'm loving", "let's..."), with personality and a bit of energy that
-            varies from chill to hyped depending on the vibe. In ONE natural spoken sentence,
+            matches the active lane (${lane.displayName}). In ONE natural spoken sentence,
             react to what just played (or the listener's taste if nothing has played yet) and
             tease what's coming up next — the way a DJ teases a transition, not a track listing.
+            Explicitly lean into the "${lane.displayName}" lane/category set.
             Never sound like a press release, never use emoji, never use markdown.
 
             Reply with EXACTLY this format (no markdown):
-            TALK: <ONE short spoken sentence, Spotify-DJ style>
+            TALK: <ONE short spoken sentence referencing the ${lane.displayName} lane, Spotify-DJ style>
             NEXT:
             - <Song Title> - <Artist>
             - <Song Title> - <Artist>
-            (exactly $batchSize NEXT lines, real song names that likely exist)
+            (exactly $batchSize NEXT lines, real song names that fit the ${lane.displayName} lane)
 
             Listener taste: ${context.tasteSummary.ifBlank { "general popular music" }}
+            Active lane: ${lane.id} (${lane.displayName})
+            Mood categories: ${context.categories.take(6).joinToString(", ").ifBlank { lane.displayName }}
             Favorite artists: ${context.seedArtists.take(12).joinToString(", ").ifBlank { "(unknown)" }}
             Favorite tracks: ${context.seedTracks.take(12).joinToString("; ").ifBlank { "(unknown)" }}
             Recently played: ${context.recentTitles.take(10).joinToString("; ").ifBlank { "(none)" }}
@@ -72,7 +80,7 @@ object NanoDjEngine {
         val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
         if (raw.isBlank()) return fallback
 
-        val parsed = parseDjPick(raw, batchSize, usedAi = true)
+        val parsed = parseDjPick(raw, batchSize, usedAi = true, lane = lane)
         return if (parsed != null) {
             parsed.copy(commentary = interstitialOnly(parsed.commentary))
         } else {
@@ -92,14 +100,18 @@ object NanoDjEngine {
         enableNano: Boolean,
         client: GeminiNanoClient = GeminiNanoClient.get(),
     ): String {
+        val lane = context.lane
         val fallback =
             when {
+                context.seedArtists.isNotEmpty() && lane == ListeningTasteTracker.DjLane.ARTIST_RADIO ->
+                    "Hey — it's Nano DJ, locking into your " +
+                        "${context.seedArtists.take(2).joinToString(" & ")} lane, let's get into it."
                 context.seedArtists.isNotEmpty() ->
-                    "Hey — it's Nano DJ, and I'm already locking into your " +
-                        "${context.seedArtists.take(2).joinToString(" & ")} energy, let's get into it."
+                    "Hey — it's Nano DJ, sliding into a ${lane.displayName} set with your " +
+                        "${context.seedArtists.take(2).joinToString(" & ")} energy."
                 context.tasteSummary.isNotBlank() ->
-                    "Hey — it's Nano DJ. I read up on your taste, and I've got a station just for you."
-                else -> "Hey — it's Nano DJ, on-device and ready to build you a station from scratch."
+                    "Hey — it's Nano DJ. I read your live taste and I'm running a ${lane.displayName} station for you."
+                else -> "Hey — it's Nano DJ, on-device and ready to build you a ${lane.displayName} station."
             }
         if (!enableNano) return fallback
         val status = runCatching { client.checkStatus() }.getOrDefault(GeminiNanoStatus.Unavailable)
@@ -109,10 +121,13 @@ object NanoDjEngine {
             """
             You are Nano DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
             Write ONE short, warm, casual spoken intro (max 25 words) opening a personalized
-            radio session, in the style of "Hey — it's Nano DJ...". Sound like a real music-nerd
-            friend, first person, excited but relaxed, referencing the listener's taste.
+            radio session in the "${lane.displayName}" lane, in the style of "Hey — it's Nano DJ...".
+            Sound like a real music-nerd friend, first person, excited but relaxed, referencing
+            the listener's taste and the active category/lane.
             No quotes, no markdown, no bullet points, no emoji.
             Taste: ${context.tasteSummary.ifBlank { "eclectic listening" }}
+            Lane: ${lane.displayName}
+            Categories: ${context.categories.take(4).joinToString(", ")}
             Artists: ${context.seedArtists.take(8).joinToString(", ")}
             """.trimIndent()
 
@@ -121,7 +136,12 @@ object NanoDjEngine {
             ?: fallback
     }
 
-    internal fun parseDjPick(raw: String, batchSize: Int, usedAi: Boolean): DjPick? {
+    internal fun parseDjPick(
+        raw: String,
+        batchSize: Int,
+        usedAi: Boolean,
+        lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
+    ): DjPick? {
         val talk =
             Regex("""(?im)^TALK:\s*(.+)$""").find(raw)?.groupValues?.getOrNull(1)?.trim()
                 ?: raw.lines().firstOrNull { it.isNotBlank() && !it.startsWith("NEXT", ignoreCase = true) }
@@ -136,9 +156,10 @@ object NanoDjEngine {
                 .toList()
         if (talk.isNullOrBlank() && queries.isEmpty()) return null
         return DjPick(
-            commentary = talk ?: "Staying right in your lane — here's what's coming up next.",
+            commentary = talk ?: "Staying in your ${lane.displayName} lane — here's what's coming up next.",
             queries = queries,
             usedAi = usedAi,
+            lane = lane,
         )
     }
 
@@ -150,8 +171,6 @@ object NanoDjEngine {
     internal fun interstitialOnly(text: String): String {
         val cleaned = text.replace(Regex("""\s+"""), " ").trim()
         if (cleaned.isBlank()) return cleaned
-        // Split on .!? only when not part of a short honorific / initialism before a capital letter
-        // Protect honorifics mid-sentence (Dr. Dre, Mr. Brightside, etc.)
         val abbrev = Regex("""\b(?:Dr|Mr|Mrs|Ms|Jr|Sr|vs|etc|feat|ft)\.""", RegexOption.IGNORE_CASE)
         val protected = abbrev.replace(cleaned) { m -> m.value.replace('.', '\u0001') }
         val firstSentence =
@@ -162,8 +181,17 @@ object NanoDjEngine {
     }
 
     internal fun heuristicPick(context: DjContext, batchSize: Int): DjPick {
+        val lane = context.lane
+        val laneQueries =
+            when (lane) {
+                ListeningTasteTracker.DjLane.ARTIST_RADIO ->
+                    context.seedArtists.take(3).flatMap { listOf("$it songs", "$it mix") }
+                else -> lane.searchHints + context.categories.take(2).map { "$it playlist" }
+            }
+
         val queries =
             buildList {
+                addAll(laneQueries)
                 context.seedTracks.take(batchSize).forEach { add(it) }
                 context.seedArtists.forEach { add("$it songs") }
                 context.recentTitles.take(2).forEach { add("songs like $it") }
@@ -172,20 +200,23 @@ object NanoDjEngine {
                 .distinct()
                 .take(batchSize.coerceAtLeast(1))
                 .ifEmpty {
-                    listOf(
-                        "popular songs",
-                        "chill hits",
-                        "indie favorites",
-                        "feel good music",
-                    ).take(batchSize)
+                    (lane.searchHints + listOf("popular songs", "chill hits", "indie favorites"))
+                        .take(batchSize)
                 }
 
         val commentary =
             when {
+                lane != ListeningTasteTracker.DjLane.ARTIST_RADIO ->
+                    "Keeping this ${lane.displayName} set rolling — Nano DJ's got more in that lane coming up."
                 context.seedArtists.isNotEmpty() ->
                     "Keeping the ${context.seedArtists.first()} vibe going — Nano DJ's got more like this coming up."
                 else -> "Nano DJ mixing your station live — fresh picks coming up right after this."
             }
-        return DjPick(commentary = interstitialOnly(commentary), queries = queries, usedAi = false)
+        return DjPick(
+            commentary = interstitialOnly(commentary),
+            queries = queries,
+            usedAi = false,
+            lane = lane,
+        )
     }
 }

@@ -1040,7 +1040,7 @@
     <!-- Nano DJ (Spotify DJ replacement) -->
     <string name="nano_dj_section">Nano DJ</string>
     <string name="nano_dj_start">Start Nano DJ</string>
-    <string name="nano_dj_start_desc">On-device AI radio host that replaces Spotify DJ — Gemini Nano curates the next tracks and talks between them using your Spotify taste</string>
+    <string name="nano_dj_start_desc">On-device AI radio host that replaces Spotify DJ — Gemini Nano curates mood/category lanes from your live listening taste and talks between songs</string>
     <string name="nano_dj_started">Nano DJ is on air</string>
     <string name="nano_dj_speak">DJ voice</string>
     <string name="nano_dj_speak_desc">Speak Nano DJ commentary aloud with on-device text-to-speech</string>
@@ -1085,7 +1085,7 @@
     <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
     <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Import taste from a file or Connect Spotify, enable Nano in AI settings, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
     <string name="spotify_view_taste">Your music taste</string>
-    <string name="spotify_view_taste_desc">See what Nano DJ has learned about your listening habits from Spotify</string>
+    <string name="spotify_view_taste_desc">See what Nano DJ has learned from your listening (and Spotify, if connected)</string>
     <string name="spotify_import_all_playlists">Import all playlists</string>
     <string name="spotify_import_all_playlists_desc">Imports every Spotify playlist into Metrolist, one after another</string>
     <string name="spotify_import_all_playlists_progress">Playlist %1$d of %2$d — %3$s</string>
@@ -1096,7 +1096,7 @@
     <string name="spotify_taste_top_artists">Top artists</string>
     <string name="spotify_taste_top_tracks">Top tracks</string>
     <string name="spotify_taste_hints">Nano DJ recommendation ideas</string>
-    <string name="spotify_taste_no_data">No taste data yet. Import from a file (no Premium), connect Spotify and import your taste, or refresh below to build your profile.</string>
+    <string name="spotify_taste_no_data">No taste data yet. Play songs in Metrolist (taste learns as you listen), import from a file (no Premium), or connect Spotify and refresh below.</string>
     <string name="spotify_taste_no_artists">No top artists yet</string>
     <string name="spotify_taste_no_tracks">No top tracks yet</string>
     <string name="spotify_taste_no_hints">No recommendation ideas yet</string>
@@ -1104,5 +1104,16 @@
     <string name="spotify_taste_refresh_desc">Re-fetches your Spotify top artists and tracks, then re-analyzes your taste with Gemini Nano</string>
     <string name="spotify_taste_refresh_result">Taste analysis updated</string>
     <string name="spotify_taste_loading">Loading your latest Spotify taste…</string>
-    <string name="spotify_taste_connect_note">Import from a file without Premium, or connect Spotify for live top artists and tracks — otherwise your last saved taste is shown below.</string>
+    <string name="spotify_taste_connect_note">Taste updates automatically from songs you listen to. Import from a file without Premium, or connect Spotify for live top artists and tracks — your last saved taste is shown below.</string>
+    <string name="listening_taste_live_section">From your listening</string>
+    <string name="listening_taste_live_desc">Nano DJ learns from every song you play for at least the history threshold (default 30 seconds), unless you mark a song as “Don’t use for taste.”</string>
+    <string name="listening_taste_categories">Mood &amp; categories</string>
+    <string name="listening_taste_no_categories">No category signals yet — keep listening</string>
+    <string name="listening_taste_active_lane">Active Nano DJ lane: %1$s</string>
+    <string name="listening_taste_excluded_count">Excluded from taste: %1$d songs</string>
+    <string name="listening_taste_excluded_section">Excluded songs</string>
+    <string name="listening_taste_clear_exclusions">Clear all exclusions</string>
+    <string name="dont_use_for_taste">Don’t use for taste</string>
+    <string name="use_for_taste">Use for taste</string>
+    <string name="dont_use_for_taste_desc">Skip this song when updating Nano DJ’s listening taste</string>
 </resources>

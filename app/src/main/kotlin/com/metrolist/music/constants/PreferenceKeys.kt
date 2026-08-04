@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
@@ -477,6 +478,20 @@ val SpotifyTasteSummaryKey = stringPreferencesKey("spotifyTasteSummary")
 val SpotifyTasteHintsKey = stringPreferencesKey("spotifyTasteHints")
 val SpotifyTopArtistsKey = stringPreferencesKey("spotifyTopArtists")
 val SpotifyTopTracksKey = stringPreferencesKey("spotifyTopTracks")
+
+/** Weighted artist listens: "Artist\tweight" per line (continuous listening taste). */
+val ListeningTasteArtistsKey = stringPreferencesKey("listeningTasteArtists")
+/** Weighted tracks: "Title — Artist\tweight" per line. */
+val ListeningTasteTracksKey = stringPreferencesKey("listeningTasteTracks")
+/** Mood/category weights: "chill\tweight" per line. */
+val ListeningTasteCategoriesKey = stringPreferencesKey("listeningTasteCategories")
+val ListeningTasteSummaryKey = stringPreferencesKey("listeningTasteSummary")
+val ListeningTasteLastUpdatedKey = longPreferencesKey("listeningTasteLastUpdated")
+val ListeningTasteListenCountKey = intPreferencesKey("listeningTasteListenCount")
+/** Song IDs excluded from continuous taste updates ("Don't use for taste"). */
+val ListeningTasteExcludedSongIdsKey = stringSetPreferencesKey("listeningTasteExcludedSongIds")
+/** Last active Nano DJ lane id (chill/hype/focus/nostalgia/artist_radio). */
+val ListeningTasteActiveLaneKey = stringPreferencesKey("listeningTasteActiveLane")
 
 const val DEFAULT_AI_SYSTEM_PROMPT = """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON array of strings.
 

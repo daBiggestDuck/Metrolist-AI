@@ -1,0 +1,512 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
+package com.metrolist.music.ai
+
+import android.content.Context
+import com.metrolist.music.constants.EnableGeminiNanoKey
+import com.metrolist.music.constants.ListeningTasteActiveLaneKey
+import com.metrolist.music.constants.ListeningTasteArtistsKey
+import com.metrolist.music.constants.ListeningTasteCategoriesKey
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
+import com.metrolist.music.constants.ListeningTasteLastUpdatedKey
+import com.metrolist.music.constants.ListeningTasteListenCountKey
+import com.metrolist.music.constants.ListeningTasteSummaryKey
+import com.metrolist.music.constants.ListeningTasteTracksKey
+import com.metrolist.music.constants.SpotifyTasteHintsKey
+import com.metrolist.music.constants.SpotifyTasteSummaryKey
+import com.metrolist.music.constants.SpotifyTopArtistsKey
+import com.metrolist.music.constants.SpotifyTopTracksKey
+import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
+import com.metrolist.music.utils.safeDataStoreEdit
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
+
+/**
+ * Continuous on-device music taste learned from eligible local listens (DataStore only —
+ * no Room schema changes). Gemini Nano may refresh a short summary / category tags;
+ * otherwise heuristic updates apply.
+ */
+object ListeningTasteTracker {
+    private const val TAG = "ListeningTaste"
+    private const val MAX_ARTISTS = 40
+    private const val MAX_TRACKS = 50
+    private const val MAX_CATEGORIES = 12
+    private const val DECAY = 0.985f
+    private const val LISTEN_BOOST = 1f
+    private const val NANO_REFRESH_EVERY = 8
+    private const val WEIGHT_SEP = '\t'
+
+    private val mutex = Mutex()
+
+    enum class DjLane(
+        val id: String,
+        val displayName: String,
+        val searchHints: List<String>,
+    ) {
+        CHILL("chill", "chill", listOf("chill vibes", "lofi beats", "soft indie")),
+        HYPE("hype", "hype", listOf("upbeat hits", "party anthems", "dance energy")),
+        FOCUS("focus", "focus", listOf("focus instrumental", "study beats", "ambient focus")),
+        NOSTALGIA("nostalgia", "nostalgia", listOf("throwback hits", "classic favorites", "nostalgia playlist")),
+        ARTIST_RADIO("artist_radio", "artist radio", listOf("similar artists", "artist radio")),
+        ;
+
+        companion object {
+            fun fromId(id: String?): DjLane =
+                entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: ARTIST_RADIO
+        }
+    }
+
+    data class Profile(
+        val artists: Map<String, Float> = emptyMap(),
+        val tracks: Map<String, Float> = emptyMap(),
+        val categories: Map<String, Float> = emptyMap(),
+        val summary: String = "",
+        val lastUpdatedMs: Long = 0L,
+        val listenCount: Int = 0,
+        val activeLane: DjLane = DjLane.ARTIST_RADIO,
+        val excludedSongIds: Set<String> = emptySet(),
+    ) {
+        fun topArtists(n: Int = 15): List<String> =
+            artists.entries.sortedByDescending { it.value }.take(n).map { it.key }
+
+        fun topTracks(n: Int = 20): List<Pair<String, String>> =
+            tracks.entries
+                .sortedByDescending { it.value }
+                .take(n)
+                .map { (line, _) ->
+                    val sep = when {
+                        " — " in line -> " — "
+                        " - " in line -> " - "
+                        else -> null
+                    }
+                    if (sep != null) {
+                        val idx = line.indexOf(sep)
+                        line.substring(0, idx).trim() to line.substring(idx + sep.length).trim()
+                    } else {
+                        line to ""
+                    }
+                }
+
+        fun topCategories(n: Int = 6): List<String> =
+            categories.entries.sortedByDescending { it.value }.take(n).map { it.key }
+    }
+
+    /** Merged Spotify import + continuous listening signals for Nano DJ. */
+    data class MergedTaste(
+        val summary: String,
+        val seedArtists: List<String>,
+        val seedTracks: List<String>,
+        val hints: List<String>,
+        val categories: List<String>,
+        val lane: DjLane,
+    )
+
+    suspend fun loadProfile(context: Context): Profile {
+        val prefs = context.dataStore
+        return Profile(
+            artists = decodeWeights(prefs.get(ListeningTasteArtistsKey, "")),
+            tracks = decodeWeights(prefs.get(ListeningTasteTracksKey, "")),
+            categories = decodeWeights(prefs.get(ListeningTasteCategoriesKey, "")),
+            summary = prefs.get(ListeningTasteSummaryKey, ""),
+            lastUpdatedMs = prefs.get(ListeningTasteLastUpdatedKey, 0L),
+            listenCount = prefs.get(ListeningTasteListenCountKey, 0),
+            activeLane = DjLane.fromId(prefs.get(ListeningTasteActiveLaneKey, "")),
+            excludedSongIds = prefs.get(ListeningTasteExcludedSongIdsKey, emptySet()),
+        )
+    }
+
+    suspend fun isExcluded(context: Context, songId: String): Boolean {
+        if (songId.isBlank()) return false
+        return songId in context.dataStore.get(ListeningTasteExcludedSongIdsKey, emptySet())
+    }
+
+    suspend fun setExcluded(context: Context, songId: String, excluded: Boolean) {
+        if (songId.isBlank()) return
+        context.safeDataStoreEdit { prefs ->
+            val current = prefs[ListeningTasteExcludedSongIdsKey]?.toMutableSet() ?: mutableSetOf()
+            if (excluded) current += songId else current -= songId
+            prefs[ListeningTasteExcludedSongIdsKey] = current
+        }
+    }
+
+    /**
+     * Upsert taste after an eligible listen (≥ HistoryDuration, not pause-history, not excluded).
+     * Call from [com.metrolist.music.playback.MusicService.onPlaybackStatsReady] on IO.
+     */
+    suspend fun recordListen(
+        context: Context,
+        songId: String,
+        title: String,
+        artists: List<String>,
+        enableNano: Boolean = context.dataStore.get(EnableGeminiNanoKey, true),
+        client: GeminiNanoClient = GeminiNanoClient.get(),
+    ) {
+        if (songId.isBlank() || title.isBlank()) return
+        mutex.withLock {
+            if (isExcluded(context, songId)) {
+                Timber.tag(TAG).d("Skipping excluded song %s", songId)
+                return
+            }
+
+            val profile = loadProfile(context)
+            val artistNames = artists.map { it.trim() }.filter { it.isNotBlank() }
+            val trackKey =
+                if (artistNames.isNotEmpty()) {
+                    "$title — ${artistNames.joinToString(", ")}"
+                } else {
+                    title
+                }
+
+            val artistsNext = decayAndBoost(profile.artists, artistNames, LISTEN_BOOST, MAX_ARTISTS)
+            val tracksNext = decayAndBoost(profile.tracks, listOf(trackKey), LISTEN_BOOST, MAX_TRACKS)
+            val categoryHits = inferCategories(title, artistNames)
+            val categoriesNext =
+                decayAndBoost(profile.categories, categoryHits, LISTEN_BOOST * 0.75f, MAX_CATEGORIES)
+
+            val listenCount = profile.listenCount + 1
+            val lane = pickLane(categoriesNext, artistsNext, recentTitle = title)
+
+            var summary = profile.summary
+            var categoriesForStore = categoriesNext
+
+            val shouldRefreshNano =
+                enableNano &&
+                    (summary.isBlank() || listenCount % NANO_REFRESH_EVERY == 0)
+            if (shouldRefreshNano) {
+                val refresh =
+                    refreshSummaryWithNano(
+                        artists = artistsNext.keys.toList().let { keys ->
+                            artistsNext.entries.sortedByDescending { it.value }.take(12).map { it.key }
+                        },
+                        tracks = tracksNext.entries.sortedByDescending { it.value }.take(15).map { (k, _) ->
+                            val sep = if (" — " in k) " — " else " - "
+                            if (sep in k) {
+                                k.substringBefore(sep).trim() to k.substringAfter(sep).trim()
+                            } else {
+                                k to ""
+                            }
+                        },
+                        categories = categoriesNext.entries.sortedByDescending { it.value }.take(6).map { it.key },
+                        lane = lane,
+                        client = client,
+                    )
+                if (refresh != null) {
+                    summary = refresh.summary
+                    if (refresh.categories.isNotEmpty()) {
+                        categoriesForStore =
+                            mergeCategoryHints(categoriesNext, refresh.categories)
+                    }
+                }
+            }
+
+            if (summary.isBlank()) {
+                summary = heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
+            }
+
+            val now = System.currentTimeMillis()
+            context.safeDataStoreEdit { prefs ->
+                prefs[ListeningTasteArtistsKey] = encodeWeights(artistsNext)
+                prefs[ListeningTasteTracksKey] = encodeWeights(tracksNext)
+                prefs[ListeningTasteCategoriesKey] = encodeWeights(categoriesForStore)
+                prefs[ListeningTasteSummaryKey] = summary
+                prefs[ListeningTasteLastUpdatedKey] = now
+                prefs[ListeningTasteListenCountKey] = listenCount
+                prefs[ListeningTasteActiveLaneKey] = lane.id
+            }
+
+            Timber.tag(TAG).i(
+                "taste updated listens=%d lane=%s artists=%d tracks=%d",
+                listenCount,
+                lane.id,
+                artistsNext.size,
+                tracksNext.size,
+            )
+        }
+    }
+
+    fun pickLane(
+        categories: Map<String, Float>,
+        artists: Map<String, Float>,
+        recentTitle: String = "",
+    ): DjLane {
+        val topCat =
+            categories.entries
+                .filter { it.key != DjLane.ARTIST_RADIO.id }
+                .maxByOrNull { it.value }
+        val topArtistWeight = artists.values.maxOrNull() ?: 0f
+        val secondArtist = artists.values.sortedDescending().getOrNull(1) ?: 0f
+
+        // Strong single-artist lean → artist radio
+        if (topArtistWeight >= 4f && topArtistWeight >= secondArtist * 1.8f && (topCat?.value ?: 0f) < topArtistWeight) {
+            return DjLane.ARTIST_RADIO
+        }
+
+        val fromTitle = inferCategories(recentTitle, emptyList()).firstOrNull()
+        if (fromTitle != null && (categories[fromTitle] ?: 0f) >= 1f) {
+            return DjLane.fromId(fromTitle)
+        }
+
+        return when {
+            topCat != null && topCat.value >= 1.5f -> DjLane.fromId(topCat.key)
+            else -> DjLane.ARTIST_RADIO
+        }
+    }
+
+    /**
+     * Merge continuous listening taste with optional Spotify import prefs for Nano DJ.
+     */
+    suspend fun loadMergedTaste(context: Context): MergedTaste {
+        val profile = loadProfile(context)
+        val prefs = context.dataStore
+
+        val spotifySummary = prefs.get(SpotifyTasteSummaryKey, "")
+        val spotifyArtists =
+            prefs.get(SpotifyTopArtistsKey, "")
+                .split('\n')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+        val spotifyTracks =
+            prefs.get(SpotifyTopTracksKey, "")
+                .split('\n')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+        val spotifyHints =
+            prefs.get(SpotifyTasteHintsKey, "")
+                .split('\n')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+
+        val listeningArtists = profile.topArtists(15)
+        val listeningTracks =
+            profile.topTracks(20).map { (t, a) ->
+                if (a.isNotBlank()) "$t - $a" else t
+            }
+
+        val seedArtists = (listeningArtists + spotifyArtists).distinct().take(20)
+        val seedTracks = (listeningTracks + spotifyTracks).distinct().take(25)
+        val categories = profile.topCategories(6)
+        val lane =
+            if (profile.listenCount > 0) {
+                pickLane(profile.categories, profile.artists)
+            } else {
+                DjLane.ARTIST_RADIO
+            }
+
+        val summary =
+            buildString {
+                val live = profile.summary.trim()
+                val spotify = spotifySummary.trim()
+                when {
+                    live.isNotBlank() && spotify.isNotBlank() && live != spotify -> {
+                        append(live)
+                        append(" Also informed by Spotify: ")
+                        append(spotify.take(220))
+                    }
+                    live.isNotBlank() -> append(live)
+                    spotify.isNotBlank() -> append(spotify)
+                    seedArtists.isNotEmpty() ->
+                        append("Your recent listening leans toward ${seedArtists.take(4).joinToString(", ")}.")
+                    else -> append("")
+                }
+            }.trim()
+
+        val laneHints =
+            when (lane) {
+                DjLane.ARTIST_RADIO ->
+                    seedArtists.take(3).map { "$it radio" } + lane.searchHints
+                else -> lane.searchHints
+            }
+
+        val hints =
+            (categories.map { "$it mix" } + laneHints + spotifyHints + listeningTracks.take(5))
+                .distinct()
+                .take(12)
+
+        // Persist chosen lane for UI / next session
+        context.safeDataStoreEdit { it[ListeningTasteActiveLaneKey] = lane.id }
+
+        return MergedTaste(
+            summary = summary,
+            seedArtists = seedArtists,
+            seedTracks = seedTracks.ifEmpty { hints },
+            hints = hints,
+            categories = categories,
+            lane = lane,
+        )
+    }
+
+    internal fun inferCategories(title: String, artists: List<String>): List<String> {
+        val hay = (title + " " + artists.joinToString(" ")).lowercase()
+        val hits = linkedSetOf<String>()
+        fun has(vararg words: String) = words.any { hay.contains(it) }
+
+        if (has("chill", "lofi", "lo-fi", "ambient", "soft", "acoustic", "rain", "sleep", "calm")) {
+            hits += DjLane.CHILL.id
+        }
+        if (has("hype", "party", "dance", "club", "remix", "banger", "trap", "bass", "energy", "workout")) {
+            hits += DjLane.HYPE.id
+        }
+        if (has("focus", "study", "instrumental", "classical", "piano", "coding", "concentration")) {
+            hits += DjLane.FOCUS.id
+        }
+        if (has("nostalgia", "throwback", "classic", "retro", "90s", "80s", "70s", "oldies", "vinyl")) {
+            hits += DjLane.NOSTALGIA.id
+        }
+        return hits.toList()
+    }
+
+    internal fun encodeWeights(map: Map<String, Float>): String =
+        map.entries
+            .sortedByDescending { it.value }
+            .joinToString("\n") { (k, v) ->
+                "${k.replace('\n', ' ').replace(WEIGHT_SEP, ' ')}$WEIGHT_SEP${"%.2f".format(v)}"
+            }
+
+    internal fun decodeWeights(raw: String): Map<String, Float> {
+        if (raw.isBlank()) return emptyMap()
+        val out = linkedMapOf<String, Float>()
+        raw.lineSequence().forEach { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) return@forEach
+            val sep = trimmed.lastIndexOf(WEIGHT_SEP)
+            if (sep <= 0) {
+                out[trimmed] = (out[trimmed] ?: 0f) + 1f
+                return@forEach
+            }
+            val key = trimmed.substring(0, sep).trim()
+            val weight = trimmed.substring(sep + 1).trim().toFloatOrNull() ?: 1f
+            if (key.isNotBlank()) out[key] = weight
+        }
+        return out
+    }
+
+    private fun decayAndBoost(
+        current: Map<String, Float>,
+        keys: List<String>,
+        boost: Float,
+        maxEntries: Int,
+    ): Map<String, Float> {
+        val next = current.mapValues { it.value * DECAY }.toMutableMap()
+        keys.forEach { key ->
+            if (key.isBlank()) return@forEach
+            next[key] = (next[key] ?: 0f) + boost
+        }
+        return next.entries
+            .sortedByDescending { it.value }
+            .take(maxEntries)
+            .associate { it.key to it.value }
+    }
+
+    private fun mergeCategoryHints(
+        current: Map<String, Float>,
+        hints: List<String>,
+    ): Map<String, Float> {
+        val next = current.toMutableMap()
+        hints.forEach { raw ->
+            val id = normalizeCategory(raw) ?: return@forEach
+            next[id] = (next[id] ?: 0f) + 0.5f
+        }
+        return next.entries
+            .sortedByDescending { it.value }
+            .take(MAX_CATEGORIES)
+            .associate { it.key to it.value }
+    }
+
+    private fun normalizeCategory(raw: String): String? {
+        val t = raw.trim().lowercase()
+        if (t.isBlank()) return null
+        DjLane.entries.forEach { lane ->
+            if (t == lane.id || t.contains(lane.displayName)) return lane.id
+        }
+        return when {
+            t.contains("chill") || t.contains("mellow") || t.contains("relax") -> DjLane.CHILL.id
+            t.contains("hype") || t.contains("upbeat") || t.contains("party") -> DjLane.HYPE.id
+            t.contains("focus") || t.contains("study") || t.contains("work") -> DjLane.FOCUS.id
+            t.contains("nostalgia") || t.contains("throwback") || t.contains("classic") -> DjLane.NOSTALGIA.id
+            t.contains("artist") -> DjLane.ARTIST_RADIO.id
+            else -> t.take(24).replace(' ', '_')
+        }
+    }
+
+    private fun heuristicListeningSummary(
+        artists: Map<String, Float>,
+        tracks: Map<String, Float>,
+        categories: Map<String, Float>,
+        lane: DjLane,
+    ): String {
+        val topA = artists.entries.sortedByDescending { it.value }.take(4).map { it.key }
+        val topC = categories.entries.sortedByDescending { it.value }.take(3).map { it.key }
+        val topT = tracks.entries.sortedByDescending { it.value }.take(3).map { it.key.substringBefore(" — ") }
+        return buildString {
+            append("Live listening taste")
+            if (topA.isNotEmpty()) append(" leans toward ${topA.joinToString(", ")}")
+            if (topC.isNotEmpty()) append(", with ${topC.joinToString("/")} energy")
+            append(". Current Nano DJ lane: ${lane.displayName}")
+            if (topT.isNotEmpty()) append(" — recent favorites include ${topT.joinToString(", ")}")
+            append(".")
+        }
+    }
+
+    private data class NanoRefresh(val summary: String, val categories: List<String>)
+
+    private suspend fun refreshSummaryWithNano(
+        artists: List<String>,
+        tracks: List<Pair<String, String>>,
+        categories: List<String>,
+        lane: DjLane,
+        client: GeminiNanoClient,
+    ): NanoRefresh? {
+        val status = runCatching { client.checkStatus() }.getOrDefault(GeminiNanoStatus.Unavailable)
+        if (status != GeminiNanoStatus.Available) {
+            return NanoRefresh(
+                summary = heuristicListeningSummary(
+                    artists.associateWith { 1f },
+                    tracks.associate { (t, a) -> (if (a.isNotBlank()) "$t — $a" else t) to 1f },
+                    categories.associateWith { 1f },
+                    lane,
+                ),
+                categories = categories,
+            ).takeIf { artists.isNotEmpty() || tracks.isNotEmpty() }
+        }
+
+        val prompt =
+            """
+            You are Nano DJ's on-device taste tracker (Gemini Nano). Update the listener's live
+            music taste from recent plays. Reply with EXACTLY this format (no markdown):
+            SUMMARY: <2 short sentences for a DJ host>
+            CATEGORIES:
+            - <mood tag>
+            - <mood tag>
+            (2-5 CATEGORIES from: chill, hype, focus, nostalgia, artist_radio)
+
+            Top artists: ${artists.take(12).joinToString(", ").ifBlank { "(none)" }}
+            Top tracks: ${tracks.take(15).joinToString("; ") { (t, a) -> if (a.isNotBlank()) "$t by $a" else t }.ifBlank { "(none)" }}
+            Current category weights: ${categories.joinToString(", ").ifBlank { "(none)" }}
+            Active lane hint: ${lane.id}
+            """.trimIndent()
+
+        val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
+        if (raw.isBlank()) return null
+
+        val summary =
+            Regex("""(?im)^SUMMARY:\s*(.+)$""").find(raw)?.groupValues?.getOrNull(1)?.trim()
+                ?: raw.lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+        val cats =
+            Regex("""(?im)^[-*]\s*(.+)$""")
+                .findAll(raw)
+                .map { it.groupValues[1].trim() }
+                .filter { it.isNotBlank() && !it.equals("CATEGORIES:", ignoreCase = true) }
+                .mapNotNull { normalizeCategory(it) }
+                .distinct()
+                .take(5)
+                .toList()
+
+        if (summary.isBlank()) return null
+        return NanoRefresh(summary = summary.take(500), categories = cats)
+    }
+}

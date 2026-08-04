@@ -73,6 +73,8 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
+import com.metrolist.music.ai.ListeningTasteTracker
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.db.entities.ArtistEntity
@@ -96,6 +98,7 @@ import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.viewmodels.CachePlaylistViewModel
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -137,6 +140,8 @@ fun SongMenu(
     )
 
     val isPinned by database.speedDialDao.isPinned(song.id).collectAsStateWithLifecycle(initialValue = false)
+    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
+    val tasteExcluded = song.id in excludedTasteIds
 
     // Podcast subscription state for episodes
     val podcastEntity by produceState<PodcastEntity?>(initialValue = null, song) {
@@ -813,6 +818,41 @@ fun SongMenu(
                                 ),
                             )
                         }
+                        add(
+                            Material3MenuItemData(
+                                title = {
+                                    Text(
+                                        text =
+                                            stringResource(
+                                                if (tasteExcluded) {
+                                                    R.string.use_for_taste
+                                                } else {
+                                                    R.string.dont_use_for_taste
+                                                },
+                                            ),
+                                    )
+                                },
+                                description = { Text(text = stringResource(R.string.dont_use_for_taste_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (tasteExcluded) R.drawable.library_add else R.drawable.hide_image,
+                                        ),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        ListeningTasteTracker.setExcluded(
+                                            context = context,
+                                            songId = song.id,
+                                            excluded = !tasteExcluded,
+                                        )
+                                    }
+                                    onDismiss()
+                                },
+                            ),
+                        )
                         if (playlistSong != null) {
                             add(
                                 Material3MenuItemData(

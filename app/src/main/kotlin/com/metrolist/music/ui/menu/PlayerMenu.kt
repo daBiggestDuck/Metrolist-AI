@@ -81,7 +81,9 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.constants.ListItemHeight
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.listentogether.ConnectionState
 import com.metrolist.music.listentogether.ListenTogetherEvent
@@ -135,6 +137,8 @@ fun PlayerMenu(
     val castDeviceName by castHandler?.castDeviceName?.collectAsStateWithLifecycle() ?: remember { mutableStateOf<String?>(null) }
 
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
+    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
+    val tasteExcluded = mediaMetadata.id in excludedTasteIds
 
     val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
@@ -511,6 +515,42 @@ fun PlayerMenu(
                                         } else {
                                             database.speedDialDao.insert(SpeedDialItem.fromYTItem(mediaMetadata.toYTItem()))
                                         }
+                                    }
+                                    onDismiss()
+                                },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = {
+                                    Text(
+                                        text =
+                                            stringResource(
+                                                if (tasteExcluded) {
+                                                    R.string.use_for_taste
+                                                } else {
+                                                    R.string.dont_use_for_taste
+                                                },
+                                            ),
+                                    )
+                                },
+                                description = { Text(text = stringResource(R.string.dont_use_for_taste_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (tasteExcluded) R.drawable.library_add else R.drawable.hide_image,
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        ListeningTasteTracker.setExcluded(
+                                            context = context,
+                                            songId = mediaMetadata.id,
+                                            excluded = !tasteExcluded,
+                                        )
                                     }
                                     onDismiss()
                                 },
