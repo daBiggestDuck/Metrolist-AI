@@ -27,6 +27,12 @@ import com.materialkolor.score.Score
 /** Spotify green — default Aura seed (not wallpaper / M3 purple). */
 val DefaultThemeColor = Color(0xFF1DB954)
 
+/** Pre-Aura Metrolist default; treat as Aura so upgrades keep the new skin. */
+private val LegacyDefaultThemeColor = Color(0xFFED5564)
+
+fun Color.isAuraDefaultSeed(): Boolean =
+    this == DefaultThemeColor || this == LegacyDefaultThemeColor
+
 private val AuraBackground = Color(0xFF121212)
 private val AuraSurface = Color(0xFF181818)
 private val AuraSurfaceBright = Color(0xFF282828)
@@ -90,23 +96,24 @@ fun auraDarkColorScheme(
 /** Light companion for Aura when the user forces light mode with the default seed. */
 fun auraLightColorScheme(): ColorScheme =
     lightColorScheme(
-        primary = AuraPrimary,
-        onPrimary = AuraOnPrimary,
+        // Darker green for readable primary text on light surfaces (~AA).
+        primary = Color(0xFF0B7A32),
+        onPrimary = Color(0xFFFFFFFF),
         primaryContainer = Color(0xFFB6F5C9),
         onPrimaryContainer = Color(0xFF00210B),
         secondary = Color(0xFF535353),
         onSecondary = Color(0xFFFFFFFF),
         secondaryContainer = Color(0xFFE8E8E8),
         onSecondaryContainer = Color(0xFF1A1A1A),
-        tertiary = AuraPrimary,
-        onTertiary = AuraOnPrimary,
+        tertiary = Color(0xFF0B7A32),
+        onTertiary = Color(0xFFFFFFFF),
         background = Color(0xFFFAFAFA),
         onBackground = Color(0xFF121212),
         surface = Color(0xFFFFFFFF),
         onSurface = Color(0xFF121212),
         surfaceVariant = Color(0xFFE8E8E8),
         onSurfaceVariant = Color(0xFF535353),
-        surfaceTint = AuraPrimary,
+        surfaceTint = Color(0xFF0B7A32),
         outline = Color(0xFFB3B3B3),
         outlineVariant = Color(0xFFD4D4D4),
         scrim = Color.Black,
@@ -130,8 +137,8 @@ fun MetrolistTheme(
     themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {
-    // Default seed → handcrafted Aura palette (never wallpaper dynamic purple).
-    val useAuraDefault = themeColor == DefaultThemeColor
+    // Default / legacy seed → handcrafted Aura palette (never wallpaper dynamic purple).
+    val useAuraDefault = themeColor.isAuraDefaultSeed()
 
     val baseColorScheme =
         if (useAuraDefault) {
