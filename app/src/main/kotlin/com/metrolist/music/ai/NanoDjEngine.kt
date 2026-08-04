@@ -151,7 +151,8 @@ object NanoDjEngine {
         val cleaned = text.replace(Regex("""\s+"""), " ").trim()
         if (cleaned.isBlank()) return cleaned
         // Split on .!? only when not part of a short honorific / initialism before a capital letter
-        val abbrev = Regex("""\b(?:Dr|Mr|Mrs|Ms|Jr|Sr|vs|etc|feat|ft)\.$""", RegexOption.IGNORE_CASE)
+        // Protect honorifics mid-sentence (Dr. Dre, Mr. Brightside, etc.)
+        val abbrev = Regex("""\b(?:Dr|Mr|Mrs|Ms|Jr|Sr|vs|etc|feat|ft)\.""", RegexOption.IGNORE_CASE)
         val protected = abbrev.replace(cleaned) { m -> m.value.replace('.', '\u0001') }
         val firstSentence =
             Regex("""^(.*?[.!?])(\s|$)""").find(protected)?.groupValues?.getOrNull(1)?.trim()

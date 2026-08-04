@@ -119,6 +119,71 @@ class SpotifyImportManager(
         }
 
     /**
+     * Premium-free path: analyze pasted/picked track list for Nano DJ taste, then build a local
+     * YouTube Music–matched playlist. Does not call the Spotify Web API.
+     */
+    suspend fun importTasteFromTracks(
+        tracks: List<Pair<String, String>>,
+        playlistName: String = TASTE_PLAYLIST_NAME,
+        enableNano: Boolean,
+        onProgress: (SpotifyImportProgress) -> Unit = {},
+    ): SpotifyImportResult =
+        withContext(Dispatchers.IO) {
+            val cleaned =
+                tracks
+                    .map { (t, a) -> t.trim() to a.trim() }
+                    .filter { it.first.isNotBlank() }
+                    .distinctBy { "${it.first.lowercase()}|${it.second.lowercase()}" }
+            if (cleaned.isEmpty()) {
+                throw IllegalArgumentException("No tracks to import")
+            }
+
+            val topArtists = deriveTopArtists(cleaned)
+            val topTracks = cleaned.take(50)
+
+            onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = cleaned.size))
+            val analysis =
+                analyzeSpotifyTaste(
+                    topArtists = topArtists,
+                    topTracks = topTracks,
+                    enableNano = enableNano,
+                )
+
+            val spotifyTracks =
+                cleaned.mapIndexed { index, (title, artist) ->
+                    SpotifyTrack(
+                        id = "file-$index",
+                        name = title,
+                        artists = splitArtistNames(artist),
+                    )
+                }
+
+            val name = playlistName.trim().ifBlank { TASTE_PLAYLIST_NAME }
+            val matchResult =
+                matchAndCreatePlaylist(
+                    playlistName = name,
+                    tracks = spotifyTracks,
+                    onProgress = onProgress,
+                )
+
+            val hintQueries = analysis.searchHints.take(10)
+            if (hintQueries.isNotEmpty()) {
+                matchQueriesIntoPlaylist(
+                    playlistId = matchResult.playlistId,
+                    startingSongCount = matchResult.matched,
+                    queries = hintQueries,
+                    onProgress = onProgress,
+                )
+            }
+
+            matchResult.copy(
+                tasteAnalysis = analysis,
+                topArtists = topArtists,
+                topTracks = topTracks,
+            )
+        }
+
+    /**
      * Fetches top artists/tracks and analyzes taste (Gemini Nano or heuristic) without creating
      * any playlist. Lets the taste screen refresh its analysis on demand.
      */
@@ -465,5 +530,26 @@ class SpotifyImportManager(
         private const val TAG = "SpotifyImport"
         const val TASTE_PLAYLIST_NAME = "Spotify Taste Import"
         const val RECOMMENDATIONS_PLAYLIST_NAME = "Nano Recommendations"
+
+        fun deriveTopArtists(tracks: List<Pair<String, String>>, limit: Int = 20): List<String> =
+            tracks
+                .flatMap { (_, artist) -> splitArtistNames(artist) }
+                .filter { it.isNotBlank() }
+                .groupingBy { it }
+                .eachCount()
+                .entries
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                .map { it.key }
+                .take(limit)
+
+        fun splitArtistNames(artist: String): List<String> {
+            if (artist.isBlank()) return emptyList()
+            // Only list separators — keep AC/DC and Simon & Garfunkel intact.
+            return artist
+                .split(',', ';')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .ifEmpty { listOf(artist.trim()) }
+        }
     }
 }

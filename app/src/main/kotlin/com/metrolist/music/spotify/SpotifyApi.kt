@@ -35,6 +35,11 @@ data class SpotifyTrack(
     val artistsJoined: String get() = artists.joinToString(", ")
 }
 
+class SpotifyApiException(
+    val status: Int,
+    message: String,
+) : IOException(message)
+
 data class SpotifyPlaylistSummary(
     val id: String,
     val name: String,
@@ -119,17 +124,43 @@ class SpotifyApi(
     ): List<SpotifyTrack> {
         val results = mutableListOf<SpotifyTrack>()
         var offset = 0
+        // Prefer /items (Spotify Feb 2026 Dev Mode); fall back to legacy /tracks.
+        val paths =
+            listOf(
+                "https://api.spotify.com/v1/playlists/$playlistId/items",
+                "https://api.spotify.com/v1/playlists/$playlistId/tracks",
+            )
+        var pathIndex = 0
         while (true) {
+            val baseUrl = paths[pathIndex]
             val json =
-                getJson("https://api.spotify.com/v1/playlists/$playlistId/tracks", accessToken) {
-                    parameter("limit", limit.coerceIn(1, 100))
-                    parameter("offset", offset)
-                    parameter("fields", "items(track(id,name,artists(name),type)),next")
+                try {
+                    getJson(baseUrl, accessToken) {
+                        parameter("limit", limit.coerceIn(1, 100))
+                        parameter("offset", offset)
+                        if (baseUrl.endsWith("/tracks")) {
+                            parameter("fields", "items(track(id,name,artists(name),type)),next")
+                        }
+                    }
+                } catch (e: SpotifyApiException) {
+                    if (e.status == 403 && pathIndex == 0) {
+                        Timber.tag(TAG).w("Playlist /items returned 403; trying legacy /tracks")
+                        pathIndex = 1
+                        offset = 0
+                        results.clear()
+                        continue
+                    }
+                    throw e
                 }
             val items = json.optJSONArray("items") ?: break
             for (i in 0 until items.length()) {
-                val trackObj = items.optJSONObject(i)?.optJSONObject("track") ?: continue
-                if (trackObj.optString("type") != "track") continue
+                val row = items.optJSONObject(i) ?: continue
+                val trackObj =
+                    row.optJSONObject("item")
+                        ?: row.optJSONObject("track")
+                        ?: continue
+                val type = trackObj.optString("type")
+                if (type.isNotBlank() && type != "track") continue
                 val id = trackObj.optString("id")
                 if (id.isBlank()) continue
                 val artists = mutableListOf<String>()
@@ -171,7 +202,20 @@ class SpotifyApi(
         val body = response.bodyAsText()
         if (response.status.value !in 200..299) {
             Timber.tag(TAG).w("API %s → HTTP %d: %s", url, response.status.value, body.take(200))
-            throw IOException("Spotify API HTTP ${response.status.value}")
+            val hint =
+                when (response.status.value) {
+                    403 ->
+                        " Forbidden — Development Mode apps need the account allowlisted under " +
+                            "Developer Dashboard → User Management, and as of 2026 the app owner " +
+                            "generally needs Spotify Premium. Prefer Import from file (no Premium), " +
+                            "or fix dashboard access then Disconnect/Connect."
+                    401 -> " Unauthorized — Disconnect and Connect Spotify again."
+                    else -> ""
+                }
+            throw SpotifyApiException(
+                status = response.status.value,
+                message = "Spotify API HTTP ${response.status.value}.$hint",
+            )
         }
         return JSONObject(body)
     }

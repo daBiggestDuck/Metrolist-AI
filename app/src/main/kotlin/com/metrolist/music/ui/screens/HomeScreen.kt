@@ -1189,9 +1189,13 @@ fun HomeScreen(
                     val nanoScope = rememberCoroutineScope()
                     val nanoDjSpeak by rememberPreference(com.metrolist.music.constants.NanoDjSpeakKey, true)
                     var nanoDjStarting by remember { mutableStateOf(false) }
-                    Button(
-                        onClick = {
-                            if (isListenTogetherGuest || nanoDjStarting) return@Button
+                    com.metrolist.music.ui.component.aura.AuraHeroPanel(
+                        title = stringResource(R.string.nano_dj_section),
+                        subtitle = stringResource(R.string.nano_dj_home_subtitle),
+                        enabled = !isListenTogetherGuest && !nanoDjStarting,
+                        playContentDescription = stringResource(R.string.nano_dj_start),
+                        onPlayClick = {
+                            if (isListenTogetherGuest || nanoDjStarting) return@AuraHeroPanel
                             nanoScope.launch {
                                 nanoDjStarting = true
                                 try {
@@ -1216,34 +1220,11 @@ fun HomeScreen(
                                 }
                             }
                         },
-                        enabled = !isListenTogetherGuest && !nanoDjStarting,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .height(52.dp),
-                        shape = RoundedCornerShape(percent = 50),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                            ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.radio),
-                            contentDescription = null,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = stringResource(R.string.nano_dj_home_start),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
                 }
 
                 if (isLoading && homePage?.chips.isNullOrEmpty()) {

@@ -7,8 +7,10 @@ package com.metrolist.music.ui.theme
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -18,11 +20,22 @@ import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
+
+/** Tighter corners than M3 expressive defaults — softens cards under Aura. */
+private val AuraShapes =
+    Shapes(
+        extraSmall = RoundedCornerShape(4.dp),
+        small = RoundedCornerShape(6.dp),
+        medium = RoundedCornerShape(8.dp),
+        large = RoundedCornerShape(12.dp),
+        extraLarge = RoundedCornerShape(16.dp),
+    )
 
 /** Spotify green — default Aura seed (not wallpaper / M3 purple). */
 val DefaultThemeColor = Color(0xFF1DB954)
@@ -164,6 +177,7 @@ fun MetrolistTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
+        shapes = if (useAuraDefault) AuraShapes else Shapes(),
         content = content,
     )
 }

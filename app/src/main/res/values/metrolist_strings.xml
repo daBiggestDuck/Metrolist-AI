@@ -1052,6 +1052,10 @@
 
     <!-- Spotify integration -->
     <string name="spotify_integration">Spotify</string>
+    <string name="spotify_section_account">Account</string>
+    <string name="spotify_section_taste_dj">Taste &amp; DJ</string>
+    <string name="spotify_oauth_premium_disclaimer">Spotify’s official API (Connect account) requires a Spotify Developer app in Development Mode. As of 2026, the app owner generally needs Spotify Premium, and users must be allowlisted under User Management. API calls may return 403 without Premium or allowlisting.\n\nIf you don’t have Premium, use Import from file below — no Premium or Developer Dashboard needed.</string>
+    <string name="spotify_api_premium_disclaimer">@string/spotify_oauth_premium_disclaimer</string>
     <string name="spotify_client_id">Spotify Client ID</string>
     <string name="spotify_redirect_uri">Redirect URI</string>
     <string name="spotify_redirect_uri_note">Register metrolistspotify://callback as a Redirect URI in your Spotify Developer Dashboard app settings.</string>
@@ -1060,7 +1064,16 @@
     <string name="spotify_connect_description">Sign in with Spotify so Nano DJ can learn your taste and import playlists into Metrolist</string>
     <string name="spotify_connected_as">Connected as %1$s</string>
     <string name="spotify_not_connected">Not connected</string>
+    <string name="spotify_file_import_section">Import from file (no Premium)</string>
+    <string name="spotify_file_import_choose">Choose file</string>
+    <string name="spotify_choose_file">@string/spotify_file_import_choose</string>
+    <string name="spotify_file_import_desc">Pick a text, CSV, or JSON export (lines like “Title - Artist”, Spotify CSV with Track Name / Artist Name, or JSON with title/artist). Builds your Nano DJ taste profile and a matched local playlist — no Premium required.</string>
+    <string name="spotify_choose_file_desc">@string/spotify_file_import_desc</string>
+    <string name="spotify_file_import_result">File import finished: %1$d matched, %2$d missed. Taste profile saved for Nano DJ.</string>
+    <string name="spotify_file_import_empty">No tracks found in that file.</string>
+    <string name="spotify_file_import_playlist_name_title">Playlist name</string>
     <string name="spotify_import">Import</string>
+    <string name="nano_dj_home_subtitle">On-device AI radio that replaces Spotify DJ</string>
     <string name="spotify_import_taste">Import taste (top tracks)</string>
     <string name="spotify_import_taste_desc">Creates a “Spotify Taste Import” playlist and feeds Nano DJ (Gemini Nano) your listening profile</string>
     <string name="spotify_taste_summary">Taste summary</string>
@@ -1070,7 +1083,7 @@
     <string name="spotify_playlist_tracks_owner">%1$d tracks • %2$s</string>
     <string name="spotify_import_action">Import</string>
     <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
-    <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Connect Spotify (or import taste), enable Nano in AI settings, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
+    <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Import taste from a file or Connect Spotify, enable Nano in AI settings, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
     <string name="spotify_view_taste">Your music taste</string>
     <string name="spotify_view_taste_desc">See what Nano DJ has learned about your listening habits from Spotify</string>
     <string name="spotify_import_all_playlists">Import all playlists</string>
@@ -1083,7 +1096,7 @@
     <string name="spotify_taste_top_artists">Top artists</string>
     <string name="spotify_taste_top_tracks">Top tracks</string>
     <string name="spotify_taste_hints">Nano DJ recommendation ideas</string>
-    <string name="spotify_taste_no_data">No taste data yet. Connect Spotify and import your taste, or refresh below, to build your profile.</string>
+    <string name="spotify_taste_no_data">No taste data yet. Import from a file (no Premium), connect Spotify and import your taste, or refresh below to build your profile.</string>
     <string name="spotify_taste_no_artists">No top artists yet</string>
     <string name="spotify_taste_no_tracks">No top tracks yet</string>
     <string name="spotify_taste_no_hints">No recommendation ideas yet</string>
@@ -1091,5 +1104,5 @@
     <string name="spotify_taste_refresh_desc">Re-fetches your Spotify top artists and tracks, then re-analyzes your taste with Gemini Nano</string>
     <string name="spotify_taste_refresh_result">Taste analysis updated</string>
     <string name="spotify_taste_loading">Loading your latest Spotify taste…</string>
-    <string name="spotify_taste_connect_note">Connect Spotify for live top artists and tracks — otherwise your last saved taste is shown below.</string>
+    <string name="spotify_taste_connect_note">Import from a file without Premium, or connect Spotify for live top artists and tracks — otherwise your last saved taste is shown below.</string>
 </resources>

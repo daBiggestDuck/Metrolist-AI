@@ -5,49 +5,49 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
-import androidx.compose.foundation.BorderStroke
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalDatabase
-import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.ai.NanoDjLauncher
@@ -59,12 +59,22 @@ import com.metrolist.music.constants.SpotifyTasteSummaryKey
 import com.metrolist.music.constants.SpotifyTopArtistsKey
 import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.spotify.SpotifyApi
+import com.metrolist.music.spotify.SpotifyFileTasteImporter
 import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.spotify.SpotifyImportProgress
 import com.metrolist.music.spotify.SpotifyTokenStore
-import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.Material3SettingsGroup
-import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.TextFieldDialog
+import com.metrolist.music.ui.component.aura.AuraArtistAvatar
+import com.metrolist.music.ui.component.aura.AuraDivider
+import com.metrolist.music.ui.component.aura.AuraHeader
+import com.metrolist.music.ui.component.aura.AuraHintPill
+import com.metrolist.music.ui.component.aura.AuraPrimaryPill
+import com.metrolist.music.ui.component.aura.AuraBanner
+import com.metrolist.music.ui.component.aura.AuraScreen
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraSectionLabel
+import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
+import com.metrolist.music.ui.component.aura.AuraTrackRow
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
@@ -91,12 +101,24 @@ private fun parseTrackPrefs(raw: String): List<Pair<String, String>> =
         }
     }
 
+private val ArtistAvatarPalette =
+    listOf(
+        Color(0xFF1DB954),
+        Color(0xFF2D46B9),
+        Color(0xFFE91429),
+        Color(0xFFAF2896),
+        Color(0xFF8C67AC),
+        Color(0xFF148A08),
+        Color(0xFF509BF5),
+        Color(0xFFE13300),
+    )
+
 /**
  * Shows what Nano DJ has learned about the listener's Spotify taste: a plain-language summary,
  * top artists/tracks, and the recommendation ideas Nano DJ derives from them. Lets the listener
  * refresh the analysis, generate a recommendations playlist, or jump straight into Nano DJ.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SpotifyTasteScreen(
     navController: NavController,
@@ -124,6 +146,9 @@ fun SpotifyTasteScreen(
     var isBusy by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableStateOf(SpotifyImportProgress()) }
+    var pendingFileTracks by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
+    var showFilePlaylistNameDialog by remember { mutableStateOf(false) }
+    var pendingFilePlaylistName by remember { mutableStateOf(SpotifyImportManager.TASTE_PLAYLIST_NAME) }
 
     // Sync lists when DataStore prefs finish loading (rememberPreference starts empty).
     LaunchedEffect(topArtistsPref, topTracksPref) {
@@ -145,6 +170,74 @@ fun SpotifyTasteScreen(
             topTracksPref = newTracks.joinToString("\n") { "${it.first} — ${it.second}" }
         }
     }
+
+    fun runFileTasteImport(
+        fileTracks: List<Pair<String, String>>,
+        playlistName: String,
+    ) {
+        scope.launch {
+            isBusy = true
+            statusMessage = null
+            progress = SpotifyImportProgress(phase = "Importing from file")
+            val manager = SpotifyImportManager(database)
+            try {
+                val result =
+                    manager.importTasteFromTracks(
+                        tracks = fileTracks,
+                        playlistName = playlistName,
+                        enableNano = enableGeminiNano,
+                        onProgress = { p ->
+                            scope.launch(Dispatchers.Main) { progress = p }
+                        },
+                    )
+                result.tasteAnalysis?.let { analysis ->
+                    tasteSummary = analysis.summary
+                    tasteHints = analysis.searchHints.joinToString("\n")
+                }
+                if (result.topArtists.isNotEmpty()) artists = result.topArtists
+                if (result.topTracks.isNotEmpty()) tracks = result.topTracks
+                persistProfile(result.topArtists, result.topTracks)
+                statusMessage =
+                    context.getString(
+                        R.string.spotify_file_import_result,
+                        result.matched,
+                        result.failed,
+                    )
+            } catch (e: Exception) {
+                statusMessage = e.message
+                reportException(e)
+            } finally {
+                manager.close()
+                isBusy = false
+                pendingFileTracks = null
+            }
+        }
+    }
+
+    val filePickerLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch {
+                try {
+                    val parsed =
+                        withContext(Dispatchers.IO) {
+                            SpotifyFileTasteImporter.parse(context, uri)
+                        }
+                    if (parsed.tracks.isEmpty()) {
+                        statusMessage = context.getString(R.string.spotify_file_import_empty)
+                        return@launch
+                    }
+                    pendingFileTracks = parsed.tracks
+                    pendingFilePlaylistName =
+                        parsed.playlistName?.takeIf { it.isNotBlank() }
+                            ?: SpotifyImportManager.TASTE_PLAYLIST_NAME
+                    showFilePlaylistNameDialog = true
+                } catch (e: Exception) {
+                    statusMessage = e.message
+                    reportException(e)
+                }
+            }
+        }
 
     fun loadLiveTaste() {
         if (!isConnected || clientId.isBlank()) return
@@ -175,27 +268,71 @@ fun SpotifyTasteScreen(
 
     LaunchedEffect(isConnected, clientId) { loadLiveTaste() }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                ),
-            )
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-            ),
+    if (showFilePlaylistNameDialog) {
+        TextFieldDialog(
+            title = { Text(stringResource(R.string.spotify_file_import_playlist_name_title)) },
+            icon = { Icon(painterResource(R.drawable.playlist_add), null) },
+            initialTextFieldValue = TextFieldValue(text = pendingFilePlaylistName),
+            onDone = { name ->
+                showFilePlaylistNameDialog = false
+                val fileTracks = pendingFileTracks
+                if (fileTracks != null) {
+                    runFileTasteImport(
+                        fileTracks = fileTracks,
+                        playlistName = name.trim().ifBlank { SpotifyImportManager.TASTE_PLAYLIST_NAME },
+                    )
+                }
+            },
+            onDismiss = {
+                showFilePlaylistNameDialog = false
+                pendingFileTracks = null
+            },
+        )
+    }
+
+    AuraScreen {
+        AuraHeader(
+            title = stringResource(R.string.spotify_taste_title),
+            onBack = navController::navigateUp,
+            onBackLongClick = navController::backToMain,
+        )
+
+        AuraBanner(text = stringResource(R.string.spotify_oauth_premium_disclaimer))
+
+        AuraSectionLabel(stringResource(R.string.spotify_file_import_section))
+        AuraSecondaryAction(
+            text = stringResource(R.string.spotify_file_import_choose),
+            enabled = !isBusy,
+            onClick = {
+                filePickerLauncher.launch(
+                    arrayOf(
+                        "text/*",
+                        "text/csv",
+                        "text/plain",
+                        "text/comma-separated-values",
+                        "application/csv",
+                        "application/json",
+                        "*/*",
+                    ),
+                )
+            },
+        )
+        Text(
+            text = stringResource(R.string.spotify_file_import_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp),
         )
 
         if (isLoadingLive) {
             Row(
                 modifier = Modifier.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 12.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(end = 12.dp),
+                    color = AuraSpotifyGreen,
+                )
                 Text(
                     text = stringResource(R.string.spotify_taste_loading),
                     style = MaterialTheme.typography.bodyMedium,
@@ -205,124 +342,93 @@ fun SpotifyTasteScreen(
         }
 
         if (tasteSummary.isBlank() && artists.isEmpty() && tracks.isEmpty() && hints.isEmpty() && !isLoadingLive) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
-            ) {
-                Text(
-                    text = stringResource(R.string.spotify_taste_no_data),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(20.dp),
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.spotify_taste_no_data),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
         }
 
         if (tasteSummary.isNotBlank()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFF1A3A28), Color(0xFF181818)),
+                            ),
+                        )
+                        .padding(20.dp),
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column {
                     Text(
                         text = stringResource(R.string.spotify_taste_summary),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(Modifier.height(10.dp))
                     Text(
                         text = tasteSummary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White,
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(Modifier.height(8.dp))
         }
 
-        TasteChipSection(
-            title = stringResource(R.string.spotify_taste_top_artists),
-            icon = painterResource(R.drawable.person),
-            entries = artists,
-            emptyLabel = stringResource(R.string.spotify_taste_no_artists),
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-
-        if (tracks.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.spotify_taste_top_tracks),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
-            )
-            Card(
+        AuraSectionLabel(stringResource(R.string.spotify_taste_top_artists))
+        if (artists.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
             ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    tracks.forEachIndexed { index, (name, artist) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                text = "${index + 1}.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.width(28.dp),
-                            )
-                            Text(
-                                text = if (artist.isNotBlank()) "$name — $artist" else name,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
+                itemsIndexed(artists) { index, name ->
+                    AuraArtistAvatar(
+                        name = name,
+                        color = ArtistAvatarPalette[index % ArtistAvatarPalette.size],
+                    )
                 }
             }
         } else {
             Text(
-                text = stringResource(R.string.spotify_taste_top_tracks),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
+                text = stringResource(R.string.spotify_taste_no_artists),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        AuraSectionLabel(stringResource(R.string.spotify_taste_top_tracks))
+        if (tracks.isNotEmpty()) {
+            tracks.forEachIndexed { index, (name, artist) ->
+                AuraTrackRow(
+                    index = index + 1,
+                    title = name,
+                    artist = artist.takeIf { it.isNotBlank() },
+                )
+                if (index < tracks.lastIndex) AuraDivider()
+            }
+        } else {
             Text(
                 text = stringResource(R.string.spotify_taste_no_tracks),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(modifier = Modifier.height(20.dp))
 
-        Text(
-            text = stringResource(R.string.spotify_taste_hints),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
-        )
+        AuraSectionLabel(stringResource(R.string.spotify_taste_hints))
         if (hints.isNotEmpty()) {
-            FlowRow(modifier = Modifier.fillMaxWidth()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 hints.forEach { hint ->
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(hint, style = MaterialTheme.typography.bodySmall) },
-                        modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
-                    )
+                    AuraHintPill(text = hint)
                 }
             }
         } else {
@@ -332,131 +438,133 @@ fun SpotifyTasteScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(modifier = Modifier.height(24.dp))
 
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.refresh),
-                    title = { Text(stringResource(R.string.spotify_taste_refresh)) },
-                    description = { Text(stringResource(R.string.spotify_taste_refresh_desc)) },
-                    enabled = !isBusy && isConnected,
-                    onClick = {
-                        scope.launch {
-                            isBusy = true
-                            statusMessage = null
-                            progress = SpotifyImportProgress(phase = "Starting")
-                            val manager = SpotifyImportManager(database)
-                            try {
-                                val profile = manager.refreshTasteProfile(
-                                    clientId = clientId,
-                                    enableGeminiNano = enableGeminiNano,
-                                    onProgress = { p ->
-                                        scope.launch(Dispatchers.Main) { progress = p }
-                                    },
-                                )
-                                artists = profile.topArtists
-                                tracks = profile.topTracks
-                                tasteSummary = profile.analysis.summary
-                                tasteHints = profile.analysis.searchHints.joinToString("\n")
-                                persistProfile(profile.topArtists, profile.topTracks)
-                                statusMessage = context.getString(R.string.spotify_taste_refresh_result)
-                            } catch (e: Exception) {
-                                statusMessage = e.message
-                                reportException(e)
-                            } finally {
-                                manager.close()
-                                isBusy = false
-                            }
-                        }
-                    },
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.discover_tune),
-                    title = { Text(stringResource(R.string.nano_recommendations_generate)) },
-                    description = { Text(stringResource(R.string.nano_recommendations_generate_desc)) },
-                    enabled = !isBusy,
-                    onClick = {
-                        scope.launch {
-                            isBusy = true
-                            statusMessage = null
-                            progress = SpotifyImportProgress(phase = "Generating recommendations")
-                            val manager = SpotifyImportManager(database)
-                            try {
-                                val result = manager.generateRecommendations(
-                                    clientId = clientId,
-                                    enableGeminiNano = enableGeminiNano,
-                                    cachedSummary = tasteSummary,
-                                    cachedHints = hints,
-                                    onProgress = { p ->
-                                        scope.launch(Dispatchers.Main) { progress = p }
-                                    },
-                                )
-                                result.tasteAnalysis?.let { analysis ->
-                                    tasteSummary = analysis.summary
-                                    tasteHints = analysis.searchHints.joinToString("\n")
-                                }
-                                if (result.topArtists.isNotEmpty()) artists = result.topArtists
-                                if (result.topTracks.isNotEmpty()) tracks = result.topTracks
-                                persistProfile(result.topArtists, result.topTracks)
-                                statusMessage = context.getString(
-                                    R.string.nano_recommendations_result,
-                                    result.matched,
-                                    result.failed,
-                                )
-                            } catch (e: Exception) {
-                                statusMessage = e.message
-                                reportException(e)
-                            } finally {
-                                manager.close()
-                                isBusy = false
-                            }
-                        }
-                    },
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.radio),
-                    title = { Text(stringResource(R.string.nano_dj_start)) },
-                    description = { Text(stringResource(R.string.nano_dj_start_desc)) },
-                    enabled = !isBusy && playerConnection != null,
-                    onClick = {
-                        val connection = playerConnection ?: return@Material3SettingsItem
-                        scope.launch {
-                            isBusy = true
-                            statusMessage = null
-                            progress = SpotifyImportProgress(phase = "Starting Nano DJ")
-                            val result = NanoDjLauncher.start(
-                                context = context,
-                                playerConnection = connection,
-                                speak = nanoDjSpeak,
+        Spacer(Modifier.height(28.dp))
+
+        AuraPrimaryPill(
+            text = stringResource(R.string.nano_dj_start),
+            enabled = !isBusy && playerConnection != null,
+            onClick = {
+                val connection = playerConnection ?: return@AuraPrimaryPill
+                scope.launch {
+                    isBusy = true
+                    statusMessage = null
+                    progress = SpotifyImportProgress(phase = "Starting Nano DJ")
+                    val result =
+                        NanoDjLauncher.start(
+                            context = context,
+                            playerConnection = connection,
+                            speak = nanoDjSpeak,
+                        )
+                    statusMessage =
+                        result.fold(
+                            onSuccess = { context.getString(R.string.nano_dj_started) },
+                            onFailure = { it.message },
+                        )
+                    isBusy = false
+                }
+            },
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        AuraSecondaryAction(
+            text = stringResource(R.string.spotify_taste_refresh),
+            enabled = !isBusy && isConnected,
+            onClick = {
+                scope.launch {
+                    isBusy = true
+                    statusMessage = null
+                    progress = SpotifyImportProgress(phase = "Starting")
+                    val manager = SpotifyImportManager(database)
+                    try {
+                        val profile =
+                            manager.refreshTasteProfile(
+                                clientId = clientId,
+                                enableGeminiNano = enableGeminiNano,
+                                onProgress = { p ->
+                                    scope.launch(Dispatchers.Main) { progress = p }
+                                },
                             )
-                            statusMessage = result.fold(
-                                onSuccess = { context.getString(R.string.nano_dj_started) },
-                                onFailure = { it.message },
+                        artists = profile.topArtists
+                        tracks = profile.topTracks
+                        tasteSummary = profile.analysis.summary
+                        tasteHints = profile.analysis.searchHints.joinToString("\n")
+                        persistProfile(profile.topArtists, profile.topTracks)
+                        statusMessage = context.getString(R.string.spotify_taste_refresh_result)
+                    } catch (e: Exception) {
+                        statusMessage = e.message
+                        reportException(e)
+                    } finally {
+                        manager.close()
+                        isBusy = false
+                    }
+                }
+            },
+        )
+
+        AuraSecondaryAction(
+            text = stringResource(R.string.nano_recommendations_generate),
+            enabled = !isBusy,
+            onClick = {
+                scope.launch {
+                    isBusy = true
+                    statusMessage = null
+                    progress = SpotifyImportProgress(phase = "Generating recommendations")
+                    val manager = SpotifyImportManager(database)
+                    try {
+                        val result =
+                            manager.generateRecommendations(
+                                clientId = clientId,
+                                enableGeminiNano = enableGeminiNano,
+                                cachedSummary = tasteSummary,
+                                cachedHints = hints,
+                                onProgress = { p ->
+                                    scope.launch(Dispatchers.Main) { progress = p }
+                                },
                             )
-                            isBusy = false
+                        result.tasteAnalysis?.let { analysis ->
+                            tasteSummary = analysis.summary
+                            tasteHints = analysis.searchHints.joinToString("\n")
                         }
-                    },
-                ),
-            ),
+                        if (result.topArtists.isNotEmpty()) artists = result.topArtists
+                        if (result.topTracks.isNotEmpty()) tracks = result.topTracks
+                        persistProfile(result.topArtists, result.topTracks)
+                        statusMessage =
+                            context.getString(
+                                R.string.nano_recommendations_result,
+                                result.matched,
+                                result.failed,
+                            )
+                    } catch (e: Exception) {
+                        statusMessage = e.message
+                        reportException(e)
+                    } finally {
+                        manager.close()
+                        isBusy = false
+                    }
+                }
+            },
         )
 
         if (isBusy) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
-                text = buildString {
-                    append(progress.phase)
-                    if (progress.currentTitle.isNotBlank()) {
-                        append(" — ")
-                        append(progress.currentTitle)
-                    }
-                },
+                text =
+                    buildString {
+                        append(progress.phase)
+                        if (progress.currentTitle.isNotBlank()) {
+                            append(" — ")
+                            append(progress.currentTitle)
+                        }
+                    },
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
         statusMessage?.let { msg ->
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = msg,
                 style = MaterialTheme.typography.bodyMedium,
@@ -465,7 +573,7 @@ fun SpotifyTasteScreen(
         }
 
         if (!isConnected) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.spotify_taste_connect_note),
                 style = MaterialTheme.typography.bodySmall,
@@ -473,55 +581,6 @@ fun SpotifyTasteScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-    }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.spotify_taste_title)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun TasteChipSection(
-    title: String,
-    icon: androidx.compose.ui.graphics.painter.Painter,
-    entries: List<String>,
-    emptyLabel: String,
-) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 8.dp, top = 8.dp),
-    )
-    if (entries.isNotEmpty()) {
-        FlowRow(modifier = Modifier.fillMaxWidth()) {
-            entries.forEach { entry ->
-                SuggestionChip(
-                    onClick = {},
-                    icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    label = { Text(entry) },
-                    modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
-                )
-            }
-        }
-    } else {
-        Text(
-            text = emptyLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Spacer(Modifier.height(24.dp))
     }
 }
