@@ -41,7 +41,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarColors
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -84,6 +83,23 @@ private val AuraDividerColor = Color(0xFF282828)
 private val AuraHeroTop = Color(0xFF1A3A28)
 private val AuraHeroBottom = Color(0xFF121212)
 private val AuraMutedPill = AuraSpotifyDark
+private val AuraHeroMutedText = Color(0xFFB3B3B3)
+private val AuraPillShape = RoundedCornerShape(percent = 50)
+private val AuraBannerShape = RoundedCornerShape(8.dp)
+private val AuraHeroShape = RoundedCornerShape(12.dp)
+private val AuraButtonContentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+private val AuraSecondaryContentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+private val AuraHeroBrush = Brush.verticalGradient(listOf(AuraHeroTop, AuraHeroBottom))
+
+@OptIn(ExperimentalMaterial3Api::class)
+private val AuraDefaultTopBarColors =
+    TopAppBarColors(
+        containerColor = AuraNearBlack,
+        scrolledContainerColor = AuraNearBlack,
+        navigationIconContentColor = Color.White,
+        titleContentColor = Color.White,
+        actionIconContentColor = Color.White,
+    )
 
 /**
  * Full-screen near-black column with top inset + optional scroll. Replaces M3 Scaffold chrome
@@ -169,6 +185,10 @@ fun AuraHeader(
  * Flat Aura chrome — no M3 elevation. Honors [colors] (including [Color.Transparent] for hero
  * collapse) and [scrollBehavior] offset / overlapped color like Material TopAppBar.
  * Default container is opaque Aura near-black when colors are not overridden.
+ *
+ * Perf: AppBarScrollBehavior is pinned, so we must not read heightOffset / overlappedFraction
+ * unless collapse or a real color transition is needed — otherwise every nested-scroll frame
+ * recomposes every screen's top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -179,36 +199,46 @@ fun AuraTopBar(
     actions: @Composable RowScope.() -> Unit = {},
     expandedHeight: Dp = AppBarHeight,
     windowInsets: WindowInsets = WindowInsets.statusBars,
-    colors: TopAppBarColors =
-        TopAppBarDefaults.topAppBarColors(
-            containerColor = AuraNearBlack,
-            scrolledContainerColor = AuraNearBlack,
-        ),
+    colors: TopAppBarColors = AuraDefaultTopBarColors,
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     val density = LocalDensity.current
     val expandedHeightPx = with(density) { expandedHeight.toPx() }
-    SideEffect {
-        if (scrollBehavior?.state?.heightOffsetLimit != -expandedHeightPx) {
-            scrollBehavior?.state?.heightOffsetLimit = -expandedHeightPx
+    if (scrollBehavior != null) {
+        SideEffect {
+            if (scrollBehavior.state.heightOffsetLimit != -expandedHeightPx) {
+                scrollBehavior.state.heightOffsetLimit = -expandedHeightPx
+            }
         }
     }
 
-    val overlapFraction = (scrollBehavior?.state?.overlappedFraction ?: 0f).coerceIn(0f, 1f)
+    val colorTransitionNeeded = colors.containerColor != colors.scrolledContainerColor
     val barBg =
-        lerp(
-            colors.containerColor,
-            colors.scrolledContainerColor,
-            FastOutLinearInEasing.transform(overlapFraction),
-        )
-    val heightOffset = scrollBehavior?.state?.heightOffset ?: 0f
-    val collapseOffset =
-        if (scrollBehavior != null && !scrollBehavior.isPinned) heightOffset else 0f
+        if (scrollBehavior != null && colorTransitionNeeded) {
+            val overlapFraction = scrollBehavior.state.overlappedFraction.coerceIn(0f, 1f)
+            lerp(
+                colors.containerColor,
+                colors.scrolledContainerColor,
+                FastOutLinearInEasing.transform(overlapFraction),
+            )
+        } else {
+            colors.containerColor
+        }
+
+    // Read heightOffset only inside graphicsLayer so scroll invalidates the layer, not composition.
+    val collapseModifier =
+        if (scrollBehavior != null && !scrollBehavior.isPinned) {
+            Modifier.graphicsLayer {
+                translationY = scrollBehavior.state.heightOffset
+            }
+        } else {
+            Modifier
+        }
 
     Column(
         modifier
             .fillMaxWidth()
-            .graphicsLayer { translationY = collapseOffset }
+            .then(collapseModifier)
             .background(barBg)
             .windowInsetsPadding(windowInsets),
     ) {
@@ -256,12 +286,7 @@ fun AuraFilterPill(
     modifier: Modifier = Modifier,
     leadingIcon: Painter? = null,
 ) {
-    val bg =
-        if (selected) {
-            Color.White
-        } else {
-            AuraMutedPill
-        }
+    val bg = if (selected) Color.White else AuraMutedPill
     val fg =
         if (selected) {
             Color.Black
@@ -271,7 +296,7 @@ fun AuraFilterPill(
     Row(
         modifier
             .height(36.dp)
-            .clip(RoundedCornerShape(percent = 50))
+            .clip(AuraPillShape)
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),
@@ -427,13 +452,15 @@ fun AuraPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(percent = 50),
+    shape: Shape = AuraPillShape,
     containerColor: Color = AuraSpotifyGreen,
     contentColor: Color = AuraSpotifyOnGreen,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    contentPadding: PaddingValues = AuraButtonContentPadding,
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val resolvedInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
+    val indication = remember { ripple() }
     Row(
         modifier
             .heightIn(min = 40.dp)
@@ -443,8 +470,8 @@ fun AuraPrimaryButton(
                 enabled = enabled,
                 onClick = onClick,
                 role = Role.Button,
-                interactionSource = interactionSource,
-                indication = ripple(),
+                interactionSource = resolvedInteractionSource,
+                indication = indication,
             )
             .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
@@ -466,14 +493,16 @@ fun AuraOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(percent = 50),
+    shape: Shape = AuraPillShape,
     containerColor: Color = Color.Transparent,
     contentColor: Color = MaterialTheme.colorScheme.onBackground,
     borderColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    contentPadding: PaddingValues = AuraButtonContentPadding,
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val resolvedInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
+    val indication = remember { ripple() }
     Row(
         modifier
             .heightIn(min = 40.dp)
@@ -484,8 +513,8 @@ fun AuraOutlinedButton(
                 enabled = enabled,
                 onClick = onClick,
                 role = Role.Button,
-                interactionSource = interactionSource,
-                indication = ripple(),
+                interactionSource = resolvedInteractionSource,
+                indication = indication,
             )
             .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
@@ -507,11 +536,11 @@ fun AuraTonalButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(percent = 50),
+    shape: Shape = AuraPillShape,
     containerColor: Color = AuraSpotifyDark,
     contentColor: Color = AuraSpotifyOnDark,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    contentPadding: PaddingValues = AuraButtonContentPadding,
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     AuraPrimaryButton(
@@ -564,19 +593,21 @@ fun AuraSecondaryAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    contentPadding: PaddingValues = AuraSecondaryContentPadding,
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit,
 ) {
+    val resolvedInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
+    val indication = remember { ripple(bounded = true) }
     Box(
         modifier
-            .clip(RoundedCornerShape(percent = 50))
+            .clip(AuraPillShape)
             .clickable(
                 enabled = enabled,
                 onClick = onClick,
                 role = Role.Button,
-                interactionSource = interactionSource,
-                indication = ripple(bounded = true),
+                interactionSource = resolvedInteractionSource,
+                indication = indication,
             )
             .padding(contentPadding),
         contentAlignment = Alignment.Center,
@@ -606,9 +637,11 @@ fun AuraIconButton(
     containerColor: Color = AuraSpotifyDark,
     contentColor: Color = AuraSpotifyOnDark,
     borderColor: Color? = null,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit,
 ) {
+    val resolvedInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
+    val indication = remember { ripple() }
     Box(
         modifier =
             modifier
@@ -625,8 +658,8 @@ fun AuraIconButton(
                     enabled = enabled,
                     onClick = onClick,
                     role = Role.Button,
-                    interactionSource = interactionSource,
-                    indication = ripple(),
+                    interactionSource = resolvedInteractionSource,
+                    indication = indication,
                 ),
         contentAlignment = Alignment.Center,
     ) {
@@ -655,7 +688,7 @@ fun AuraExtendedFab(
         modifier
             .heightIn(min = 56.dp)
             .widthIn(min = 80.dp)
-            .clip(RoundedCornerShape(percent = 50))
+            .clip(AuraPillShape)
             .background(if (enabled) containerColor else containerColor.copy(alpha = 0.35f))
             .clickable(enabled = enabled, onClick = onClick, role = Role.Button)
             .padding(horizontal = 20.dp),
@@ -702,10 +735,8 @@ fun AuraHeroPanel(
     Row(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.verticalGradient(listOf(AuraHeroTop, AuraHeroBottom)),
-            )
+            .clip(AuraHeroShape)
+            .background(AuraHeroBrush)
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -722,7 +753,7 @@ fun AuraHeroPanel(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFB3B3B3),
+                color = AuraHeroMutedText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -758,7 +789,7 @@ fun AuraBanner(
     Box(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(AuraBannerShape)
             .background(AuraMutedPill)
             .padding(14.dp),
     ) {
@@ -778,7 +809,7 @@ fun AuraHintPill(
 ) {
     Box(
         modifier
-            .clip(RoundedCornerShape(percent = 50))
+            .clip(AuraPillShape)
             .background(AuraMutedPill)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {

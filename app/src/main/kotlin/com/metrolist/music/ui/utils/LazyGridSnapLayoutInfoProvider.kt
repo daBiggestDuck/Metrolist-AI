@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.ui.util.fastForEach
 import kotlin.math.abs
 
+private val SnapToContentStart: (Float, Float) -> Float = { _, _ -> 0f }
+
 /**
  * Snap provider for horizontal LazyGrids (e.g. Quick Picks).
  *
@@ -24,7 +26,7 @@ import kotlin.math.abs
 @ExperimentalFoundationApi
 fun SnapLayoutInfoProvider(
     lazyGridState: LazyGridState,
-    positionInLayout: (layoutSize: Float, itemSize: Float) -> Float = { _, _ -> 0f },
+    positionInLayout: (layoutSize: Float, itemSize: Float) -> Float = SnapToContentStart,
     velocityThreshold: Float = 1000f,
 ): SnapLayoutInfoProvider = object : SnapLayoutInfoProvider {
     private val layoutInfo: LazyGridLayoutInfo
@@ -55,10 +57,13 @@ fun SnapLayoutInfoProvider(
         var lowerBoundOffset = Float.NEGATIVE_INFINITY
         var upperBoundOffset = Float.POSITIVE_INFINITY
 
-        // Multi-row horizontal grids share the same x for each column — dedupe by offset.
-        val seenOffsets = HashSet<Int>()
+        // Multi-row horizontal grids share the same x for each column — skip duplicates
+        // without allocating a HashSet on every fling frame (items are ordered by column).
+        var lastX = Int.MIN_VALUE
         layoutInfo.visibleItemsInfo.fastForEach { item ->
-            if (!seenOffsets.add(item.offset.x)) return@fastForEach
+            val x = item.offset.x
+            if (x == lastX) return@fastForEach
+            lastX = x
 
             val offset = calculateDistanceToDesiredSnapPosition(layoutInfo, item, positionInLayout)
 

@@ -81,8 +81,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -111,6 +109,8 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AutoRadioQueueKey
+import com.metrolist.music.constants.CONTENT_TYPE_HEADER
+import com.metrolist.music.constants.CONTENT_TYPE_SONG
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
@@ -161,6 +161,7 @@ import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
+import com.metrolist.music.ui.theme.bbhBartle
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
@@ -1153,14 +1154,22 @@ fun HomeScreen(
                 remember(forgottenFavoritesLazyGridState) {
                     SnapLayoutInfoProvider(lazyGridState = forgottenFavoritesLazyGridState)
                 }
+            val distinctQuickPicks =
+                remember(quickPicks) { quickPicks?.distinctBy { it.id }.orEmpty() }
+            val distinctForgottenFavorites =
+                remember(forgottenFavorites) { forgottenFavorites?.distinctBy { it.id }.orEmpty() }
 
             LazyColumn(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             ) {
-                item {
+                item(key = "chips_row", contentType = CONTENT_TYPE_HEADER) {
+                    val chips =
+                        remember(homePage?.chips) {
+                            homePage?.chips?.map { it to it.title }.orEmpty()
+                        }
                     ChipsRow(
-                        chips = homePage?.chips?.map { it to it.title } ?: emptyList(),
+                        chips = chips,
                         currentValue = selectedChip,
                         onValueUpdate = {
                             viewModel.toggleChip(it)
@@ -1168,7 +1177,7 @@ fun HomeScreen(
                     )
                 }
 
-                item(key = "nano_dj_row") {
+                item(key = "nano_dj_row", contentType = CONTENT_TYPE_HEADER) {
                     val context = LocalContext.current
                     val nanoScope = rememberCoroutineScope()
                     val nanoDjSpeak by rememberPreference(com.metrolist.music.constants.NanoDjSpeakKey, true)
@@ -1413,12 +1422,6 @@ fun HomeScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     if (isWrappedDataReady) {
-                                        val bbhFont =
-                                            try {
-                                                FontFamily(Font(R.font.bbh_bartle_regular))
-                                            } catch (e: Exception) {
-                                                FontFamily.Default
-                                            }
                                         Column(
                                             modifier = Modifier.padding(16.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1428,7 +1431,7 @@ fun HomeScreen(
                                                 text = stringResource(R.string.wrapped_ready_title),
                                                 style =
                                                     MaterialTheme.typography.headlineLarge.copy(
-                                                        fontFamily = bbhFont,
+                                                        fontFamily = bbhBartle,
                                                         textAlign = TextAlign.Center,
                                                     ),
                                             )
@@ -1782,8 +1785,8 @@ fun HomeScreen(
                         }
 
                         HomeSection.QuickPicks -> {
-                            quickPicks?.takeIf { it.isNotEmpty() }?.let { quickPicks ->
-                                item(key = "quick_picks_title") {
+                            distinctQuickPicks.takeIf { it.isNotEmpty() }?.let { picks ->
+                                item(key = "quick_picks_title", contentType = CONTENT_TYPE_HEADER) {
                                     val quickPicksTitle = stringResource(R.string.quick_picks)
                                     NavigationTitle(
                                         title = quickPicksTitle,
@@ -1793,7 +1796,7 @@ fun HomeScreen(
                                                     playerConnection.playQueue(
                                                         ListQueue(
                                                             title = quickPicksTitle,
-                                                            items = quickPicks.distinctBy { it.id }.map { it.toMediaItem() },
+                                                            items = picks.map { it.toMediaItem() },
                                                         ),
                                                     )
                                                 }
@@ -1803,7 +1806,7 @@ fun HomeScreen(
                                     )
                                 }
 
-                                item(key = "quick_picks_list") {
+                                item(key = "quick_picks_list", contentType = CONTENT_TYPE_SONG) {
                                     LazyHorizontalGrid(
                                         state = quickPicksLazyGridState,
                                         rows = GridCells.Fixed(4),
@@ -1818,8 +1821,9 @@ fun HomeScreen(
                                                 .height(ListItemHeight * 4),
                                         ) {
                                             items(
-                                                items = quickPicks.distinctBy { it.id },
+                                                items = picks,
                                                 key = { "home_quickpick_${it.id}" },
+                                                contentType = { CONTENT_TYPE_SONG },
                                             ) { originalSong ->
                                             // fetch song from database to keep updated
                                             val song by database
@@ -2100,8 +2104,8 @@ fun HomeScreen(
                         }
 
                         HomeSection.ForgottenFavorites -> {
-                            forgottenFavorites?.takeIf { it.isNotEmpty() }?.let { forgottenFavorites ->
-                                item(key = "forgotten_favorites_title") {
+                            distinctForgottenFavorites.takeIf { it.isNotEmpty() }?.let { favorites ->
+                                item(key = "forgotten_favorites_title", contentType = CONTENT_TYPE_HEADER) {
                                     val forgottenFavoritesTitle = stringResource(R.string.forgotten_favorites)
                                     NavigationTitle(
                                         title = forgottenFavoritesTitle,
@@ -2111,7 +2115,7 @@ fun HomeScreen(
                                                     playerConnection.playQueue(
                                                         ListQueue(
                                                             title = forgottenFavoritesTitle,
-                                                            items = forgottenFavorites.distinctBy { it.id }.map { it.toMediaItem() },
+                                                            items = favorites.map { it.toMediaItem() },
                                                         ),
                                                     )
                                                 }
@@ -2121,9 +2125,9 @@ fun HomeScreen(
                                     )
                                 }
 
-                                item(key = "forgotten_favorites_list") {
+                                item(key = "forgotten_favorites_list", contentType = CONTENT_TYPE_SONG) {
                                     // take min in case list size is less than 4
-                                    val rows = min(4, forgottenFavorites.size)
+                                    val rows = min(4, favorites.size)
                                     LazyHorizontalGrid(
                                         state = forgottenFavoritesLazyGridState,
                                         rows = GridCells.Fixed(rows),
@@ -2141,8 +2145,9 @@ fun HomeScreen(
                                                 .height(ListItemHeight * rows),
                                         ) {
                                             items(
-                                                items = forgottenFavorites.distinctBy { it.id },
+                                                items = favorites,
                                                 key = { "home_forgotten_${it.id}" },
+                                                contentType = { CONTENT_TYPE_SONG },
                                             ) { originalSong ->
                                             val song by database
                                                 .song(originalSong.id)

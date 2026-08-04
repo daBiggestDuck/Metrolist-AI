@@ -153,31 +153,35 @@ fun MetrolistTheme(
     // Default / legacy seed → handcrafted Aura palette (never wallpaper dynamic purple).
     val useAuraDefault = themeColor.isAuraDefaultSeed()
 
-    val baseColorScheme =
-        if (useAuraDefault) {
-            if (darkTheme) auraDarkColorScheme(pureBlack = false) else auraLightColorScheme()
-        } else {
+    // Only invoke MaterialKolor when a custom seed is active — Aura schemes are remembered.
+    val dynamicColorScheme =
+        if (!useAuraDefault) {
             rememberDynamicColorScheme(
                 seedColor = themeColor,
                 isDark = darkTheme,
                 specVersion = ColorSpec.SpecVersion.SPEC_2025,
                 style = PaletteStyle.TonalSpot,
             )
+        } else {
+            null
         }
 
     val colorScheme =
-        remember(baseColorScheme, pureBlack, darkTheme, useAuraDefault) {
+        remember(useAuraDefault, darkTheme, pureBlack, dynamicColorScheme) {
             when {
-                useAuraDefault && darkTheme && pureBlack -> auraDarkColorScheme(pureBlack = true)
-                darkTheme && pureBlack -> baseColorScheme.pureBlack(true)
-                else -> baseColorScheme
+                useAuraDefault && darkTheme -> auraDarkColorScheme(pureBlack = pureBlack)
+                useAuraDefault -> auraLightColorScheme()
+                darkTheme && pureBlack -> dynamicColorScheme!!.pureBlack(true)
+                else -> dynamicColorScheme!!
             }
         }
+
+    val shapes = if (useAuraDefault) AuraShapes else remember { Shapes() }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
-        shapes = if (useAuraDefault) AuraShapes else Shapes(),
+        shapes = shapes,
         content = content,
     )
 }
