@@ -1,3 +1,5 @@
+> **Branch note (`design/spotify-aura`):** this branch ships the **Aura** design skin — a Spotify-inspired look (near-black canvas, `#1DB954` green accent, bold titles, pill CTAs) instead of default Material 3 purple/tonal theming.
+
 <div align="center">
 
 <img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/icon.png" alt="Metrolist app icon" width="200" />

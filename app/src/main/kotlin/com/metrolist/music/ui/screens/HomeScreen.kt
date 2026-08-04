@@ -44,6 +44,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -84,6 +85,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -1187,50 +1189,60 @@ fun HomeScreen(
                     val nanoScope = rememberCoroutineScope()
                     val nanoDjSpeak by rememberPreference(com.metrolist.music.constants.NanoDjSpeakKey, true)
                     var nanoDjStarting by remember { mutableStateOf(false) }
-                    Row(
+                    Button(
+                        onClick = {
+                            if (isListenTogetherGuest || nanoDjStarting) return@Button
+                            nanoScope.launch {
+                                nanoDjStarting = true
+                                try {
+                                    val result =
+                                        com.metrolist.music.ai.NanoDjLauncher.start(
+                                            context = context,
+                                            playerConnection = playerConnection,
+                                            speak = nanoDjSpeak,
+                                        )
+                                    result.onFailure {
+                                        snackbarHostState.showSnackbar(
+                                            it.message ?: "Nano DJ failed to start",
+                                        )
+                                    }
+                                    result.onSuccess {
+                                        snackbarHostState.showSnackbar(
+                                            context.getString(R.string.nano_dj_started),
+                                        )
+                                    }
+                                } finally {
+                                    nanoDjStarting = false
+                                }
+                            }
+                        },
+                        enabled = !isListenTogetherGuest && !nanoDjStarting,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .height(52.dp),
+                        shape = RoundedCornerShape(percent = 50),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                            ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                     ) {
-                        Button(
-                            onClick = {
-                                if (isListenTogetherGuest || nanoDjStarting) return@Button
-                                nanoScope.launch {
-                                    nanoDjStarting = true
-                                    try {
-                                        val result =
-                                            com.metrolist.music.ai.NanoDjLauncher.start(
-                                                context = context,
-                                                playerConnection = playerConnection,
-                                                speak = nanoDjSpeak,
-                                            )
-                                        result.onFailure {
-                                            snackbarHostState.showSnackbar(
-                                                it.message ?: "Nano DJ failed to start",
-                                            )
-                                        }
-                                        result.onSuccess {
-                                            snackbarHostState.showSnackbar(
-                                                context.getString(R.string.nano_dj_started),
-                                            )
-                                        }
-                                    } finally {
-                                        nanoDjStarting = false
-                                    }
-                                }
-                            },
-                            enabled = !isListenTogetherGuest && !nanoDjStarting,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.radio),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.nano_dj_home_start))
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.radio),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(R.string.nano_dj_home_start),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
 

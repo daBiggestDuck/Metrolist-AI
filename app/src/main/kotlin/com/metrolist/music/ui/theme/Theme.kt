@@ -6,12 +6,11 @@
 package com.metrolist.music.ui.theme
 
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -19,14 +18,110 @@ import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
-val DefaultThemeColor = Color(0xFFED5564)
+/** Spotify green — default Aura seed (not wallpaper / M3 purple). */
+val DefaultThemeColor = Color(0xFF1DB954)
+
+private val AuraBackground = Color(0xFF121212)
+private val AuraSurface = Color(0xFF181818)
+private val AuraSurfaceBright = Color(0xFF282828)
+private val AuraSurfaceDim = Color(0xFF0A0A0A)
+private val AuraOnSurface = Color(0xFFFFFFFF)
+private val AuraMuted = Color(0xFFB3B3B3)
+private val AuraOutline = Color(0xFF535353)
+private val AuraPrimary = Color(0xFF1DB954)
+private val AuraOnPrimary = Color(0xFF000000)
+private val AuraError = Color(0xFFE91429)
+
+/**
+ * Handcrafted Spotify-inspired dark scheme — near-black canvas, green accent, white/muted text.
+ * Avoids Material 3 tonal purple from wallpaper dynamic color.
+ */
+fun auraDarkColorScheme(
+    pureBlack: Boolean = false,
+): ColorScheme {
+    val background = if (pureBlack) Color.Black else AuraBackground
+    val surface = if (pureBlack) Color.Black else AuraSurface
+    return darkColorScheme(
+        primary = AuraPrimary,
+        onPrimary = AuraOnPrimary,
+        primaryContainer = Color(0xFF0E7A37),
+        onPrimaryContainer = AuraOnSurface,
+        secondary = AuraMuted,
+        onSecondary = AuraOnPrimary,
+        secondaryContainer = AuraSurfaceBright,
+        onSecondaryContainer = AuraOnSurface,
+        tertiary = AuraPrimary,
+        onTertiary = AuraOnPrimary,
+        tertiaryContainer = AuraSurfaceBright,
+        onTertiaryContainer = AuraOnSurface,
+        background = background,
+        onBackground = AuraOnSurface,
+        surface = surface,
+        onSurface = AuraOnSurface,
+        surfaceVariant = AuraSurfaceBright,
+        onSurfaceVariant = AuraMuted,
+        surfaceTint = AuraPrimary,
+        inverseSurface = AuraOnSurface,
+        inverseOnSurface = AuraBackground,
+        inversePrimary = Color(0xFF0E7A37),
+        outline = AuraOutline,
+        outlineVariant = Color(0xFF3E3E3E),
+        scrim = Color.Black,
+        surfaceBright = AuraSurfaceBright,
+        surfaceContainer = AuraSurfaceBright,
+        surfaceContainerHigh = Color(0xFF2A2A2A),
+        surfaceContainerHighest = Color(0xFF333333),
+        surfaceContainerLow = if (pureBlack) Color.Black else Color(0xFF161616),
+        surfaceContainerLowest = if (pureBlack) Color.Black else AuraSurfaceDim,
+        surfaceDim = AuraSurfaceDim,
+        error = AuraError,
+        onError = AuraOnSurface,
+        errorContainer = Color(0xFF5C0A12),
+        onErrorContainer = Color(0xFFFFDAD6),
+    )
+}
+
+/** Light companion for Aura when the user forces light mode with the default seed. */
+fun auraLightColorScheme(): ColorScheme =
+    lightColorScheme(
+        primary = AuraPrimary,
+        onPrimary = AuraOnPrimary,
+        primaryContainer = Color(0xFFB6F5C9),
+        onPrimaryContainer = Color(0xFF00210B),
+        secondary = Color(0xFF535353),
+        onSecondary = Color(0xFFFFFFFF),
+        secondaryContainer = Color(0xFFE8E8E8),
+        onSecondaryContainer = Color(0xFF1A1A1A),
+        tertiary = AuraPrimary,
+        onTertiary = AuraOnPrimary,
+        background = Color(0xFFFAFAFA),
+        onBackground = Color(0xFF121212),
+        surface = Color(0xFFFFFFFF),
+        onSurface = Color(0xFF121212),
+        surfaceVariant = Color(0xFFE8E8E8),
+        onSurfaceVariant = Color(0xFF535353),
+        surfaceTint = AuraPrimary,
+        outline = Color(0xFFB3B3B3),
+        outlineVariant = Color(0xFFD4D4D4),
+        scrim = Color.Black,
+        surfaceBright = Color(0xFFFFFFFF),
+        surfaceContainer = Color(0xFFF2F2F2),
+        surfaceContainerHigh = Color(0xFFEBEBEB),
+        surfaceContainerHighest = Color(0xFFE0E0E0),
+        surfaceContainerLow = Color(0xFFF7F7F7),
+        surfaceContainerLowest = Color(0xFFFFFFFF),
+        surfaceDim = Color(0xFFDEDEDE),
+        error = AuraError,
+        onError = Color(0xFFFFFFFF),
+        errorContainer = Color(0xFFFFDAD6),
+        onErrorContainer = Color(0xFF410002),
+    )
 
 @Composable
 fun MetrolistTheme(
@@ -35,38 +130,34 @@ fun MetrolistTheme(
     themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    // Determine if system dynamic colors should be used (Android S+ and default theme color)
-    val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+    // Default seed → handcrafted Aura palette (never wallpaper dynamic purple).
+    val useAuraDefault = themeColor == DefaultThemeColor
 
-    // Select the appropriate color scheme generation method
-    val baseColorScheme = if (useSystemDynamicColor) {
-        // Use standard Material 3 dynamic color functions for system wallpaper colors
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else {
-        // Use materialKolor only when a specific seed color is provided
-        rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
-            isDark = darkTheme,
-            specVersion = ColorSpec.SpecVersion.SPEC_2025,
-            style = PaletteStyle.TonalSpot // Keep existing style
-        )
-    }
-
-    // Apply pureBlack modification if needed, similar to original logic
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
-        if (darkTheme && pureBlack) {
-            baseColorScheme.pureBlack(true)
+    val baseColorScheme =
+        if (useAuraDefault) {
+            if (darkTheme) auraDarkColorScheme(pureBlack = false) else auraLightColorScheme()
         } else {
-            baseColorScheme
+            rememberDynamicColorScheme(
+                seedColor = themeColor,
+                isDark = darkTheme,
+                specVersion = ColorSpec.SpecVersion.SPEC_2025,
+                style = PaletteStyle.TonalSpot,
+            )
         }
-    }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
+    val colorScheme =
+        remember(baseColorScheme, pureBlack, darkTheme, useAuraDefault) {
+            when {
+                useAuraDefault && darkTheme && pureBlack -> auraDarkColorScheme(pureBlack = true)
+                darkTheme && pureBlack -> baseColorScheme.pureBlack(true)
+                else -> baseColorScheme
+            }
+        }
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // Use the defined AppTypography
-        content = content
+        typography = AppTypography,
+        content = content,
     )
 }
 
@@ -99,7 +190,9 @@ fun Bitmap.extractGradientColors(): List<Color> {
 fun ColorScheme.pureBlack(apply: Boolean) =
     if (apply) copy(
         surface = Color.Black,
-        background = Color.Black
+        background = Color.Black,
+        surfaceContainerLowest = Color.Black,
+        surfaceContainerLow = Color.Black,
     ) else this
 
 val ColorSaver = object : Saver<Color, Int> {
