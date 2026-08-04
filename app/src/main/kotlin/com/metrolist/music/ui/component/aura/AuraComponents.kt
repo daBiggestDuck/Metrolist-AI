@@ -116,9 +116,11 @@ fun AuraHeader(
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 4.dp, bottom = if (subtitle == null) 16.dp else 4.dp),
         )
         if (subtitle != null) {
@@ -126,6 +128,8 @@ fun AuraHeader(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
         }
@@ -180,14 +184,14 @@ fun AuraRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleSmall,
                 color =
                     if (enabled) {
                         MaterialTheme.colorScheme.onBackground
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     },
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (subtitle != null) {
@@ -196,7 +200,7 @@ fun AuraRow(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -209,6 +213,8 @@ fun AuraRow(
                     style = MaterialTheme.typography.labelLarge,
                     color = if (enabled) trailingTextColor else trailingTextColor.copy(alpha = 0.4f),
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 12.dp),
                 )
             }
@@ -251,6 +257,8 @@ fun AuraPrimaryPill(
             style = MaterialTheme.typography.labelLarge,
             color = if (enabled) AuraSpotifyOnGreen else AuraSpotifyOnGreen.copy(alpha = 0.5f),
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -277,6 +285,8 @@ fun AuraSecondaryAction(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -320,13 +330,15 @@ fun AuraHeroPanel(
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFFB3B3B3),
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -415,7 +427,7 @@ fun AuraArtistAvatar(
         ) {
             Text(
                 text = initial,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
             )
@@ -423,9 +435,9 @@ fun AuraArtistAvatar(
         Spacer(Modifier.height(8.dp))
         Text(
             text = name,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -456,7 +468,7 @@ fun AuraTrackRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -464,7 +476,7 @@ fun AuraTrackRow(
             if (!artist.isNullOrBlank()) {
                 Text(
                     text = artist,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
