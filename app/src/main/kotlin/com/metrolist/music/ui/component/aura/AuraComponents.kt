@@ -5,7 +5,6 @@
 
 package com.metrolist.music.ui.component.aura
 
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,7 +53,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -91,11 +89,15 @@ private val AuraButtonContentPadding = PaddingValues(horizontal = 20.dp, vertica
 private val AuraSecondaryContentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
 private val AuraHeroBrush = Brush.verticalGradient(listOf(AuraHeroTop, AuraHeroBottom))
 
+/**
+ * Default Aura top chrome is optically transparent — islands float over the black canvas.
+ * Call sites that previously painted a glued #181818 bar get floating organization instead.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 private val AuraDefaultTopBarColors =
     TopAppBarColors(
-        containerColor = AuraNearBlack,
-        scrolledContainerColor = AuraNearBlack,
+        containerColor = Color.Transparent,
+        scrolledContainerColor = Color.Transparent,
         navigationIconContentColor = Color.White,
         titleContentColor = Color.White,
         actionIconContentColor = Color.White,
@@ -181,14 +183,16 @@ fun AuraHeader(
 }
 
 /**
- * Drop-in visual replacement for Material3 [androidx.compose.material3.TopAppBar].
- * Flat Aura chrome — no M3 elevation. Honors [colors] (including [Color.Transparent] for hero
- * collapse) and [scrollBehavior] offset / overlapped color like Material TopAppBar.
- * Default container is opaque Aura near-black when colors are not overridden.
+ * Floating Aura chrome — replaces Material3 TopAppBar organization.
  *
- * Perf: AppBarScrollBehavior is pinned, so we must not read heightOffset / overlappedFraction
- * unless collapse or a real color transition is needed — otherwise every nested-scroll frame
- * recomposes every screen's top bar.
+ * Layout language: detached islands over a transparent strip (no glued full-width bar).
+ * Left: optional nav control + title/greeting pill. Right: action circles with air between.
+ * Honors [scrollBehavior] collapse via graphicsLayer. Opaque [colors.containerColor] is ignored
+ * for fill — islands carry their own #181818 / #282828 surfaces.
+ *
+ * Set [floatTitle] false when [title] is already its own island (e.g. Search field pill).
+ *
+ * Perf: do not read heightOffset / overlappedFraction in composition — only in graphicsLayer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,6 +205,7 @@ fun AuraTopBar(
     windowInsets: WindowInsets = WindowInsets.statusBars,
     colors: TopAppBarColors = AuraDefaultTopBarColors,
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    floatTitle: Boolean = true,
 ) {
     val density = LocalDensity.current
     val expandedHeightPx = with(density) { expandedHeight.toPx() }
@@ -211,19 +216,6 @@ fun AuraTopBar(
             }
         }
     }
-
-    val colorTransitionNeeded = colors.containerColor != colors.scrolledContainerColor
-    val barBg =
-        if (scrollBehavior != null && colorTransitionNeeded) {
-            val overlapFraction = scrollBehavior.state.overlappedFraction.coerceIn(0f, 1f)
-            lerp(
-                colors.containerColor,
-                colors.scrolledContainerColor,
-                FastOutLinearInEasing.transform(overlapFraction),
-            )
-        } else {
-            colors.containerColor
-        }
 
     // Read heightOffset only inside graphicsLayer so scroll invalidates the layer, not composition.
     val collapseModifier =
@@ -239,7 +231,6 @@ fun AuraTopBar(
         modifier
             .fillMaxWidth()
             .then(collapseModifier)
-            .background(barBg)
             .windowInsetsPadding(windowInsets),
     ) {
         Row(
@@ -247,26 +238,35 @@ fun AuraTopBar(
                 Modifier
                     .fillMaxWidth()
                     .height(expandedHeight)
-                    .padding(horizontal = 4.dp),
+                    .padding(horizontal = AuraFloatingEdgeInset),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AuraFloatingIslandGap),
         ) {
             CompositionLocalProvider(LocalContentColor provides colors.navigationIconContentColor) {
                 navigationIcon()
             }
-            Box(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                CompositionLocalProvider(LocalContentColor provides colors.titleContentColor) {
-                    title()
+            if (floatTitle) {
+                AuraFloatingTitleIsland(
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides colors.titleContentColor) {
+                        title()
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+            } else {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides colors.titleContentColor) {
+                        title()
+                    }
                 }
             }
             CompositionLocalProvider(LocalContentColor provides colors.actionIconContentColor) {
                 Row(
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.spacedBy(AuraFloatingIslandGap),
                     verticalAlignment = Alignment.CenterVertically,
                     content = actions,
                 )
@@ -276,7 +276,7 @@ fun AuraTopBar(
 }
 
 /**
- * Selectable Spotify-style pill — replaces FilterChip / SuggestionChip look.
+ * Selectable Spotify-style floating filter chip — white when selected, dark island otherwise.
  */
 @Composable
 fun AuraFilterPill(
@@ -291,13 +291,26 @@ fun AuraFilterPill(
         if (selected) {
             Color.Black
         } else {
-            MaterialTheme.colorScheme.onBackground
+            Color.White
         }
+    val border = if (selected) Color.Transparent else AuraHairline
     Row(
         modifier
             .height(36.dp)
-            .clip(AuraPillShape)
-            .background(bg)
+            .then(
+                if (selected) {
+                    Modifier
+                        .clip(AuraPillShape)
+                        .background(bg)
+                } else {
+                    Modifier.auraFloatingIsland(
+                        shape = AuraPillShape,
+                        color = bg,
+                        borderColor = border,
+                        elevation = 3.dp,
+                    )
+                },
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

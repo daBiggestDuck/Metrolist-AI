@@ -77,6 +77,7 @@ fun <E> ChipsRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .padding(vertical = 4.dp)
                 .horizontalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {

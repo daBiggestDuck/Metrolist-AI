@@ -5,8 +5,7 @@
 
 package com.metrolist.music.ui.screens.search
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.asPaddingValues
@@ -22,13 +21,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
-import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -43,7 +41,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -188,16 +185,19 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             AuraTopBar(
+                floatTitle = false,
                 title = {
                     val searchPillShape = RoundedCornerShape(percent = 50)
                     Row(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(42.dp)
-                                .clip(searchPillShape)
-                                .background(AuraElevated)
-                                .border(1.dp, AuraHairline, searchPillShape)
+                                .height(44.dp)
+                                .auraFloatingIsland(
+                                    shape = searchPillShape,
+                                    color = AuraElevated,
+                                    elevation = 5.dp,
+                                )
                                 .padding(horizontal = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -244,7 +244,10 @@ fun SearchScreen(
                                 ),
                         )
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             if (query.text.isNotEmpty()) {
                                 AuraFloatingChromeButton(
                                     onClick = { query = TextFieldValue("") },
@@ -298,15 +301,15 @@ fun SearchScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (pureBlack) Color.Black else Color(0xFF121212),
-                        scrolledContainerColor = if (pureBlack) Color.Black else Color(0xFF121212),
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
                         titleContentColor = Color.White,
                         actionIconContentColor = Color.White,
                         navigationIconContentColor = Color.White,
                     ),
             )
         },
-        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+        containerColor = if (pureBlack) Color.Black else Color(0xFF121212),
     ) { paddingValues ->
         Box(
             modifier =

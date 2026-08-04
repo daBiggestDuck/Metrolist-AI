@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
@@ -62,8 +64,15 @@ val AuraSheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 
 val AuraFloatingPillShape = RoundedCornerShape(percent = 50)
 
+/** Gap from screen edges for floating chrome islands. */
+val AuraFloatingEdgeInset = 12.dp
+
+/** Gap between sibling floating islands (title pill ↔ action circles). */
+val AuraFloatingIslandGap = 8.dp
+
 private val AuraSheetContainer = AuraElevated
 private val AuraDragHandleColor = Color.White.copy(alpha = 0.28f)
+private val AuraIslandShadow = Color.Black.copy(alpha = 0.45f)
 
 /** Thin 1px outline on any shape — Supabase dark UI language. */
 fun Modifier.auraHairlineBorder(
@@ -71,6 +80,28 @@ fun Modifier.auraHairlineBorder(
     color: Color = AuraHairline,
     width: Dp = 1.dp,
 ): Modifier = border(width = width, color = color, shape = shape)
+
+/**
+ * Detached floating island surface — solid Spotify dark fill + hairline + cheap soft shadow.
+ * Organization language only: no blur / backdrop filters.
+ */
+fun Modifier.auraFloatingIsland(
+    shape: Shape = AuraFloatingPillShape,
+    color: Color = AuraElevated,
+    borderColor: Color = AuraHairline,
+    elevation: Dp = 6.dp,
+): Modifier =
+    this
+        .shadow(
+            elevation = elevation,
+            shape = shape,
+            clip = false,
+            ambientColor = AuraIslandShadow,
+            spotColor = AuraIslandShadow,
+        )
+        .clip(shape)
+        .background(color, shape)
+        .border(width = 1.dp, color = borderColor, shape = shape)
 
 /**
  * Native-Android fingerprint sheet vibe: rounded top, dimmed scrim, elevated dark fill.
@@ -135,8 +166,8 @@ fun AuraSheetDragHandle(modifier: Modifier = Modifier) {
 }
 
 /**
- * Floating top-right action cluster — circular dark chips with hairline borders,
- * spaced like Spotify profile chrome but lifted off the flat app bar.
+ * Floating top-right action cluster — separate circular islands with air between them,
+ * never glued into a Material action row.
  */
 @Composable
 fun AuraFloatingActionCluster(
@@ -144,19 +175,44 @@ fun AuraFloatingActionCluster(
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(
-        modifier = modifier.padding(end = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(AuraFloatingIslandGap),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
 }
 
-/** Single floating circular chrome control (history / stats / account). */
+/**
+ * Left floating title / greeting island — elevated pill with hairline, detached from the
+ * action circles on the right.
+ */
+@Composable
+fun AuraFloatingTitleIsland(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier =
+            modifier
+                .heightIn(min = 40.dp)
+                .auraFloatingIsland(
+                    shape = AuraFloatingPillShape,
+                    color = AuraElevated,
+                    elevation = 5.dp,
+                )
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        content()
+    }
+}
+
+/** Single floating circular chrome control (history / settings / profile). */
 @Composable
 fun AuraFloatingChromeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
+    size: Dp = 42.dp,
     containerColor: Color = AuraHighlight,
     contentColor: Color = Color.White,
     borderColor: Color = AuraHairline,
@@ -164,31 +220,44 @@ fun AuraFloatingChromeButton(
     contentDescription: String? = null,
     content: @Composable () -> Unit,
 ) {
-    AuraIconButton(
-        onClick = onClick,
-        modifier = modifier.size(size),
-        enabled = enabled,
-        shape = CircleShape,
-        containerColor = containerColor,
-        contentColor = contentColor,
-        borderColor = borderColor,
-        content = {
-            if (contentDescription != null) {
-                Box(
-                    modifier =
-                        Modifier.semantics {
-                            this.contentDescription = contentDescription
-                            role = Role.Button
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .auraFloatingIsland(
+                    shape = CircleShape,
+                    color = containerColor,
+                    borderColor = borderColor,
+                    elevation = 5.dp,
+                ),
+        contentAlignment = Alignment.Center,
+    ) {
+        AuraIconButton(
+            onClick = onClick,
+            modifier = Modifier.size(size),
+            enabled = enabled,
+            shape = CircleShape,
+            containerColor = Color.Transparent,
+            contentColor = contentColor,
+            borderColor = null,
+            content = {
+                if (contentDescription != null) {
+                    Box(
+                        modifier =
+                            Modifier.semantics {
+                                this.contentDescription = contentDescription
+                                role = Role.Button
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        content()
+                    }
+                } else {
                     content()
                 }
-            } else {
-                content()
-            }
-        },
-    )
+            },
+        )
+    }
 }
 
 /** Remembered brush-safe outline color for lists / pills — avoids realloc in scroll. */

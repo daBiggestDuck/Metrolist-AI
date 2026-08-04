@@ -66,10 +66,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraTopBar
-import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingActionCluster
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
-import com.metrolist.music.ui.component.aura.AuraHairline
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -100,6 +98,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Density
@@ -986,6 +986,20 @@ class MainActivity : ComponentActivity() {
                             else -> null
                         }
                     }
+                val greetingRes =
+                    remember {
+                        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                        when {
+                            hour < 12 -> R.string.aura_greeting_morning
+                            hour < 18 -> R.string.aura_greeting_afternoon
+                            else -> R.string.aura_greeting_evening
+                        }
+                    }
+                val headerTitle =
+                    when (navBackStackEntry?.destination?.route) {
+                        Screens.Home.route -> stringResource(greetingRes)
+                        else -> currentTitleRes?.let { stringResource(it) } ?: ""
+                    }
 
                 var showAccountDialog by remember { mutableStateOf(false) }
 
@@ -1015,6 +1029,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Scaffold(
+                        containerColor = baseBg,
+                        contentColor = Color.White,
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             AnimatedVisibility(
@@ -1022,99 +1038,101 @@ class MainActivity : ComponentActivity() {
                                 enter = fadeIn(animationSpec = tween(durationMillis = 300)),
                                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                             ) {
-                                Row {
-                                    AuraTopBar(
-                                        title = {
-                                            Text(
-                                                text = currentTitleRes?.let { stringResource(it) } ?: "",
-                                                style = MaterialTheme.typography.titleLarge,
-                                            )
-                                        },
-                                        actions = {
-                                            AuraFloatingActionCluster {
-                                                if (showHistoryButton) {
-                                                    AuraFloatingChromeButton(
-                                                        onClick = { navController.navigate("history") },
-                                                        contentDescription = stringResource(R.string.history),
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.history),
-                                                            contentDescription = null,
-                                                            modifier = Modifier.size(20.dp),
-                                                        )
-                                                    }
-                                                }
+                                AuraTopBar(
+                                    title = {
+                                        Text(
+                                            text = headerTitle,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = Color.White,
+                                        )
+                                    },
+                                    actions = {
+                                        AuraFloatingActionCluster {
+                                            if (showHistoryButton) {
                                                 AuraFloatingChromeButton(
-                                                    onClick = { navController.navigate("stats") },
-                                                    contentDescription = stringResource(R.string.stats),
+                                                    onClick = { navController.navigate("history") },
+                                                    contentDescription = stringResource(R.string.history),
                                                 ) {
                                                     Icon(
-                                                        painter = painterResource(R.drawable.stats),
+                                                        painter = painterResource(R.drawable.history),
                                                         contentDescription = null,
                                                         modifier = Modifier.size(20.dp),
                                                     )
                                                 }
-                                                if (listenTogetherInTopBar) {
-                                                    AuraFloatingChromeButton(
-                                                        onClick = { navController.navigate("listen_together_from_topbar") },
-                                                        contentDescription = stringResource(R.string.together),
-                                                    ) {
+                                            }
+                                            AuraFloatingChromeButton(
+                                                onClick = { navController.navigate("settings") },
+                                                contentDescription = stringResource(R.string.settings),
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.settings),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                            if (listenTogetherInTopBar) {
+                                                AuraFloatingChromeButton(
+                                                    onClick = { navController.navigate("listen_together_from_topbar") },
+                                                    contentDescription = stringResource(R.string.together),
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.group_outlined),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                            }
+                                            AuraFloatingChromeButton(
+                                                onClick = { showAccountDialog = true },
+                                                contentDescription = stringResource(R.string.account),
+                                            ) {
+                                                BadgedBox(badge = {
+                                                    if (latestVersionName != BuildConfig.VERSION_NAME) {
+                                                        Badge()
+                                                    }
+                                                }) {
+                                                    if (accountImageUrl != null) {
+                                                        AsyncImage(
+                                                            model = accountImageUrl,
+                                                            contentDescription = null,
+                                                            modifier =
+                                                                Modifier
+                                                                    .size(22.dp)
+                                                                    .clip(CircleShape),
+                                                        )
+                                                    } else {
                                                         Icon(
-                                                            painter = painterResource(R.drawable.group_outlined),
+                                                            painter = painterResource(R.drawable.account),
                                                             contentDescription = null,
                                                             modifier = Modifier.size(20.dp),
                                                         )
                                                     }
                                                 }
-                                                AuraFloatingChromeButton(
-                                                    onClick = { showAccountDialog = true },
-                                                    contentDescription = stringResource(R.string.account),
-                                                ) {
-                                                    BadgedBox(badge = {
-                                                        if (latestVersionName != BuildConfig.VERSION_NAME) {
-                                                            Badge()
-                                                        }
-                                                    }) {
-                                                        if (accountImageUrl != null) {
-                                                            AsyncImage(
-                                                                model = accountImageUrl,
-                                                                contentDescription = null,
-                                                                modifier =
-                                                                    Modifier
-                                                                        .size(22.dp)
-                                                                        .clip(CircleShape),
-                                                            )
-                                                        } else {
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.account),
-                                                                contentDescription = null,
-                                                                modifier = Modifier.size(20.dp),
-                                                            )
-                                                        }
-                                                    }
-                                                }
                                             }
-                                        },
-                                        scrollBehavior = topAppBarScrollBehavior,
-                                        colors =
-                                            TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else AuraElevated,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else AuraElevated,
-                                                titleContentColor = Color.White,
-                                                actionIconContentColor = Color.White,
-                                                navigationIconContentColor = Color.White,
-                                            ),
-                                        modifier =
-                                            Modifier.windowInsetsPadding(
-                                                if (showRail) {
-                                                    WindowInsets(left = NavigationBarHeight)
-                                                        .add(cutoutInsets.only(WindowInsetsSides.Start))
-                                                } else {
-                                                    cutoutInsets.only(WindowInsetsSides.Start + WindowInsetsSides.End)
-                                                },
-                                            ),
-                                    )
-                                }
+                                        }
+                                    },
+                                    scrollBehavior = topAppBarScrollBehavior,
+                                    colors =
+                                        TopAppBarDefaults.topAppBarColors(
+                                            containerColor = Color.Transparent,
+                                            scrolledContainerColor = Color.Transparent,
+                                            titleContentColor = Color.White,
+                                            actionIconContentColor = Color.White,
+                                            navigationIconContentColor = Color.White,
+                                        ),
+                                    modifier =
+                                        Modifier.windowInsetsPadding(
+                                            if (showRail) {
+                                                WindowInsets(left = NavigationBarHeight)
+                                                    .add(cutoutInsets.only(WindowInsetsSides.Start))
+                                            } else {
+                                                cutoutInsets.only(WindowInsetsSides.Start + WindowInsetsSides.End)
+                                            },
+                                        ),
+                                )
                             }
                         },
                         bottomBar = {

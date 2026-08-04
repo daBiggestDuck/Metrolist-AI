@@ -1128,4 +1128,9 @@
     <string name="dont_use_for_taste">Don’t use for taste</string>
     <string name="use_for_taste">Use for taste</string>
     <string name="dont_use_for_taste_desc">Skip this song when updating Nano DJ’s listening taste</string>
+
+    <!-- Aura floating home header greetings (Spotify-style) -->
+    <string name="aura_greeting_morning">Good morning</string>
+    <string name="aura_greeting_afternoon">Good afternoon</string>
+    <string name="aura_greeting_evening">Good evening</string>
 </resources>

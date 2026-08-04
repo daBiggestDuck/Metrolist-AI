@@ -17,14 +17,15 @@ const val CONTENT_TYPE_ARTIST = 3
 const val CONTENT_TYPE_ALBUM = 4
 const val CONTENT_TYPE_PLAYLIST = 5
 
-/** Floating pill nav: outer vertical padding + capsule height. */
-val NavigationBarHeight = 72.dp
-val SlimNavBarHeight = 64.dp
+/** Floating pill nav: outer vertical padding + capsule height (air above system nav). */
+val NavigationBarHeight = 80.dp
+val SlimNavBarHeight = 72.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 10.dp // Space between floating MiniPlayer and pill NavigationBar
+val MiniPlayerBottomSpacing = 14.dp // Gap between floating MiniPlayer and pill NavigationBar
 val QueuePeekHeight = 64.dp
-val AppBarHeight = 64.dp
+/** Floating header strip: status-bar insets are separate; this is the island row height. */
+val AppBarHeight = 72.dp
 
 val ListItemHeight = 64.dp
 val SuggestionItemHeight = 56.dp

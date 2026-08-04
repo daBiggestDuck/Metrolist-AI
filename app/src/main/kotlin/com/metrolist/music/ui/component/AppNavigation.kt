@@ -9,7 +9,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -52,8 +51,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingPillShape
-import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
+import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -150,9 +149,11 @@ fun AppNavigationRail(
                 .width(72.dp)
                 .fillMaxHeight()
                 .padding(vertical = 16.dp, horizontal = 8.dp)
-                .clip(AuraFloatingPillShape)
-                .background(containerColor)
-                .border(1.dp, AuraHairline, AuraFloatingPillShape)
+                .auraFloatingIsland(
+                    shape = AuraFloatingPillShape,
+                    color = containerColor,
+                    elevation = 8.dp,
+                )
                 .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -265,7 +266,7 @@ fun AppNavigationBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         BoxWithConstraints(
@@ -273,9 +274,11 @@ fun AppNavigationBar(
                 Modifier
                     .fillMaxWidth()
                     .height(pillHeight)
-                    .clip(AuraFloatingPillShape)
-                    .background(containerColor)
-                    .border(1.dp, AuraHairline, AuraFloatingPillShape),
+                    .auraFloatingIsland(
+                        shape = AuraFloatingPillShape,
+                        color = containerColor,
+                        elevation = 8.dp,
+                    ),
         ) {
             val tabCount = navigationItems.size.coerceAtLeast(1)
             val tabWidth = maxWidth / tabCount
