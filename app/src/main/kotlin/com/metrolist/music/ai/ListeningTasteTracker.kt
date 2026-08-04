@@ -39,9 +39,14 @@ object ListeningTasteTracker {
     private const val DECAY = 0.985f
     private const val LISTEN_BOOST = 1f
     private const val NANO_REFRESH_EVERY = 8
+    /** Persist at most every N listens (in-memory cache fills the gaps). */
+    private const val PERSIST_EVERY = 4
     private const val WEIGHT_SEP = '\t'
 
     private val mutex = Mutex()
+
+    @Volatile
+    private var memoryProfile: Profile? = null
 
     enum class DjLane(
         val id: String,
@@ -107,6 +112,7 @@ object ListeningTasteTracker {
     )
 
     suspend fun loadProfile(context: Context): Profile {
+        memoryProfile?.let { return it }
         val prefs = context.dataStore
         return Profile(
             artists = decodeWeights(prefs.get(ListeningTasteArtistsKey, "")),
@@ -117,7 +123,7 @@ object ListeningTasteTracker {
             listenCount = prefs.get(ListeningTasteListenCountKey, 0),
             activeLane = DjLane.fromId(prefs.get(ListeningTasteActiveLaneKey, "")),
             excludedSongIds = prefs.get(ListeningTasteExcludedSongIdsKey, emptySet()),
-        )
+        ).also { memoryProfile = it }
     }
 
     suspend fun isExcluded(context: Context, songId: String): Boolean {
@@ -132,11 +138,23 @@ object ListeningTasteTracker {
             if (excluded) current += songId else current -= songId
             prefs[ListeningTasteExcludedSongIdsKey] = current
         }
+        mutex.withLock {
+            val cached = memoryProfile ?: return@withLock
+            memoryProfile =
+                cached.copy(
+                    excludedSongIds =
+                        if (excluded) cached.excludedSongIds + songId
+                        else cached.excludedSongIds - songId,
+                )
+        }
     }
 
     /**
      * Upsert taste after an eligible listen (≥ HistoryDuration, not pause-history, not excluded).
      * Call from [com.metrolist.music.playback.MusicService.onPlaybackStatsReady] on IO.
+     *
+     * Persists every [PERSIST_EVERY] listens (or on Nano refresh) to avoid waking DataStore
+     * collectors on every track change. Nano work runs outside the mutex.
      */
     suspend fun recordListen(
         context: Context,
@@ -147,87 +165,142 @@ object ListeningTasteTracker {
         client: GeminiNanoClient = GeminiNanoClient.get(),
     ) {
         if (songId.isBlank() || title.isBlank()) return
-        mutex.withLock {
-            if (isExcluded(context, songId)) {
-                Timber.tag(TAG).d("Skipping excluded song %s", songId)
-                return
-            }
 
-            val profile = loadProfile(context)
-            val artistNames = artists.map { it.trim() }.filter { it.isNotBlank() }
-            val trackKey =
-                if (artistNames.isNotEmpty()) {
-                    "$title — ${artistNames.joinToString(", ")}"
-                } else {
-                    title
+        data class Pending(
+            val profile: Profile,
+            val artistsForNano: List<String>,
+            val tracksForNano: List<Pair<String, String>>,
+            val categoriesForNano: List<String>,
+            val lane: DjLane,
+        )
+
+        val pending =
+            mutex.withLock {
+                if (isExcluded(context, songId)) {
+                    Timber.tag(TAG).d("Skipping excluded song %s", songId)
+                    return
                 }
 
-            val artistsNext = decayAndBoost(profile.artists, artistNames, LISTEN_BOOST, MAX_ARTISTS)
-            val tracksNext = decayAndBoost(profile.tracks, listOf(trackKey), LISTEN_BOOST, MAX_TRACKS)
-            val categoryHits = inferCategories(title, artistNames)
-            val categoriesNext =
-                decayAndBoost(profile.categories, categoryHits, LISTEN_BOOST * 0.75f, MAX_CATEGORIES)
-
-            val listenCount = profile.listenCount + 1
-            val lane = pickLane(categoriesNext, artistsNext, recentTitle = title)
-
-            var summary = profile.summary
-            var categoriesForStore = categoriesNext
-
-            val shouldRefreshNano =
-                enableNano &&
-                    (summary.isBlank() || listenCount % NANO_REFRESH_EVERY == 0)
-            if (shouldRefreshNano) {
-                val refresh =
-                    refreshSummaryWithNano(
-                        artists = artistsNext.keys.toList().let { keys ->
-                            artistsNext.entries.sortedByDescending { it.value }.take(12).map { it.key }
-                        },
-                        tracks = tracksNext.entries.sortedByDescending { it.value }.take(15).map { (k, _) ->
-                            val sep = if (" — " in k) " — " else " - "
-                            if (sep in k) {
-                                k.substringBefore(sep).trim() to k.substringAfter(sep).trim()
-                            } else {
-                                k to ""
-                            }
-                        },
-                        categories = categoriesNext.entries.sortedByDescending { it.value }.take(6).map { it.key },
-                        lane = lane,
-                        client = client,
-                    )
-                if (refresh != null) {
-                    summary = refresh.summary
-                    if (refresh.categories.isNotEmpty()) {
-                        categoriesForStore =
-                            mergeCategoryHints(categoriesNext, refresh.categories)
+                val profile = loadProfile(context)
+                val artistNames = artists.map { it.trim() }.filter { it.isNotBlank() }
+                val trackKey =
+                    if (artistNames.isNotEmpty()) {
+                        "$title — ${artistNames.joinToString(", ")}"
+                    } else {
+                        title
                     }
+
+                val artistsNext = decayAndBoost(profile.artists, artistNames, LISTEN_BOOST, MAX_ARTISTS)
+                val tracksNext = decayAndBoost(profile.tracks, listOf(trackKey), LISTEN_BOOST, MAX_TRACKS)
+                val categoryHits = inferCategories(title, artistNames)
+                val categoriesNext =
+                    decayAndBoost(profile.categories, categoryHits, LISTEN_BOOST * 0.75f, MAX_CATEGORIES)
+
+                val listenCount = profile.listenCount + 1
+                val lane = pickLane(categoriesNext, artistsNext, recentTitle = title)
+
+                var summary = profile.summary
+                if (summary.isBlank()) {
+                    summary = heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
+                }
+
+                val shouldRefreshNano =
+                    enableNano &&
+                        (profile.summary.isBlank() || listenCount % NANO_REFRESH_EVERY == 0)
+
+                val now = System.currentTimeMillis()
+                val updated =
+                    Profile(
+                        artists = artistsNext,
+                        tracks = tracksNext,
+                        categories = categoriesNext,
+                        summary = summary,
+                        lastUpdatedMs = now,
+                        listenCount = listenCount,
+                        activeLane = lane,
+                        excludedSongIds = profile.excludedSongIds,
+                    )
+                memoryProfile = updated
+
+                val shouldPersist = shouldRefreshNano || listenCount % PERSIST_EVERY == 0
+                if (shouldPersist) {
+                    persistProfile(context, updated)
+                }
+
+                Timber.tag(TAG).i(
+                    "taste updated listens=%d lane=%s artists=%d tracks=%d persist=%s",
+                    listenCount,
+                    lane.id,
+                    artistsNext.size,
+                    tracksNext.size,
+                    shouldPersist,
+                )
+
+                if (!shouldRefreshNano) {
+                    null
+                } else {
+                    Pending(
+                        profile = updated,
+                        artistsForNano =
+                            artistsNext.entries.sortedByDescending { it.value }.take(12).map { it.key },
+                        tracksForNano =
+                            tracksNext.entries.sortedByDescending { it.value }.take(15).map { (k, _) ->
+                                val sep = if (" — " in k) " — " else " - "
+                                if (sep in k) {
+                                    k.substringBefore(sep).trim() to k.substringAfter(sep).trim()
+                                } else {
+                                    k to ""
+                                }
+                            },
+                        categoriesForNano =
+                            categoriesNext.entries.sortedByDescending { it.value }.take(6).map { it.key },
+                        lane = lane,
+                    )
                 }
             }
 
-            if (summary.isBlank()) {
-                summary = heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
-            }
+        if (pending == null) return
 
-            val now = System.currentTimeMillis()
-            context.safeDataStoreEdit { prefs ->
-                prefs[ListeningTasteArtistsKey] = encodeWeights(artistsNext)
-                prefs[ListeningTasteTracksKey] = encodeWeights(tracksNext)
-                prefs[ListeningTasteCategoriesKey] = encodeWeights(categoriesForStore)
-                prefs[ListeningTasteSummaryKey] = summary
-                prefs[ListeningTasteLastUpdatedKey] = now
-                prefs[ListeningTasteListenCountKey] = listenCount
-                prefs[ListeningTasteActiveLaneKey] = lane.id
-            }
+        val refresh =
+            refreshSummaryWithNano(
+                artists = pending.artistsForNano,
+                tracks = pending.tracksForNano,
+                categories = pending.categoriesForNano,
+                lane = pending.lane,
+                client = client,
+            ) ?: return
 
-            Timber.tag(TAG).i(
-                "taste updated listens=%d lane=%s artists=%d tracks=%d",
-                listenCount,
-                lane.id,
-                artistsNext.size,
-                tracksNext.size,
-            )
+        mutex.withLock {
+            val base = memoryProfile ?: pending.profile
+            val categoriesForStore =
+                if (refresh.categories.isNotEmpty()) {
+                    mergeCategoryHints(base.categories, refresh.categories)
+                } else {
+                    base.categories
+                }
+            val refreshed =
+                base.copy(
+                    summary = refresh.summary,
+                    categories = categoriesForStore,
+                    lastUpdatedMs = System.currentTimeMillis(),
+                )
+            memoryProfile = refreshed
+            persistProfile(context, refreshed)
         }
     }
+
+    private suspend fun persistProfile(context: Context, profile: Profile) {
+        context.safeDataStoreEdit { prefs ->
+            prefs[ListeningTasteArtistsKey] = encodeWeights(profile.artists)
+            prefs[ListeningTasteTracksKey] = encodeWeights(profile.tracks)
+            prefs[ListeningTasteCategoriesKey] = encodeWeights(profile.categories)
+            prefs[ListeningTasteSummaryKey] = profile.summary
+            prefs[ListeningTasteLastUpdatedKey] = profile.lastUpdatedMs
+            prefs[ListeningTasteListenCountKey] = profile.listenCount
+            prefs[ListeningTasteActiveLaneKey] = profile.activeLane.id
+        }
+    }
+
 
     fun pickLane(
         categories: Map<String, Float>,
@@ -326,9 +399,6 @@ object ListeningTasteTracker {
             (categories.map { "$it mix" } + laneHints + spotifyHints + listeningTracks.take(5))
                 .distinct()
                 .take(12)
-
-        // Persist chosen lane for UI / next session
-        context.safeDataStoreEdit { it[ListeningTasteActiveLaneKey] = lane.id }
 
         return MergedTaste(
             summary = summary,

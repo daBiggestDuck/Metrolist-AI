@@ -59,7 +59,11 @@ class AppBarScrollBehavior(
                         state.contentOffset = 0f
                     }
                 }
-                state.heightOffset += consumed.y
+                // Pinned bars never collapse — mutating heightOffset every scroll frame
+                // is pure Snapshot churn for any reader of TopAppBarState.
+                if (!isPinned) {
+                    state.heightOffset += consumed.y
+                }
                 return Offset.Zero
             }
         }

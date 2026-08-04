@@ -546,22 +546,23 @@ fun DailyDiscoverCard(
             )
 
             if (maxWidth > 200.dp) {
+                val overlayBrush =
+                    remember {
+                        Brush.verticalGradient(
+                            colors =
+                                listOf(
+                                    Color.Black.copy(alpha = 0.3f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.6f),
+                                    Color.Black.copy(alpha = 0.9f),
+                                ),
+                        )
+                    }
                 Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .background(
-                                brush =
-                                    Brush.verticalGradient(
-                                        colors =
-                                            listOf(
-                                                Color.Black.copy(alpha = 0.3f),
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.6f),
-                                                Color.Black.copy(alpha = 0.9f),
-                                            ),
-                                    ),
-                            ),
+                            .background(brush = overlayBrush),
                 )
 
                 Column(
@@ -1907,7 +1908,11 @@ fun HomeScreen(
                                         contentPadding = PaddingValues(horizontal = 16.dp),
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     ) {
-                                        items(playlists) { item ->
+                                        items(
+                                            playlists,
+                                            key = { it.playlist.id },
+                                            contentType = { "community_playlist" },
+                                        ) { item ->
                                             CommunityPlaylistCard(
                                                 item = item,
                                                 onClick = {
