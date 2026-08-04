@@ -493,6 +493,10 @@ class MusicService :
     private var cachedShufflePlaylistFirst = false
     @Volatile
     private var cachedAutoLoadMore = true
+    @Volatile
+    private var cachedEnableGeminiNano = true
+    @Volatile
+    private var cachedPauseListenHistory = false
 
     // URL cache for stream URLs - class-level so it can be invalidated on errors
     private val songUrlCache = Collections.synchronizedMap(
@@ -1172,6 +1176,12 @@ class MusicService :
         }
         scope.launch {
             dataStore.data.map { it[AutoLoadMoreKey] ?: true }.distinctUntilChanged().collect { cachedAutoLoadMore = it }
+        }
+        scope.launch {
+            dataStore.data.map { it[EnableGeminiNanoKey] ?: true }.distinctUntilChanged().collect { cachedEnableGeminiNano = it }
+        }
+        scope.launch {
+            dataStore.data.map { it[PauseListenHistoryKey] ?: false }.distinctUntilChanged().collect { cachedPauseListenHistory = it }
         }
         // Keep YTPlayerUtils in sync with the stream source toggles (Settings → Stream sources).
         // Map to the derived set + distinctUntilChanged so an unrelated preference write doesn't
@@ -3881,7 +3891,7 @@ class MusicService :
         val historyDurationMs = dataStore[HistoryDuration]?.times(1000f) ?: 30000f
 
         if (playbackStats.totalPlayTimeMs >= historyDurationMs &&
-            !dataStore.get(PauseListenHistoryKey, false)
+            !cachedPauseListenHistory
         ) {
             database.query {
                 incrementTotalPlayTime(mediaItem.mediaId, playbackStats.totalPlayTimeMs)
@@ -3900,7 +3910,7 @@ class MusicService :
             // Continuous listening taste for Nano DJ (DataStore; respects exclusions).
             val meta = mediaItem.metadata
             if (meta != null) {
-                val enableNano = dataStore.get(EnableGeminiNanoKey, true)
+                val enableNano = cachedEnableGeminiNano
                 val songId = mediaItem.mediaId
                 val title = meta.title
                 val artistNames = meta.artists.map { it.name }

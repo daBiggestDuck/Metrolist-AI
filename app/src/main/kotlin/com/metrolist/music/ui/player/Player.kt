@@ -744,7 +744,7 @@ fun BottomSheetPlayer(
                         .fillMaxSize()
                         .background(bottomSheetBackgroundColor)
                         .graphicsLayer {
-                            alpha = sheetProgressState.value.progress.coerceIn(0f, 1f)
+                            alpha = sheetProgressState.value.progressValue().coerceIn(0f, 1f)
                         },
             ) {
                 when (playerBackground) {

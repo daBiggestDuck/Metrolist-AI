@@ -182,6 +182,7 @@ import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.dismissedAnchor
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.rememberBottomSheetState
@@ -830,14 +831,14 @@ class MainActivity : ComponentActivity() {
                     remember(
                         bottomInset,
                         shouldShowNavigationBar,
-                        playerBottomSheetState.isDismissed,
+                        playerBottomSheetState.anchor,
                         showRail,
                     ) {
                         var bottom = bottomInset
                         if (shouldShowNavigationBar && !showRail) {
                             bottom += NavigationBarHeight
                         }
-                        if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
+                        if (playerBottomSheetState.anchor != dismissedAnchor) bottom += MiniPlayerHeight
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))
@@ -1064,6 +1065,16 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                             AuraFloatingChromeButton(
+                                                onClick = { navController.navigate("stats") },
+                                                contentDescription = stringResource(R.string.stats),
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.stats),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                            AuraFloatingChromeButton(
                                                 onClick = { navController.navigate("settings") },
                                                 contentDescription = stringResource(R.string.settings),
                                             ) {
@@ -1232,7 +1243,7 @@ class MainActivity : ComponentActivity() {
                                                             totalHeightPx
                                                         } else {
                                                             // Read progress only during draw phase
-                                                            val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
+                                                            val progress = playerBottomSheetState.progressValue().coerceIn(0f, 1f)
                                                             val slideOffset = totalHeightPx * progress
                                                             val hideOffset =
                                                                 totalHeightPx * (1 - navBarHeightPx / NavigationBarHeight.toPx())
@@ -1249,7 +1260,7 @@ class MainActivity : ComponentActivity() {
                                                 .height(bottomInsetDp)
                                                 // Use graphicsLayer for background color changes
                                                 .graphicsLayer {
-                                                    val progress = playerBottomSheetState.progress
+                                                    val progress = playerBottomSheetState.progressValue()
                                                     alpha =
                                                         if (progress > 0f ||
                                                             (useNewMiniPlayerDesign && !shouldShowNavigationBar)
@@ -1280,7 +1291,7 @@ class MainActivity : ComponentActivity() {
                                             .height(bottomInsetDp)
                                             // Use graphicsLayer for background color changes
                                             .graphicsLayer {
-                                                val progress = playerBottomSheetState.progress
+                                                val progress = playerBottomSheetState.progressValue()
                                                 alpha =
                                                     if (progress > 0f || (useNewMiniPlayerDesign && !shouldShowNavigationBar)) 0f else 1f
                                             }.background(baseBg),

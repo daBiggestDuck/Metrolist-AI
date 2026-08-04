@@ -26,14 +26,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -49,12 +51,18 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.math.pow
 
 /**
  * Bottom Sheet
  * Modified from [ViMusic](https://github.com/vfsfitvnm/ViMusic)
+ *
+ * Perf: continuous sheet position is only read inside [graphicsLayer] / [snapshotFlow].
+ * Discrete [anchor] drives MainActivity insets and BackHandler so drag frames do not
+ * recompose the scaffold / player tree.
  */
 @Composable
 fun BottomSheet(
@@ -66,13 +74,33 @@ fun BottomSheet(
     isExpandable: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val density = LocalDensity.current
-    
+    // Threshold visibility — updates only when crossing, not every drag pixel.
+    var showExpandedContent by remember(state) {
+        mutableStateOf(state.progressValue() > 0.02f)
+    }
+    var showCollapsedContent by remember(state) {
+        mutableStateOf(state.progressValue() < 0.98f && !state.isDismissed)
+    }
+
+    LaunchedEffect(state) {
+        snapshotFlow { state.progressValue() }
+            .map { progress ->
+                val showExpanded = progress > 0.02f
+                val showCollapsed = progress < 0.98f && state.anchor != dismissedAnchor
+                showExpanded to showCollapsed
+            }
+            .distinctUntilChanged()
+            .collect { (expanded, collapsed) ->
+                showExpandedContent = expanded
+                showCollapsedContent = collapsed
+            }
+    }
+
     Box(
         modifier = modifier
             .graphicsLayer {
                 // background fades during about 10%-61% progress
-                alpha = (1.4f * (state.progress.coerceAtLeast(0.1f) - 0.1f).pow(0.5f)).coerceIn(0f, 1f)
+                alpha = (1.4f * (state.progressValue().coerceAtLeast(0.1f) - 0.1f).pow(0.5f)).coerceIn(0f, 1f)
             }
             .fillMaxSize(),
         content = background
@@ -82,7 +110,7 @@ fun BottomSheet(
             .fillMaxSize()
             // Use graphicsLayer for offset to ensure hardware acceleration and 120Hz support
             .graphicsLayer {
-                val y = (state.expandedBound - state.value)
+                val y = (state.expandedBound - state.valueDp())
                     .toPx()
                     .coerceAtLeast(0f)
                 translationY = y
@@ -108,14 +136,14 @@ fun BottomSheet(
                 )
             }
             .graphicsLayer {
-                val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
+                val cornerRadius = if (state.progressValue() < 0.99f) 16.dp.toPx() else 0f
                 shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
                 clip = true
             }
     ) {
-        if (!state.isCollapsed && !state.isDismissed) {
+        if (showExpandedContent && !state.isDismissed) {
             PredictiveBackHandler { progress ->
-                val initialValue = state.value
+                val initialValue = state.valueDp()
                 try {
                     val range = initialValue - state.collapsedBound
                     progress.collect { event ->
@@ -130,24 +158,24 @@ fun BottomSheet(
             }
         }
 
-        // main content
-        if (!state.isCollapsed) {
+        // main content — mounted only while sheet is meaningfully open (not every drag frame)
+        if (showExpandedContent) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = ((state.progress - 0.15f) * 4).coerceIn(0f, 1f)
+                        alpha = ((state.progressValue() - 0.15f) * 4).coerceIn(0f, 1f)
                     },
                 content = content
             )
         }
 
-        if (!state.isExpanded && (onDismiss == null || !state.isDismissed)) {
+        if (showCollapsedContent && (onDismiss == null || !state.isDismissed)) {
             Box(
                 modifier =
                 Modifier
                     .graphicsLayer {
-                        alpha = 1f - (state.progress * 4).coerceAtMost(1f)
+                        alpha = 1f - (state.progressValue() * 4).coerceAtMost(1f)
                     }.clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -169,40 +197,70 @@ class BottomSheetState(
     private val animatable: Animatable<Dp, AnimationVector1D>,
     private val onAnchorChanged: (Int) -> Unit,
     val collapsedBound: Dp,
+    initialAnchor: Int,
 ) : DraggableState by draggableState {
+    /**
+     * Discrete settled/target anchor. Composition (insets, BackHandler) should read this —
+     * never the continuous animatable position — so drag frames stay cheap.
+     */
+    var anchor by mutableIntStateOf(initialAnchor)
+        private set
+
     val dismissedBound: Dp
         get() = animatable.lowerBound!!
 
     val expandedBound: Dp
         get() = animatable.upperBound!!
 
-    val value by animatable.asState()
+    /** Compose State for continuous position — read only inside graphicsLayer / snapshotFlow. */
+    private val valueState = animatable.asState()
 
-    val isDismissed by derivedStateOf {
-        value == animatable.lowerBound!!
+    val isDismissed: Boolean
+        get() = anchor == dismissedAnchor
+
+    val isCollapsed: Boolean
+        get() = anchor == collapsedAnchor
+
+    val isExpanded: Boolean
+        get() = anchor == expandedAnchor
+
+    /** Continuous progress 0..1 for draw / snapshotFlow (not for scaffold composition). */
+    fun progressValue(): Float {
+        val upper = animatable.upperBound ?: return 0f
+        val current = valueState.value
+        val spanPx = upper.value - collapsedBound.value
+        if (spanPx == 0f) return if (current >= upper) 1f else 0f
+        return (1f - (upper.value - current.value) / spanPx).coerceIn(0f, 1f)
     }
 
-    val isCollapsed by derivedStateOf {
-        value == collapsedBound
-    }
+    /** Continuous sheet Y for draw only. */
+    fun valueDp(): Dp = valueState.value
 
-    val isExpanded by derivedStateOf {
-        value == animatable.upperBound
-    }
+    /** @deprecated Use [progressValue] inside graphicsLayer. Kept for call-site compatibility. */
+    val progress: Float
+        get() = progressValue()
 
-    val progress by derivedStateOf {
-        1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
+    /** @deprecated Use [valueDp] inside graphicsLayer. */
+    val value: Dp
+        get() = valueDp()
+
+    private fun updateAnchor(newAnchor: Int) {
+        if (anchor != newAnchor) {
+            anchor = newAnchor
+            onAnchorChanged(newAnchor)
+        }
     }
 
     fun collapse(animationSpec: AnimationSpec<Dp>) {
-        onAnchorChanged(collapsedAnchor)
         coroutineScope.launch {
             animatable.animateTo(collapsedBound, animationSpec)
+            updateAnchor(collapsedAnchor)
         }
     }
 
     fun expand(animationSpec: AnimationSpec<Dp>) {
-        onAnchorChanged(expandedAnchor)
+        // Show expanded chrome immediately; animate sheet up.
+        updateAnchor(expandedAnchor)
         coroutineScope.launch {
             animatable.animateTo(animatable.upperBound!!, animationSpec)
         }
@@ -225,15 +283,15 @@ class BottomSheetState(
     }
 
     fun dismiss() {
-        onAnchorChanged(dismissedAnchor)
         coroutineScope.launch {
             animatable.animateTo(animatable.lowerBound!!)
+            updateAnchor(dismissedAnchor)
         }
     }
-    
+
     suspend fun dismissAndWait() {
-        onAnchorChanged(dismissedAnchor)
         animatable.animateTo(animatable.lowerBound!!)
+        updateAnchor(dismissedAnchor)
     }
 
     fun snapTo(value: Dp) {
@@ -247,10 +305,11 @@ class BottomSheetState(
     }
 
     fun performFling(velocity: Float, onDismiss: (() -> Unit)?) {
+        val current = valueDp()
         if (velocity > 250) {
             expand()
         } else if (velocity < -250) {
-            if (value < collapsedBound && onDismiss != null) {
+            if (current < collapsedBound && onDismiss != null) {
                 dismiss()
                 onDismiss.invoke()
             } else {
@@ -262,7 +321,7 @@ class BottomSheetState(
             val l2 = (expandedBound - collapsedBound) / 2
             val l3 = expandedBound
 
-            when (value) {
+            when (current) {
                 in l0..l1 -> {
                     if (onDismiss != null) {
                         dismiss()
@@ -374,7 +433,8 @@ fun rememberBottomSheetState(
             onAnchorChanged = { previousAnchor = it },
             coroutineScope = coroutineScope,
             animatable = animatable,
-            collapsedBound = collapsedBound
+            collapsedBound = collapsedBound,
+            initialAnchor = previousAnchor,
         )
     }
 }

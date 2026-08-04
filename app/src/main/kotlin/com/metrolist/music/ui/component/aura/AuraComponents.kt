@@ -307,7 +307,7 @@ fun AuraFilterPill(
                         shape = AuraPillShape,
                         color = bg,
                         borderColor = border,
-                        elevation = 3.dp,
+                        elevation = 0.dp,
                     )
                 },
             )

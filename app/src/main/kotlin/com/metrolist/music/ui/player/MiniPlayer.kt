@@ -387,11 +387,11 @@ private fun NewMiniPlayer(
                     .height(64.dp)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .shadow(
-                        elevation = 6.dp,
+                        elevation = 3.dp,
                         shape = RoundedCornerShape(32.dp),
                         clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.4f),
-                        spotColor = Color.Black.copy(alpha = 0.4f),
+                        ambientColor = Color.Black.copy(alpha = 0.35f),
+                        spotColor = Color.Black.copy(alpha = 0.35f),
                     )
                     .clip(RoundedCornerShape(32.dp))
                     .background(color = backgroundColor)

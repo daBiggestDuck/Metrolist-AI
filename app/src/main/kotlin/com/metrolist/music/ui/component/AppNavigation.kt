@@ -28,9 +28,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -131,17 +131,20 @@ fun AppNavigationRail(
         remember(currentRoute, navigationItems) {
             navigationItems
                 .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
-                .coerceAtLeast(0)
+                .takeIf { it >= 0 }
         }
-    val animatedIndex by animateFloatAsState(
-        targetValue = selectedIndex.toFloat(),
-        animationSpec =
-            spring(
-                dampingRatio = 0.78f,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-        label = "auraRailIndicator",
-    )
+    // Keep State — do NOT use `by` or spring frames recompose every tab icon.
+    val animatedIndex =
+        animateFloatAsState(
+            targetValue = (selectedIndex ?: 0).toFloat(),
+            animationSpec =
+                spring(
+                    dampingRatio = 0.78f,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            label = "auraRailIndicator",
+        )
+    val showIndicator = selectedIndex != null
 
     Column(
         modifier =
@@ -152,7 +155,7 @@ fun AppNavigationRail(
                 .auraFloatingIsland(
                     shape = AuraFloatingPillShape,
                     color = containerColor,
-                    elevation = 8.dp,
+                    elevation = 4.dp,
                 )
                 .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -166,19 +169,21 @@ fun AppNavigationRail(
             val tabCount = navigationItems.size.coerceAtLeast(1)
             val itemHeight = maxHeight / tabCount
             val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .width(48.dp)
-                        .height(itemHeight)
-                        .padding(4.dp)
-                        .graphicsLayer {
-                            translationY = animatedIndex * itemHeightPx
-                        }
-                        .clip(AuraFloatingPillShape)
-                        .background(AuraNavIndicator),
-            )
+            if (showIndicator) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .width(48.dp)
+                            .height(itemHeight)
+                            .padding(4.dp)
+                            .graphicsLayer {
+                                translationY = animatedIndex.value * itemHeightPx
+                            }
+                            .clip(AuraFloatingPillShape)
+                            .background(AuraNavIndicator),
+                )
+            }
             Column(modifier = Modifier.fillMaxSize()) {
                 navigationItems.forEach { screen ->
                     val isSelected =
@@ -250,17 +255,20 @@ fun AppNavigationBar(
         remember(currentRoute, navigationItems) {
             navigationItems
                 .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
-                .coerceAtLeast(0)
+                .takeIf { it >= 0 }
         }
-    val animatedIndex by animateFloatAsState(
-        targetValue = selectedIndex.toFloat(),
-        animationSpec =
-            spring(
-                dampingRatio = 0.72f,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-        label = "auraNavIndicator",
-    )
+    // Keep State — reading `by animateFloatAsState` in composition recomposes all tabs every spring frame.
+    val animatedIndex =
+        animateFloatAsState(
+            targetValue = (selectedIndex ?: 0).toFloat(),
+            animationSpec =
+                spring(
+                    dampingRatio = 0.72f,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            label = "auraNavIndicator",
+        )
+    val showIndicator = selectedIndex != null
 
     Box(
         modifier =
@@ -277,27 +285,29 @@ fun AppNavigationBar(
                     .auraFloatingIsland(
                         shape = AuraFloatingPillShape,
                         color = containerColor,
-                        elevation = 8.dp,
+                        elevation = 4.dp,
                     ),
         ) {
             val tabCount = navigationItems.size.coerceAtLeast(1)
             val tabWidth = maxWidth / tabCount
             val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
 
-            // Sliding indicator — translation in graphicsLayer so spring ticks don't recompose tabs.
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .width(tabWidth)
-                        .fillMaxHeight()
-                        .padding(horizontal = 4.dp, vertical = 4.dp)
-                        .graphicsLayer {
-                            translationX = animatedIndex * tabWidthPx
-                        }
-                        .clip(AuraFloatingPillShape)
-                        .background(AuraNavIndicator),
-            )
+            // Sliding indicator — read State.value only inside graphicsLayer (no tab recomposition).
+            if (showIndicator) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterStart)
+                            .width(tabWidth)
+                            .fillMaxHeight()
+                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                            .graphicsLayer {
+                                translationX = animatedIndex.value * tabWidthPx
+                            }
+                            .clip(AuraFloatingPillShape)
+                            .background(AuraNavIndicator),
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxSize(),

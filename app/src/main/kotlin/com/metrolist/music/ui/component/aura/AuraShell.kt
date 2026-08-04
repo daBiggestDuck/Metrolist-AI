@@ -82,26 +82,38 @@ fun Modifier.auraHairlineBorder(
 ): Modifier = border(width = width, color = color, shape = shape)
 
 /**
- * Detached floating island surface — solid Spotify dark fill + hairline + cheap soft shadow.
- * Organization language only: no blur / backdrop filters.
+ * Detached floating island surface — solid Spotify dark fill + hairline.
+ * Default elevation 0: hairline alone reads as floating without per-island shadow overdraw
+ * (shadows on every chip/button during scroll were a major jank source). Pass elevation only
+ * for a few shell chrome pieces (nav pill, mini player).
  */
 fun Modifier.auraFloatingIsland(
     shape: Shape = AuraFloatingPillShape,
     color: Color = AuraElevated,
     borderColor: Color = AuraHairline,
-    elevation: Dp = 6.dp,
-): Modifier =
-    this
-        .shadow(
-            elevation = elevation,
-            shape = shape,
-            clip = false,
-            ambientColor = AuraIslandShadow,
-            spotColor = AuraIslandShadow,
-        )
-        .clip(shape)
-        .background(color, shape)
-        .border(width = 1.dp, color = borderColor, shape = shape)
+    elevation: Dp = 0.dp,
+): Modifier {
+    val base =
+        this
+            .clip(shape)
+            .background(color, shape)
+            .border(width = 1.dp, color = borderColor, shape = shape)
+    return if (elevation > 0.dp) {
+        this
+            .shadow(
+                elevation = elevation,
+                shape = shape,
+                clip = false,
+                ambientColor = AuraIslandShadow,
+                spotColor = AuraIslandShadow,
+            )
+            .clip(shape)
+            .background(color, shape)
+            .border(width = 1.dp, color = borderColor, shape = shape)
+    } else {
+        base
+    }
+}
 
 /**
  * Native-Android fingerprint sheet vibe: rounded top, dimmed scrim, elevated dark fill.
@@ -198,7 +210,7 @@ fun AuraFloatingTitleIsland(
                 .auraFloatingIsland(
                     shape = AuraFloatingPillShape,
                     color = AuraElevated,
-                    elevation = 5.dp,
+                    elevation = 0.dp,
                 )
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.CenterStart,
@@ -228,7 +240,7 @@ fun AuraFloatingChromeButton(
                     shape = CircleShape,
                     color = containerColor,
                     borderColor = borderColor,
-                    elevation = 5.dp,
+                    elevation = 0.dp,
                 ),
         contentAlignment = Alignment.Center,
     ) {
