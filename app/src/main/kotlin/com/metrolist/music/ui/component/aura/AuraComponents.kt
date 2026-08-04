@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +41,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +49,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -60,11 +66,14 @@ import com.metrolist.music.ui.component.IconButton
 /** Explicit Spotify green — stays brand-like even when theme primary shifts in light mode. */
 val AuraSpotifyGreen = Color(0xFF1DB954)
 val AuraSpotifyOnGreen = Color(0xFF000000)
+/** Dark circular control fill (#282828) — secondary FABs / mic, not M3 tonal purple. */
+val AuraSpotifyDark = Color(0xFF282828)
+val AuraSpotifyOnDark = Color.White
 private val AuraNearBlack = Color(0xFF121212)
 private val AuraDividerColor = Color(0xFF282828)
 private val AuraHeroTop = Color(0xFF1A3A28)
 private val AuraHeroBottom = Color(0xFF121212)
-private val AuraMutedPill = Color(0xFF282828)
+private val AuraMutedPill = AuraSpotifyDark
 
 /**
  * Full-screen near-black column with top inset + optional scroll. Replaces M3 Scaffold chrome
@@ -565,6 +574,75 @@ fun AuraArtistAvatar(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/**
+ * Flat circular control — no Material FAB elevation/shadow/tonal chrome.
+ * Prefer [AuraFab] for primary green actions; use this for dark secondary controls (mic, etc.).
+ */
+@Composable
+fun AuraCircleButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    containerColor: Color = AuraSpotifyDark,
+    contentColor: Color = AuraSpotifyOnDark,
+    enabled: Boolean = true,
+    contentDescription: String? = null,
+    content: @Composable () -> Unit,
+) {
+    val semanticsModifier =
+        if (contentDescription != null) {
+            Modifier.semantics {
+                this.contentDescription = contentDescription
+                role = Role.Button
+            }
+        } else {
+            Modifier.semantics { role = Role.Button }
+        }
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(
+                    if (enabled) containerColor else containerColor.copy(alpha = 0.35f),
+                )
+                .then(semanticsModifier)
+                .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            content()
+        }
+    }
+}
+
+/**
+ * Spotify-style primary FAB: solid green circle, black icon, zero elevation.
+ * Drop-in visual replacement for Material3 [androidx.compose.material3.FloatingActionButton].
+ */
+@Composable
+fun AuraFab(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 56.dp,
+    containerColor: Color = AuraSpotifyGreen,
+    contentColor: Color = AuraSpotifyOnGreen,
+    enabled: Boolean = true,
+    contentDescription: String? = null,
+    content: @Composable () -> Unit,
+) {
+    AuraCircleButton(
+        onClick = onClick,
+        modifier = modifier,
+        size = size,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        enabled = enabled,
+        contentDescription = contentDescription,
+        content = content,
+    )
 }
 
 /** Numbered playlist-style track row. */

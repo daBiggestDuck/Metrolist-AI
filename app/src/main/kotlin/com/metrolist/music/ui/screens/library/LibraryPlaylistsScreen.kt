@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -84,6 +83,8 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.aura.AuraFab
+import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.utils.rememberEnumPreference
@@ -541,7 +542,7 @@ fun LibraryPlaylistsScreen(
         }
 
         // Always visible + button (no scroll hiding)
-        FloatingActionButton(
+        AuraFab(
             onClick = { showCreatePlaylistDialog = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -549,11 +550,13 @@ fun LibraryPlaylistsScreen(
                     LocalPlayerAwareWindowInsets.current
                         .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
                 )
-                .padding(16.dp)
+                .padding(16.dp),
+            contentDescription = stringResource(R.string.create_playlist),
         ) {
             Icon(
                 painter = painterResource(R.drawable.add),
-                contentDescription = stringResource(R.string.create_playlist),
+                contentDescription = null,
+                tint = AuraSpotifyOnGreen,
             )
         }
     }

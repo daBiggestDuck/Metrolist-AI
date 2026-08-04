@@ -21,10 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +30,49 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraCircleButton
+import com.metrolist.music.ui.component.aura.AuraFab
+import com.metrolist.music.ui.component.aura.AuraSpotifyDark
+import com.metrolist.music.ui.component.aura.AuraSpotifyOnDark
+import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.ui.utils.isScrollingUp
+
+@Composable
+private fun AuraHideOnScrollFabColumn(
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    onRecognitionClick: (() -> Unit)?,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(16.dp),
+    ) {
+        if (onRecognitionClick != null) {
+            AuraCircleButton(
+                onClick = onRecognitionClick,
+                size = 40.dp,
+                containerColor = AuraSpotifyDark,
+                contentColor = AuraSpotifyOnDark,
+                contentDescription = stringResource(R.string.recognize_music),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.mic),
+                    contentDescription = null,
+                    tint = AuraSpotifyOnDark,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        AuraFab(onClick = onClick) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = AuraSpotifyOnGreen,
+            )
+        }
+    }
+}
 
 @Composable
 fun BoxScope.HideOnScrollFAB(
@@ -48,41 +87,18 @@ fun BoxScope.HideOnScrollFAB(
         enter = slideInVertically { it },
         exit = slideOutVertically { it },
         modifier =
-        Modifier
-            .align(Alignment.BottomEnd)
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-            ),
+            Modifier
+                .align(Alignment.BottomEnd)
+                .windowInsetsPadding(
+                    LocalPlayerAwareWindowInsets.current
+                        .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (onRecognitionClick != null) {
-                SmallFloatingActionButton(
-                    onClick = onRecognitionClick,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mic),
-                        contentDescription = stringResource(R.string.recognize_music),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                )
-            }
-        }
+        AuraHideOnScrollFabColumn(
+            icon = icon,
+            onClick = onClick,
+            onRecognitionClick = onRecognitionClick,
+        )
     }
 }
 
@@ -99,41 +115,18 @@ fun BoxScope.HideOnScrollFAB(
         enter = slideInVertically { it },
         exit = slideOutVertically { it },
         modifier =
-        Modifier
-            .align(Alignment.BottomEnd)
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-            ),
+            Modifier
+                .align(Alignment.BottomEnd)
+                .windowInsetsPadding(
+                    LocalPlayerAwareWindowInsets.current
+                        .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (onRecognitionClick != null) {
-                SmallFloatingActionButton(
-                    onClick = onRecognitionClick,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mic),
-                        contentDescription = stringResource(R.string.recognize_music),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                )
-            }
-        }
+        AuraHideOnScrollFabColumn(
+            icon = icon,
+            onClick = onClick,
+            onRecognitionClick = onRecognitionClick,
+        )
     }
 }
 
@@ -150,40 +143,17 @@ fun BoxScope.HideOnScrollFAB(
         enter = slideInVertically { it },
         exit = slideOutVertically { it },
         modifier =
-        Modifier
-            .align(Alignment.BottomEnd)
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-            ),
+            Modifier
+                .align(Alignment.BottomEnd)
+                .windowInsetsPadding(
+                    LocalPlayerAwareWindowInsets.current
+                        .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (onRecognitionClick != null) {
-                SmallFloatingActionButton(
-                    onClick = onRecognitionClick,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mic),
-                        contentDescription = stringResource(R.string.recognize_music),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                )
-            }
-        }
+        AuraHideOnScrollFabColumn(
+            icon = icon,
+            onClick = onClick,
+            onRecognitionClick = onRecognitionClick,
+        )
     }
 }

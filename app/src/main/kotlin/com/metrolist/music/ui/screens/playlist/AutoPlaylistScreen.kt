@@ -37,7 +37,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -47,6 +46,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import com.metrolist.music.ui.component.aura.AuraFab
+import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -716,7 +717,7 @@ fun AutoPlaylistScreen(
                                 .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                         ).padding(16.dp),
             ) {
-                FloatingActionButton(
+                AuraFab(
                     onClick = {
                         filePickerLauncher.launch(
                             arrayOf(
@@ -729,10 +730,12 @@ fun AutoPlaylistScreen(
                             ),
                         )
                     },
+                    contentDescription = stringResource(R.string.upload_songs),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.upload),
-                        contentDescription = stringResource(R.string.upload_songs),
+                        contentDescription = null,
+                        tint = AuraSpotifyOnGreen,
                     )
                 }
             }

@@ -47,6 +47,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import com.metrolist.music.ui.component.aura.AuraCircleButton
+import com.metrolist.music.ui.component.aura.AuraFab
+import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -971,23 +974,28 @@ fun ArtistScreen(
                 }
 
                 if (showLocalFab) {
-                    androidx.compose.material3.SmallFloatingActionButton(
-                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // Align center with standard FAB (56dp vs 48dp)
+                    AuraCircleButton(
+                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp),
                         onClick = onPlayAllClick,
+                        size = 40.dp,
+                        contentDescription = "Play All",
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.play),
-                            contentDescription = "Play All",
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 } else {
-                    androidx.compose.material3.FloatingActionButton(
+                    AuraFab(
                         modifier = Modifier.padding(16.dp),
                         onClick = onPlayAllClick,
+                        contentDescription = "Play All",
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.play),
-                            contentDescription = "Play All",
+                            contentDescription = null,
+                            tint = AuraSpotifyOnGreen,
                             modifier = Modifier.size(32.dp),
                         )
                     }
