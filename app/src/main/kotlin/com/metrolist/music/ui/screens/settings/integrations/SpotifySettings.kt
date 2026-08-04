@@ -9,19 +9,23 @@ import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,12 +47,14 @@ import com.metrolist.music.R
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.NanoDjSpeakKey
+import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyDisplayNameKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
 import com.metrolist.music.constants.SpotifyTopArtistsKey
 import com.metrolist.music.constants.SpotifyTopTracksKey
+import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.spotify.SpotifyApi
 import com.metrolist.music.spotify.SpotifyAuth
 import com.metrolist.music.spotify.SpotifyAuthException
@@ -57,11 +63,13 @@ import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.spotify.SpotifyImportProgress
 import com.metrolist.music.spotify.SpotifyPlaylistSummary
 import com.metrolist.music.spotify.SpotifyTokenStore
+import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraBanner
 import com.metrolist.music.ui.component.aura.AuraDivider
 import com.metrolist.music.ui.component.aura.AuraHeader
 import com.metrolist.music.ui.component.aura.AuraHeroPanel
+import com.metrolist.music.ui.component.aura.AuraPrimaryPill
 import com.metrolist.music.ui.component.aura.AuraRow
 import com.metrolist.music.ui.component.aura.AuraScreen
 import com.metrolist.music.ui.component.aura.AuraSectionLabel
@@ -70,6 +78,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -106,6 +115,14 @@ fun SpotifySettings(
     var pendingFileTracks by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
     var showFilePlaylistNameDialog by remember { mutableStateOf(false) }
     var pendingFilePlaylistName by remember { mutableStateOf(SpotifyImportManager.TASTE_PLAYLIST_NAME) }
+    var showLocalPlaylistPicker by remember { mutableStateOf(false) }
+    var pendingSpotifyPlaylist by remember { mutableStateOf<SpotifyPlaylistSummary?>(null) }
+
+    val localPlaylists by remember {
+        database.playlists(PlaylistSortType.NAME, false).map { list ->
+            list.filter { it.songCount > 0 }
+        }
+    }.collectAsState(initial = emptyList())
 
     val redirectNote = stringResource(R.string.spotify_redirect_uri_note)
     val connectLabel = stringResource(R.string.spotify_connect)
@@ -119,6 +136,17 @@ fun SpotifySettings(
         if (tracks.isNotEmpty()) {
             topTracksPref = tracks.joinToString("\n") { "${it.first} — ${it.second}" }
         }
+    }
+
+    fun applyTasteProfile(
+        artists: List<String>,
+        tracks: List<Pair<String, String>>,
+        summary: String,
+        hints: List<String>,
+    ) {
+        if (summary.isNotBlank()) tasteSummary = summary
+        if (hints.isNotEmpty()) tasteHints = hints.joinToString("\n")
+        persistTasteProfile(artists, tracks)
     }
 
     fun runFileTasteImport(
@@ -141,10 +169,13 @@ fun SpotifySettings(
                         },
                     )
                 result.tasteAnalysis?.let { analysis ->
-                    tasteSummary = analysis.summary
-                    tasteHints = analysis.searchHints.joinToString("\n")
-                }
-                persistTasteProfile(result.topArtists, result.topTracks)
+                    applyTasteProfile(
+                        result.topArtists,
+                        result.topTracks,
+                        analysis.summary,
+                        analysis.searchHints,
+                    )
+                } ?: persistTasteProfile(result.topArtists, result.topTracks)
                 statusMessage =
                     context.getString(
                         R.string.spotify_file_import_result,
@@ -161,6 +192,94 @@ fun SpotifySettings(
             }
         }
     }
+
+    fun runLocalPlaylistTaste(playlist: Playlist) {
+        scope.launch {
+            isBusy = true
+            statusMessage = null
+            progress = SpotifyImportProgress(phase = "Reading playlist")
+            val manager = SpotifyImportManager(database)
+            try {
+                val profile =
+                    manager.buildTasteFromLocalPlaylist(
+                        playlistId = playlist.id,
+                        enableNano = enableGeminiNano,
+                        onProgress = { p ->
+                            scope.launch(Dispatchers.Main) { progress = p }
+                        },
+                    )
+                applyTasteProfile(
+                    profile.topArtists,
+                    profile.topTracks,
+                    profile.analysis.summary,
+                    profile.analysis.searchHints,
+                )
+                statusMessage =
+                    context.getString(
+                        R.string.spotify_playlist_taste_result,
+                        playlist.title,
+                        profile.topTracks.size,
+                    )
+            } catch (e: Exception) {
+                statusMessage = e.message
+                reportException(e)
+            } finally {
+                manager.close()
+                isBusy = false
+            }
+        }
+    }
+
+    fun runSpotifyPlaylistTaste(playlist: SpotifyPlaylistSummary) {
+        scope.launch {
+            isBusy = true
+            statusMessage = null
+            progress = SpotifyImportProgress(phase = "Fetching playlist tracks")
+            val manager = SpotifyImportManager(database)
+            try {
+                val profile =
+                    manager.buildTasteFromSpotifyPlaylist(
+                        clientId = clientId,
+                        playlist = playlist,
+                        enableNano = enableGeminiNano,
+                        onProgress = { p ->
+                            scope.launch(Dispatchers.Main) { progress = p }
+                        },
+                    )
+                applyTasteProfile(
+                    profile.topArtists,
+                    profile.topTracks,
+                    profile.analysis.summary,
+                    profile.analysis.searchHints,
+                )
+                statusMessage =
+                    context.getString(
+                        R.string.spotify_playlist_taste_result,
+                        playlist.name,
+                        profile.topTracks.size,
+                    )
+            } catch (e: Exception) {
+                statusMessage = e.message
+                reportException(e)
+            } finally {
+                manager.close()
+                isBusy = false
+            }
+        }
+    }
+
+    val fileImportMimeTypes =
+        remember {
+            arrayOf(
+                "text/*",
+                "text/csv",
+                "text/plain",
+                "text/comma-separated-values",
+                "application/csv",
+                "application/json",
+                "*/*",
+            )
+        }
 
     val filePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -254,6 +373,119 @@ fun SpotifySettings(
         )
     }
 
+    if (showLocalPlaylistPicker) {
+        ListDialog(onDismiss = { showLocalPlaylistPicker = false }) {
+            item {
+                Text(
+                    text = stringResource(R.string.spotify_playlist_taste_pick_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+            if (localPlaylists.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.spotify_playlist_taste_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    )
+                }
+            } else {
+                items(localPlaylists, key = { it.id }) { playlist ->
+                    ListItem(
+                        headlineContent = { Text(playlist.title) },
+                        supportingContent = {
+                            Text(
+                                stringResource(
+                                    R.string.spotify_playlist_tracks,
+                                    playlist.songCount,
+                                ),
+                            )
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                showLocalPlaylistPicker = false
+                                runLocalPlaylistTaste(playlist)
+                            },
+                    )
+                }
+            }
+        }
+    }
+
+    pendingSpotifyPlaylist?.let { spotifyPl ->
+        ListDialog(onDismiss = { pendingSpotifyPlaylist = null }) {
+            item {
+                Text(
+                    text = spotifyPl.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.spotify_playlist_taste_use)) },
+                    supportingContent = {
+                        Text(stringResource(R.string.spotify_playlist_taste_use_desc))
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            pendingSpotifyPlaylist = null
+                            runSpotifyPlaylistTaste(spotifyPl)
+                        },
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.spotify_import_action)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                R.string.spotify_playlist_tracks,
+                                spotifyPl.trackCount,
+                            ),
+                        )
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            pendingSpotifyPlaylist = null
+                            scope.launch {
+                                isBusy = true
+                                statusMessage = null
+                                progress = SpotifyImportProgress(phase = "Starting")
+                                val manager = SpotifyImportManager(database)
+                                try {
+                                    val result =
+                                        manager.importPlaylist(
+                                            clientId = clientId,
+                                            playlist = spotifyPl,
+                                            onProgress = { p ->
+                                                scope.launch(Dispatchers.Main) {
+                                                    progress = p
+                                                }
+                                            },
+                                        )
+                                    statusMessage =
+                                        context.getString(
+                                            R.string.spotify_import_result,
+                                            result.matched,
+                                            result.failed,
+                                        )
+                                } catch (e: Exception) {
+                                    statusMessage = e.message
+                                    reportException(e)
+                                } finally {
+                                    manager.close()
+                                    isBusy = false
+                                }
+                            }
+                        },
+                )
+            }
+        }
+    }
+
     AuraScreen {
         AuraHeader(
             title = stringResource(R.string.spotify_integration),
@@ -263,25 +495,38 @@ fun SpotifySettings(
 
         AuraBanner(text = stringResource(R.string.spotify_oauth_premium_disclaimer))
 
-        AuraSectionLabel(stringResource(R.string.spotify_file_import_section))
-        AuraRow(
-            title = stringResource(R.string.spotify_file_import_choose),
-            subtitle = stringResource(R.string.spotify_file_import_desc),
+        AuraSectionLabel(stringResource(R.string.spotify_easy_import_section))
+        Text(
+            text = stringResource(R.string.spotify_export_guide_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        Text(
+            text = stringResource(R.string.spotify_export_guide_steps),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        AuraPrimaryPill(
+            text = stringResource(R.string.spotify_import_file_cta),
             enabled = !isBusy,
-            trailingText = stringResource(R.string.spotify_file_import_choose),
-            onClick = {
-                filePickerLauncher.launch(
-                    arrayOf(
-                        "text/*",
-                        "text/csv",
-                        "text/plain",
-                        "text/comma-separated-values",
-                        "application/csv",
-                        "application/json",
-                        "*/*",
-                    ),
-                )
-            },
+            onClick = { filePickerLauncher.launch(fileImportMimeTypes) },
+        )
+        Spacer(Modifier.height(8.dp))
+        AuraRow(
+            title = stringResource(R.string.spotify_playlist_taste_pick),
+            subtitle = stringResource(R.string.spotify_playlist_taste_pick_desc),
+            enabled = !isBusy,
+            showChevron = true,
+            onClick = { showLocalPlaylistPicker = true },
+        )
+        AuraDivider()
+        Text(
+            text = stringResource(R.string.spotify_file_import_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
         )
 
         AuraSectionLabel(stringResource(R.string.spotify_section_account))
@@ -394,16 +639,14 @@ fun SpotifySettings(
             },
         )
 
-        if (isConnected || tasteSummary.isNotBlank() || tasteHints.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            AuraRow(
-                title = stringResource(R.string.spotify_view_taste),
-                subtitle = stringResource(R.string.spotify_view_taste_desc),
-                showChevron = true,
-                onClick = { navController.navigate("settings/integrations/spotify/taste") },
-            )
-            AuraDivider()
-        }
+        Spacer(Modifier.height(8.dp))
+        AuraRow(
+            title = stringResource(R.string.spotify_view_taste),
+            subtitle = stringResource(R.string.spotify_view_taste_desc),
+            showChevron = true,
+            onClick = { navController.navigate("settings/integrations/spotify/taste") },
+        )
+        AuraDivider()
 
         AuraRow(
             title = stringResource(R.string.nano_recommendations_generate),
@@ -621,39 +864,9 @@ fun SpotifySettings(
                                 )
                             },
                         enabled = !isBusy,
-                        trailingText = stringResource(R.string.spotify_import_action),
-                        onClick = {
-                            scope.launch {
-                                isBusy = true
-                                statusMessage = null
-                                progress = SpotifyImportProgress(phase = "Starting")
-                                val manager = SpotifyImportManager(database)
-                                try {
-                                    val result =
-                                        manager.importPlaylist(
-                                            clientId = clientId,
-                                            playlist = playlist,
-                                            onProgress = { p ->
-                                                scope.launch(Dispatchers.Main) {
-                                                    progress = p
-                                                }
-                                            },
-                                        )
-                                    statusMessage =
-                                        context.getString(
-                                            R.string.spotify_import_result,
-                                            result.matched,
-                                            result.failed,
-                                        )
-                                } catch (e: Exception) {
-                                    statusMessage = e.message
-                                    reportException(e)
-                                } finally {
-                                    manager.close()
-                                    isBusy = false
-                                }
-                            }
-                        },
+                        trailingText = stringResource(R.string.spotify_playlist_taste_use),
+                        showChevron = true,
+                        onClick = { pendingSpotifyPlaylist = playlist },
                     )
                     AuraDivider()
                 }

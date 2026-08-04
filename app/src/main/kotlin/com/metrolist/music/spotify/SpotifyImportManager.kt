@@ -119,6 +119,87 @@ class SpotifyImportManager(
         }
 
     /**
+     * Analyze title/artist pairs into a [SpotifyTasteProfile] without matching or creating a
+     * playlist. Used when the tracks already live in Metrolist (local playlist → taste).
+     */
+    suspend fun buildTasteFromTracks(
+        tracks: List<Pair<String, String>>,
+        enableNano: Boolean,
+        onProgress: (SpotifyImportProgress) -> Unit = {},
+    ): SpotifyTasteProfile =
+        withContext(Dispatchers.IO) {
+            val cleaned = cleanTracks(tracks)
+            if (cleaned.isEmpty()) {
+                throw IllegalArgumentException("No tracks to analyze")
+            }
+            val topArtists = deriveTopArtists(cleaned)
+            val topTracks = cleaned.take(50)
+            onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = cleaned.size))
+            val analysis =
+                analyzeSpotifyTaste(
+                    topArtists = topArtists,
+                    topTracks = topTracks,
+                    enableNano = enableNano,
+                )
+            onProgress(
+                SpotifyImportProgress(
+                    phase = "Done",
+                    current = cleaned.size,
+                    total = cleaned.size,
+                ),
+            )
+            SpotifyTasteProfile(
+                topArtists = topArtists,
+                topTracks = topTracks,
+                analysis = analysis,
+            )
+        }
+
+    /**
+     * Builds Nano DJ taste from an in-app Metrolist playlist (local or bookmarked YTM).
+     * Does not rematch or clone the playlist — songs are already in the library.
+     */
+    suspend fun buildTasteFromLocalPlaylist(
+        playlistId: String,
+        enableNano: Boolean,
+        onProgress: (SpotifyImportProgress) -> Unit = {},
+    ): SpotifyTasteProfile =
+        withContext(Dispatchers.IO) {
+            onProgress(SpotifyImportProgress(phase = "Reading playlist"))
+            val songs = database.playlistSongsBlocking(playlistId)
+            val tracks =
+                songs.map { ps ->
+                    val title = ps.song.title
+                    val artist =
+                        ps.song.orderedArtists.joinToString(", ") { it.name }
+                    title to artist
+                }
+            if (tracks.isEmpty()) {
+                throw IllegalArgumentException("Playlist has no songs")
+            }
+            buildTasteFromTracks(tracks, enableNano, onProgress)
+        }
+
+    /**
+     * Fetches a Spotify playlist’s tracks (OAuth) and analyzes taste without requiring a rematch
+     * pass first. Still useful when connected; Premium/allowlist may apply.
+     */
+    suspend fun buildTasteFromSpotifyPlaylist(
+        clientId: String,
+        playlist: SpotifyPlaylistSummary,
+        enableNano: Boolean,
+        onProgress: (SpotifyImportProgress) -> Unit = {},
+    ): SpotifyTasteProfile =
+        withContext(Dispatchers.IO) {
+            val token = ensureValidToken(clientId)
+            onProgress(SpotifyImportProgress(phase = "Fetching playlist tracks"))
+            val tracks =
+                api.getPlaylistTracks(token, playlist.id)
+                    .map { it.name to it.artistsJoined }
+            buildTasteFromTracks(tracks, enableNano, onProgress)
+        }
+
+    /**
      * Premium-free path: analyze pasted/picked track list for Nano DJ taste, then build a local
      * YouTube Music–matched playlist. Does not call the Spotify Web API.
      */
@@ -129,11 +210,7 @@ class SpotifyImportManager(
         onProgress: (SpotifyImportProgress) -> Unit = {},
     ): SpotifyImportResult =
         withContext(Dispatchers.IO) {
-            val cleaned =
-                tracks
-                    .map { (t, a) -> t.trim() to a.trim() }
-                    .filter { it.first.isNotBlank() }
-                    .distinctBy { "${it.first.lowercase()}|${it.second.lowercase()}" }
+            val cleaned = cleanTracks(tracks)
             if (cleaned.isEmpty()) {
                 throw IllegalArgumentException("No tracks to import")
             }
@@ -182,6 +259,12 @@ class SpotifyImportManager(
                 topTracks = topTracks,
             )
         }
+
+    private fun cleanTracks(tracks: List<Pair<String, String>>): List<Pair<String, String>> =
+        tracks
+            .map { (t, a) -> t.trim() to a.trim() }
+            .filter { it.first.isNotBlank() }
+            .distinctBy { "${it.first.lowercase()}|${it.second.lowercase()}" }
 
     /**
      * Fetches top artists/tracks and analyzes taste (Gemini Nano or heuristic) without creating
