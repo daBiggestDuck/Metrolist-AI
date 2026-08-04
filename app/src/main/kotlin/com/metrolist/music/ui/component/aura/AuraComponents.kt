@@ -496,7 +496,7 @@ fun AuraOutlinedButton(
     shape: Shape = AuraPillShape,
     containerColor: Color = Color.Transparent,
     contentColor: Color = MaterialTheme.colorScheme.onBackground,
-    borderColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+    borderColor: Color = AuraHairline,
     contentPadding: PaddingValues = AuraButtonContentPadding,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,

@@ -66,6 +66,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraFloatingActionCluster
+import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
+import com.metrolist.music.ui.component.aura.AuraHairline
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -177,6 +181,7 @@ import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.rememberBottomSheetState
@@ -991,7 +996,7 @@ class MainActivity : ComponentActivity() {
                         !(pauseListenHistory && eventCount == 0)
                     }
 
-                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+                val baseBg = if (pureBlack) Color.Black else Color(0xFF121212)
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -1026,49 +1031,66 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         actions = {
-                                            if (showHistoryButton) {
-                                                IconButton(onClick = { navController.navigate("history") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.history),
+                                            AuraFloatingActionCluster {
+                                                if (showHistoryButton) {
+                                                    AuraFloatingChromeButton(
+                                                        onClick = { navController.navigate("history") },
                                                         contentDescription = stringResource(R.string.history),
-                                                    )
-                                                }
-                                            }
-                                            IconButton(onClick = { navController.navigate("stats") }) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.stats),
-                                                    contentDescription = stringResource(R.string.stats),
-                                                )
-                                            }
-                                            if (listenTogetherInTopBar) {
-                                                IconButton(onClick = { navController.navigate("listen_together_from_topbar") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.group_outlined),
-                                                        contentDescription = stringResource(R.string.together),
-                                                    )
-                                                }
-                                            }
-                                            IconButton(onClick = { showAccountDialog = true }) {
-                                                BadgedBox(badge = {
-                                                    if (latestVersionName != BuildConfig.VERSION_NAME) {
-                                                        Badge()
-                                                    }
-                                                }) {
-                                                    if (accountImageUrl != null) {
-                                                        AsyncImage(
-                                                            model = accountImageUrl,
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier =
-                                                                Modifier
-                                                                    .size(24.dp)
-                                                                    .clip(CircleShape),
-                                                        )
-                                                    } else {
+                                                    ) {
                                                         Icon(
-                                                            painter = painterResource(R.drawable.account),
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier = Modifier.size(24.dp),
+                                                            painter = painterResource(R.drawable.history),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(20.dp),
                                                         )
+                                                    }
+                                                }
+                                                AuraFloatingChromeButton(
+                                                    onClick = { navController.navigate("stats") },
+                                                    contentDescription = stringResource(R.string.stats),
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.stats),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                                if (listenTogetherInTopBar) {
+                                                    AuraFloatingChromeButton(
+                                                        onClick = { navController.navigate("listen_together_from_topbar") },
+                                                        contentDescription = stringResource(R.string.together),
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.group_outlined),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(20.dp),
+                                                        )
+                                                    }
+                                                }
+                                                AuraFloatingChromeButton(
+                                                    onClick = { showAccountDialog = true },
+                                                    contentDescription = stringResource(R.string.account),
+                                                ) {
+                                                    BadgedBox(badge = {
+                                                        if (latestVersionName != BuildConfig.VERSION_NAME) {
+                                                            Badge()
+                                                        }
+                                                    }) {
+                                                        if (accountImageUrl != null) {
+                                                            AsyncImage(
+                                                                model = accountImageUrl,
+                                                                contentDescription = null,
+                                                                modifier =
+                                                                    Modifier
+                                                                        .size(22.dp)
+                                                                        .clip(CircleShape),
+                                                            )
+                                                        } else {
+                                                            Icon(
+                                                                painter = painterResource(R.drawable.account),
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(20.dp),
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1076,11 +1098,11 @@ class MainActivity : ComponentActivity() {
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                                                actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                containerColor = if (pureBlack) Color.Black else AuraElevated,
+                                                scrolledContainerColor = if (pureBlack) Color.Black else AuraElevated,
+                                                titleContentColor = Color.White,
+                                                actionIconContentColor = Color.White,
+                                                navigationIconContentColor = Color.White,
                                             ),
                                         modifier =
                                             Modifier.windowInsetsPadding(
@@ -1381,25 +1403,11 @@ class MainActivity : ComponentActivity() {
 
                     sharedSong?.let { song ->
                         playerConnection?.let {
-                            Dialog(
-                                onDismissRequest = { sharedSong = null },
-                                properties = DialogProperties(usePlatformDefaultWidth = false),
-                            ) {
-                                Surface(
-                                    modifier = Modifier.padding(24.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = AlertDialogDefaults.containerColor,
-                                    tonalElevation = AlertDialogDefaults.TonalElevation,
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        YouTubeSongMenu(
-                                            song = song,
-                                            onDismiss = { sharedSong = null },
-                                        )
-                                    }
-                                }
+                            DefaultDialog(onDismiss = { sharedSong = null }) {
+                                YouTubeSongMenu(
+                                    song = song,
+                                    onDismiss = { sharedSong = null },
+                                )
                             }
                         }
                     }

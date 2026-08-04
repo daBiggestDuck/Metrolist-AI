@@ -5,22 +5,27 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -29,8 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
@@ -40,14 +48,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraFloatingPillShape
+import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
-private val AuraNavBackground = Color(0xFF121212)
 private val AuraNavUnselected = Color(0xFFB3B3B3)
 private val AuraNavSelected = Color(0xFFFFFFFF)
+private val AuraNavIndicator = Color.White.copy(alpha = 0.12f)
+private val AuraNavPillBg = AuraElevated
 
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
@@ -113,69 +127,111 @@ fun AppNavigationRail(
     pureBlack: Boolean = false,
     onSearchLongClick: (() -> Unit)? = null
 ) {
-    val containerColor = if (pureBlack) Color.Black else AuraNavBackground
+    val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
+    val selectedIndex =
+        remember(currentRoute, navigationItems) {
+            navigationItems
+                .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
+                .coerceAtLeast(0)
+        }
+    val animatedIndex by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec =
+            spring(
+                dampingRatio = 0.78f,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        label = "auraRailIndicator",
+    )
 
     Column(
-        modifier = modifier
-            .width(72.dp)
-            .fillMaxHeight()
-            .background(containerColor)
-            .padding(vertical = 12.dp),
+        modifier =
+            modifier
+                .width(72.dp)
+                .fillMaxHeight()
+                .padding(vertical = 16.dp, horizontal = 8.dp)
+                .clip(AuraFloatingPillShape)
+                .background(containerColor)
+                .border(1.dp, AuraHairline, AuraFloatingPillShape)
+                .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
-        Spacer(modifier = Modifier.weight(1f))
-
-        navigationItems.forEach { screen ->
-            val isSelected = remember(currentRoute, screen.route) {
-                isRouteSelected(currentRoute, screen.route, navigationItems)
-            }
-            val iconRes = remember(isSelected, screen) {
-                if (isSelected) screen.iconIdActive else screen.iconIdInactive
-            }
-            val isSearchItem = screen == Screens.Search && onSearchLongClick != null
-            val interactionSource = rememberNavItemInteraction(
-                isSearchItem = isSearchItem,
-                isSelected = isSelected,
-                screen = screen,
-                onItemClick = onItemClick,
-                onSearchLongClick = onSearchLongClick,
+        BoxWithConstraints(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+        ) {
+            val tabCount = navigationItems.size.coerceAtLeast(1)
+            val itemHeight = maxHeight / tabCount
+            val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .width(48.dp)
+                        .height(itemHeight)
+                        .padding(4.dp)
+                        .graphicsLayer {
+                            translationY = animatedIndex * itemHeightPx
+                        }
+                        .clip(AuraFloatingPillShape)
+                        .background(AuraNavIndicator),
             )
-            val tint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
+            Column(modifier = Modifier.fillMaxSize()) {
+                navigationItems.forEach { screen ->
+                    val isSelected =
+                        remember(currentRoute, screen.route) {
+                            isRouteSelected(currentRoute, screen.route, navigationItems)
+                        }
+                    val iconRes =
+                        remember(isSelected, screen) {
+                            if (isSelected) screen.iconIdActive else screen.iconIdInactive
+                        }
+                    val isSearchItem = screen == Screens.Search && onSearchLongClick != null
+                    val interactionSource =
+                        rememberNavItemInteraction(
+                            isSearchItem = isSearchItem,
+                            isSelected = isSelected,
+                            screen = screen,
+                            onItemClick = onItemClick,
+                            onSearchLongClick = onSearchLongClick,
+                        )
+                    val tint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        role = Role.Tab,
-                        onClick = {
-                            if (!isSearchItem) {
-                                onItemClick(screen, isSelected)
-                            }
-                        },
-                    )
-                    .padding(vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = stringResource(screen.titleId),
-                    tint = tint,
-                    modifier = Modifier.size(24.dp),
-                )
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null,
+                                    role = Role.Tab,
+                                    onClick = {
+                                        if (!isSearchItem) {
+                                            onItemClick(screen, isSelected)
+                                        }
+                                    },
+                                ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = stringResource(screen.titleId),
+                            tint = tint,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
             }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
 /**
- * Spotify-like Aura bottom tab strip — flat near-black, no M3 indicator pill.
- * Selected = white icon + green label; unselected = muted gray.
+ * Floating Spotify+Aura pill bottom nav — elevated dark capsule with hairline outline and a
+ * sliding selection indicator. Not a flat Material NavigationBar.
  */
 @Composable
 fun AppNavigationBar(
@@ -187,67 +243,122 @@ fun AppNavigationBar(
     slimNav: Boolean = false,
     onSearchLongClick: (() -> Unit)? = null
 ) {
-    val containerColor = if (pureBlack) Color.Black else AuraNavBackground
+    val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
+    val pillHeight = if (slimNav) 52.dp else 56.dp
+    val selectedIndex =
+        remember(currentRoute, navigationItems) {
+            navigationItems
+                .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
+                .coerceAtLeast(0)
+        }
+    val animatedIndex by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec =
+            spring(
+                dampingRatio = 0.72f,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        label = "auraNavIndicator",
+    )
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(containerColor)
-            .padding(top = if (slimNav) 6.dp else 8.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.Top,
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        navigationItems.forEach { screen ->
-            val isSelected = remember(currentRoute, screen.route) {
-                isRouteSelected(currentRoute, screen.route, navigationItems)
-            }
-            val iconRes = remember(isSelected, screen) {
-                if (isSelected) screen.iconIdActive else screen.iconIdInactive
-            }
-            val isSearchItem = screen == Screens.Search && onSearchLongClick != null
-            val interactionSource = rememberNavItemInteraction(
-                isSearchItem = isSearchItem,
-                isSelected = isSelected,
-                screen = screen,
-                onItemClick = onItemClick,
-                onSearchLongClick = onSearchLongClick,
-            )
-            val iconTint = if (isSelected) AuraNavSelected else AuraNavUnselected
-            val labelTint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
+        BoxWithConstraints(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(pillHeight)
+                    .clip(AuraFloatingPillShape)
+                    .background(containerColor)
+                    .border(1.dp, AuraHairline, AuraFloatingPillShape),
+        ) {
+            val tabCount = navigationItems.size.coerceAtLeast(1)
+            val tabWidth = maxWidth / tabCount
+            val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        role = Role.Tab,
-                        onClick = {
-                            if (!isSearchItem) {
-                                onItemClick(screen, isSelected)
-                            }
-                        },
-                    )
-                    .padding(vertical = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+            // Sliding indicator — translation in graphicsLayer so spring ticks don't recompose tabs.
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .width(tabWidth)
+                        .fillMaxHeight()
+                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                        .graphicsLayer {
+                            translationX = animatedIndex * tabWidthPx
+                        }
+                        .clip(AuraFloatingPillShape)
+                        .background(AuraNavIndicator),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = stringResource(screen.titleId),
-                    tint = iconTint,
-                    modifier = Modifier.size(if (slimNav) 22.dp else 24.dp),
-                )
-                if (!slimNav) {
-                    Text(
-                        text = stringResource(screen.titleId),
-                        color = labelTint,
-                        fontSize = 10.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 12.sp,
-                    )
+                navigationItems.forEach { screen ->
+                    val isSelected =
+                        remember(currentRoute, screen.route) {
+                            isRouteSelected(currentRoute, screen.route, navigationItems)
+                        }
+                    val iconRes =
+                        remember(isSelected, screen) {
+                            if (isSelected) screen.iconIdActive else screen.iconIdInactive
+                        }
+                    val isSearchItem = screen == Screens.Search && onSearchLongClick != null
+                    val interactionSource =
+                        rememberNavItemInteraction(
+                            isSearchItem = isSearchItem,
+                            isSelected = isSelected,
+                            screen = screen,
+                            onItemClick = onItemClick,
+                            onSearchLongClick = onSearchLongClick,
+                        )
+                    val iconTint = if (isSelected) AuraNavSelected else AuraNavUnselected
+                    val labelTint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
+
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null,
+                                    role = Role.Tab,
+                                    onClick = {
+                                        if (!isSearchItem) {
+                                            onItemClick(screen, isSelected)
+                                        }
+                                    },
+                                ),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = stringResource(screen.titleId),
+                            tint = iconTint,
+                            modifier = Modifier.size(if (slimNav) 22.dp else 24.dp),
+                        )
+                        if (!slimNav) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(screen.titleId),
+                                color = labelTint,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 12.sp,
+                            )
+                        }
+                    }
                 }
             }
         }

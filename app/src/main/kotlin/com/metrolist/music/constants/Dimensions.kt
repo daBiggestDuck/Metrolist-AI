@@ -17,11 +17,12 @@ const val CONTENT_TYPE_ARTIST = 3
 const val CONTENT_TYPE_ALBUM = 4
 const val CONTENT_TYPE_PLAYLIST = 5
 
-val NavigationBarHeight = 64.dp
-val SlimNavBarHeight = 56.dp
+/** Floating pill nav: outer vertical padding + capsule height. */
+val NavigationBarHeight = 72.dp
+val SlimNavBarHeight = 64.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 8.dp // Space between MiniPlayer and NavigationBar
+val MiniPlayerBottomSpacing = 10.dp // Space between floating MiniPlayer and pill NavigationBar
 val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 

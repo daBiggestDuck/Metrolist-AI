@@ -16,26 +16,24 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -43,10 +41,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -54,14 +53,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraBottomSheet
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.screens.settings.AccountSettings
 import kotlinx.coroutines.delay
-import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
+/**
+ * Aura bottom-sheet dialog — fingerprint-style popup rising from the nav area.
+ * Drop-in replacement for the previous centered Material Dialog.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultDialog(
     onDismiss: () -> Unit,
@@ -72,62 +76,49 @@ fun DefaultDialog(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    AuraBottomSheet(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        sheetState = sheetState,
     ) {
-        Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+        Column(
+            horizontalAlignment = horizontalAlignment,
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 8.dp)
+                    .imePadding(),
         ) {
-            Column(
-                horizontalAlignment = horizontalAlignment,
-                modifier =
-                    modifier
-                        .padding(24.dp),
-            ) {
-                if (icon != null) {
-                    CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.iconContentColor) {
+            if (icon != null) {
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    Box(Modifier.align(Alignment.CenterHorizontally)) {
+                        icon()
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+            if (title != null) {
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
                         Box(
-                            Modifier.align(Alignment.CenterHorizontally),
+                            Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally),
                         ) {
-                            icon()
+                            title()
                         }
                     }
-
-                    Spacer(Modifier.height(16.dp))
                 }
-                if (title != null) {
-                    CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.titleContentColor) {
-                        ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
-                            Box(
-                                // Align the title to the center when an icon is present.
-                                Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally),
-                            ) {
-                                title()
-                            }
-                        }
-                    }
+                Spacer(Modifier.height(16.dp))
+            }
 
-                    Spacer(Modifier.height(16.dp))
-                }
+            content()
 
-                content()
-
-                if (buttons != null) {
-                    Spacer(Modifier.height(24.dp))
-
-                    FlowRow(
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
-                            ProvideTextStyle(
-                                value = MaterialTheme.typography.labelLarge,
-                            ) {
-                                buttons()
-                            }
+            if (buttons != null) {
+                Spacer(Modifier.height(20.dp))
+                FlowRow(modifier = Modifier.align(Alignment.End)) {
+                    CompositionLocalProvider(LocalContentColor provides AuraSpotifyGreen) {
+                        ProvideTextStyle(value = MaterialTheme.typography.labelLarge) {
+                            buttons()
                         }
                     }
                 }
@@ -136,47 +127,30 @@ fun DefaultDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountSettingsDialog(
     onDismiss: () -> Unit,
     latestVersionName: String,
 ) {
     val navController = LocalNavController.current
-    Dialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.88f).dp
+    AuraBottomSheet(
         onDismissRequest = onDismiss,
-        properties =
-            DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnClickOutside = true,
-            ),
+        sheetState = sheetState,
     ) {
         Box(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onTap = { onDismiss() }
-                        )
-                    },
-            contentAlignment = Alignment.TopCenter,
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight),
         ) {
-            Surface(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 72.dp, start = 16.dp, end = 16.dp)
-                        .clip(RoundedCornerShape(28.dp)),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
-            ) {
-                AccountSettings(
-                    navController = navController,
-                    onClose = onDismiss,
-                    latestVersionName = latestVersionName,
-                )
-            }
+            AccountSettings(
+                navController = navController,
+                onClose = onDismiss,
+                latestVersionName = latestVersionName,
+            )
         }
     }
 }
@@ -233,31 +207,29 @@ fun ActionPromptDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
-    Dialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.72f).dp
+    AuraBottomSheet(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        sheetState = sheetState,
     ) {
-        Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight)
+                    .padding(vertical = 8.dp)
+                    .imePadding(),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier =
-                    modifier
-                        .padding(vertical = 24.dp)
-                        .imePadding(),
-            ) {
-                LazyColumn(content = content)
-            }
+            LazyColumn(content = content)
         }
     }
 }

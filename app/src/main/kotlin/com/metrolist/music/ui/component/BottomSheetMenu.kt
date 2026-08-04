@@ -5,24 +5,11 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetDefaults
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,12 +20,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.component.aura.AuraBottomSheet
+import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraSheetDragHandle
+import com.metrolist.music.ui.component.aura.AuraSheetScrim
+import com.metrolist.music.ui.component.aura.AuraSheetShape
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 
@@ -66,18 +55,16 @@ fun AnimatedBottomSheet(
     isVisible: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
-    sheetMaxWidth: Dp = BottomSheetDefaults.SheetMaxWidth,
-    shape: Shape = BottomSheetDefaults.ExpandedShape,
-    containerColor: Color = BottomSheetDefaults.ContainerColor,
-    contentColor: Color = contentColorFor(containerColor),
-    tonalElevation: Dp = 0.dp,
-    scrimColor: Color = BottomSheetDefaults.ScrimColor,
-    dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
-    contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.modalWindowInsets },
-    properties: ModalBottomSheetProperties = ModalBottomSheetDefaults.properties,
+    sheetState: androidx.compose.material3.SheetState =
+        rememberModalBottomSheetState(skipPartiallyExpanded = false),
+    containerColor: Color = AuraElevated,
+    contentColor: Color = Color.White,
+    scrimColor: Color = AuraSheetScrim,
+    dragHandle: @Composable (() -> Unit)? = { AuraSheetDragHandle() },
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    @Suppress("UNUSED_PARAMETER")
+    val ignoredContentColor = contentColor
     var lastContent by remember { mutableStateOf(content) }
 
     LaunchedEffect(content) {
@@ -98,19 +85,14 @@ fun AnimatedBottomSheet(
         return
     }
 
-    ModalBottomSheet(
+    AuraBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
         sheetState = sheetState,
-        sheetMaxWidth = sheetMaxWidth,
-        shape = shape,
         containerColor = containerColor,
-        contentColor = contentColor,
-        tonalElevation = tonalElevation,
         scrimColor = scrimColor,
+        shape = AuraSheetShape,
         dragHandle = dragHandle,
-        contentWindowInsets = contentWindowInsets,
-        properties = properties,
         content = lastContent,
     )
 }
@@ -120,7 +102,7 @@ fun AnimatedBottomSheet(
 fun BottomSheetMenu(
     modifier: Modifier = Modifier,
     state: MenuState,
-    background: Color = MaterialTheme.colorScheme.surface,
+    background: Color = AuraElevated,
 ) {
     val focusManager = LocalFocusManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -133,22 +115,15 @@ fun BottomSheetMenu(
         },
         sheetState = sheetState,
         containerColor = background,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .size(width = 40.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            )
-        },
-        modifier = modifier.fillMaxHeight()
+        contentColor = Color.White,
+        dragHandle = { AuraSheetDragHandle() },
+        modifier = modifier,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
         ) {
             state.content(this)
         }

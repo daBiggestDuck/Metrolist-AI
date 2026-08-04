@@ -86,6 +86,7 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.ui.component.aura.AuraPlayButton
 import com.metrolist.music.ui.component.aura.AuraPlayerChrome
+import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTransportButton
 import com.metrolist.music.R
@@ -303,7 +304,7 @@ private fun NewMiniPlayer(
             miniPlayerBackground == MiniPlayerBackgroundStyle.GRADIENT)
 
     val primaryColor = if (forceLightColors) Color.White else AuraSpotifyGreen
-    val outlineColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.outline
+    val outlineColor = if (forceLightColors) Color.White.copy(alpha = 0.16f) else AuraHairline
     val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
     val errorColor = if (forceLightColors) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error
 
@@ -386,7 +387,7 @@ private fun NewMiniPlayer(
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .clip(RoundedCornerShape(32.dp))
                     .background(color = backgroundColor)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
+                    .border(1.dp, outlineColor, RoundedCornerShape(32.dp))
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
