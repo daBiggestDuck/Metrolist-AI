@@ -296,6 +296,54 @@ fun SpotifySettings(
                         },
                     ),
                     Material3SettingsItem(
+                        icon = painterResource(R.drawable.discover_tune),
+                        title = { Text(stringResource(R.string.nano_recommendations_generate)) },
+                        description = { Text(stringResource(R.string.nano_recommendations_generate_desc)) },
+                        enabled = !isBusy,
+                        onClick = {
+                            scope.launch {
+                                isBusy = true
+                                statusMessage = null
+                                progress = SpotifyImportProgress(phase = "Generating recommendations")
+                                val manager = SpotifyImportManager(database)
+                                try {
+                                    val result =
+                                        manager.generateRecommendations(
+                                            clientId = clientId,
+                                            enableGeminiNano = enableGeminiNano,
+                                            cachedSummary = tasteSummary,
+                                            cachedHints =
+                                                tasteHints
+                                                    .split('\n')
+                                                    .map { it.trim() }
+                                                    .filter { it.isNotBlank() },
+                                            onProgress = { p ->
+                                                scope.launch(Dispatchers.Main) {
+                                                    progress = p
+                                                }
+                                            },
+                                        )
+                                    result.tasteAnalysis?.let { analysis ->
+                                        tasteSummary = analysis.summary
+                                        tasteHints = analysis.searchHints.joinToString("\n")
+                                    }
+                                    statusMessage =
+                                        context.getString(
+                                            R.string.nano_recommendations_result,
+                                            result.matched,
+                                            result.failed,
+                                        )
+                                } catch (e: Exception) {
+                                    statusMessage = e.message
+                                    reportException(e)
+                                } finally {
+                                    manager.close()
+                                    isBusy = false
+                                }
+                            }
+                        },
+                    ),
+                    Material3SettingsItem(
                         icon = painterResource(R.drawable.music_note),
                         title = { Text(stringResource(R.string.nano_dj_speak)) },
                         description = { Text(stringResource(R.string.nano_dj_speak_desc)) },

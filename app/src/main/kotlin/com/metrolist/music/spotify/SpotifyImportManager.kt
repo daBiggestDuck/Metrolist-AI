@@ -101,6 +101,150 @@ class SpotifyImportManager(
             matchResult.copy(tasteAnalysis = analysis)
         }
 
+    /**
+     * Builds a local “Nano Recommendations” playlist from Gemini Nano (or heuristic)
+     * search queries derived from Spotify taste / cached summary.
+     */
+    suspend fun generateRecommendations(
+        clientId: String,
+        enableGeminiNano: Boolean,
+        cachedSummary: String = "",
+        cachedHints: List<String> = emptyList(),
+        onProgress: (SpotifyImportProgress) -> Unit = {},
+    ): SpotifyImportResult =
+        withContext(Dispatchers.IO) {
+            onProgress(SpotifyImportProgress(phase = "Loading taste for recommendations"))
+            var artists = emptyList<String>()
+            var tracks = emptyList<Pair<String, String>>()
+            runCatching {
+                val token = ensureValidToken(clientId)
+                artists = api.getTopArtists(token, timeRange = "medium_term", limit = 20).map { it.name }
+                tracks =
+                    api.getTopTracks(token, timeRange = "medium_term", limit = 30)
+                        .map { it.name to it.artistsJoined }
+            }
+
+            onProgress(SpotifyImportProgress(phase = "Asking Nano DJ for recommendations"))
+            val analysis =
+                if (cachedHints.isNotEmpty() && cachedSummary.isNotBlank() && artists.isEmpty()) {
+                    TasteAnalysisResult(
+                        summary = cachedSummary,
+                        searchHints = cachedHints,
+                        usedAi = false,
+                    )
+                } else {
+                    analyzeSpotifyTaste(
+                        topArtists = artists,
+                        topTracks = tracks,
+                        enableNano = enableGeminiNano,
+                    ).let { base ->
+                        if (base.searchHints.isEmpty() && cachedHints.isNotEmpty()) {
+                            base.copy(searchHints = cachedHints)
+                        } else {
+                            base
+                        }
+                    }
+                }
+
+            val djPick =
+                com.metrolist.music.ai.NanoDjEngine.pickNext(
+                    context =
+                        com.metrolist.music.ai.NanoDjEngine.DjContext(
+                            tasteSummary = analysis.summary.ifBlank { cachedSummary },
+                            recentTitles = emptyList(),
+                            seedArtists = artists,
+                            seedTracks = tracks.map { "${it.first} - ${it.second}" },
+                        ),
+                    batchSize = 12,
+                    enableNano = enableGeminiNano,
+                )
+
+            val queries =
+                (djPick.queries + analysis.searchHints)
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(20)
+
+            if (queries.isEmpty()) {
+                throw IllegalStateException("No recommendation queries available. Import Spotify taste first.")
+            }
+
+            val matchResult =
+                matchQueriesAsPlaylist(
+                    playlistName = RECOMMENDATIONS_PLAYLIST_NAME,
+                    queries = queries,
+                    onProgress = onProgress,
+                )
+
+            matchResult.copy(
+                tasteAnalysis =
+                    analysis.copy(
+                        summary =
+                            buildString {
+                                append(analysis.summary)
+                                if (djPick.commentary.isNotBlank()) {
+                                    if (isNotEmpty()) append(' ')
+                                    append(djPick.commentary)
+                                }
+                            },
+                        searchHints = queries,
+                        usedAi = analysis.usedAi || djPick.usedAi,
+                    ),
+            )
+        }
+
+    private suspend fun matchQueriesAsPlaylist(
+        playlistName: String,
+        queries: List<String>,
+        onProgress: (SpotifyImportProgress) -> Unit,
+    ): SpotifyImportResult {
+        val entity =
+            PlaylistEntity(
+                name = playlistName,
+                bookmarkedAt = LocalDateTime.now(),
+                isEditable = true,
+                isLocal = true,
+            )
+        database.insert(entity)
+        var matched = 0
+        var failed = 0
+        queries.forEachIndexed { index, query ->
+            onProgress(
+                SpotifyImportProgress(
+                    current = index + 1,
+                    total = queries.size,
+                    matched = matched,
+                    failed = failed,
+                    currentTitle = query,
+                    phase = "Matching recommendations",
+                ),
+            )
+            val playlist =
+                Playlist(
+                    playlist = entity,
+                    songCount = matched,
+                    songThumbnails = emptyList(),
+                )
+            if (matchAndInsert(query, playlist)) matched++ else failed++
+        }
+        onProgress(
+            SpotifyImportProgress(
+                current = queries.size,
+                total = queries.size,
+                matched = matched,
+                failed = failed,
+                phase = "Done",
+            ),
+        )
+        return SpotifyImportResult(
+            playlistId = entity.id,
+            playlistName = playlistName,
+            matched = matched,
+            failed = failed,
+        )
+    }
+
     suspend fun importPlaylist(
         clientId: String,
         playlist: SpotifyPlaylistSummary,
@@ -273,5 +417,6 @@ class SpotifyImportManager(
     companion object {
         private const val TAG = "SpotifyImport"
         const val TASTE_PLAYLIST_NAME = "Spotify Taste Import"
+        const val RECOMMENDATIONS_PLAYLIST_NAME = "Nano Recommendations"
     }
 }

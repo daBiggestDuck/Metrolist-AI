@@ -1046,6 +1046,9 @@
     <string name="nano_dj_speak_desc">Speak Nano DJ commentary aloud with on-device text-to-speech</string>
     <string name="nano_dj_badge">Nano DJ</string>
     <string name="nano_dj_home_start">Nano DJ</string>
+    <string name="nano_recommendations_generate">Generate music recommendations</string>
+    <string name="nano_recommendations_generate_desc">Uses Gemini Nano (or heuristics) plus your Spotify taste to build a local “Nano Recommendations” playlist on YouTube Music matches</string>
+    <string name="nano_recommendations_result">Recommendations playlist: %1$d matched, %2$d missed</string>
 
     <!-- Spotify integration -->
     <string name="spotify_integration">Spotify</string>
