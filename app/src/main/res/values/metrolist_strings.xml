@@ -1023,4 +1023,48 @@
     <string name="stream_source_web_creator_desc">Creator web client.</string>
     <string name="stream_source_android_creator">ANDROID_CREATOR</string>
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
+
+    <!-- Gemini Nano -->
+    <string name="gemini_nano_section">On-device (Gemini Nano)</string>
+    <string name="gemini_nano_enable">Enable Gemini Nano</string>
+    <string name="gemini_nano_enable_desc">Power Nano DJ (Spotify DJ replacement) and taste analysis on-device via AICore</string>
+    <string name="gemini_nano_status">Model status</string>
+    <string name="gemini_nano_status_unavailable">Unavailable on this device</string>
+    <string name="gemini_nano_status_downloadable">Downloadable</string>
+    <string name="gemini_nano_status_downloading">Downloading…</string>
+    <string name="gemini_nano_status_available">Available</string>
+    <string name="gemini_nano_status_error">Error checking status</string>
+    <string name="gemini_nano_download">Download model</string>
+    <string name="gemini_nano_privacy">Runs on-device through Android AICore. Nano DJ commentary and picks stay on this device; nothing is sent to cloud AI for Nano features.</string>
+
+    <!-- Nano DJ (Spotify DJ replacement) -->
+    <string name="nano_dj_section">Nano DJ</string>
+    <string name="nano_dj_start">Start Nano DJ</string>
+    <string name="nano_dj_start_desc">On-device AI radio host that replaces Spotify DJ — Gemini Nano curates the next tracks and talks between them using your Spotify taste</string>
+    <string name="nano_dj_started">Nano DJ is on air</string>
+    <string name="nano_dj_speak">DJ voice</string>
+    <string name="nano_dj_speak_desc">Speak Nano DJ commentary aloud with on-device text-to-speech</string>
+    <string name="nano_dj_badge">Nano DJ</string>
+    <string name="nano_dj_home_start">Nano DJ</string>
+
+    <!-- Spotify integration -->
+    <string name="spotify_integration">Spotify</string>
+    <string name="spotify_client_id">Spotify Client ID</string>
+    <string name="spotify_redirect_uri">Redirect URI</string>
+    <string name="spotify_redirect_uri_note">Register metrolistspotify://callback as a Redirect URI in your Spotify Developer Dashboard app settings.</string>
+    <string name="spotify_connect">Connect</string>
+    <string name="spotify_disconnect">Disconnect</string>
+    <string name="spotify_connect_description">Sign in with Spotify so Nano DJ can learn your taste and import playlists into Metrolist</string>
+    <string name="spotify_connected_as">Connected as %1$s</string>
+    <string name="spotify_not_connected">Not connected</string>
+    <string name="spotify_import">Import</string>
+    <string name="spotify_import_taste">Import taste (top tracks)</string>
+    <string name="spotify_import_taste_desc">Creates a “Spotify Taste Import” playlist and feeds Nano DJ (Gemini Nano) your listening profile</string>
+    <string name="spotify_taste_summary">Taste summary</string>
+    <string name="spotify_playlists">Your playlists</string>
+    <string name="spotify_no_playlists">No playlists found</string>
+    <string name="spotify_playlist_tracks">%1$d tracks</string>
+    <string name="spotify_import_action">Import</string>
+    <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
+    <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Connect Spotify (or import taste), enable Nano in AI settings, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
 </resources>

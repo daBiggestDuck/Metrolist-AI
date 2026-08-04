@@ -26,6 +26,8 @@
             <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
         </intent>
         <package android:name="com.google.android.projection.gearhead" />
+        <!-- Android AICore hosts Gemini Nano for ML Kit GenAI Prompt -->
+        <package android:name="com.google.android.aicore" />
     </queries>
     <application
         android:name=".App"
@@ -204,6 +206,22 @@
                 <data android:scheme="metrolistdiscord" />
                 <data android:host="oauth2" />
                 <data android:pathPrefix="/callback" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".spotify.SpotifyOAuthActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="metrolistspotify" />
+                <data android:host="callback" />
             </intent-filter>
         </activity>
 

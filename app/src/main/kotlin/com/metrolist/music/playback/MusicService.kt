@@ -1776,6 +1776,9 @@ class MusicService :
 
         currentQueue = queue
         queueTitle = null
+        if (queue !is com.metrolist.music.playback.queues.NanoDjQueue) {
+            com.metrolist.music.ai.NanoDjSession.shutdown()
+        }
         val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
         if (!persistShuffleAcrossQueues && !restoringQueue) {
             player.shuffleModeEnabled = false
@@ -1788,17 +1791,30 @@ class MusicService :
         }
         scope.launch(SilentHandler) {
             val initialStatus =
-                withContext(Dispatchers.IO) {
-                    queue
-                        .getInitialStatus()
-                        .filterExplicit(dataStore.get(HideExplicitKey, false))
-                        .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                try {
+                    withContext(Dispatchers.IO) {
+                        queue
+                            .getInitialStatus()
+                            .filterExplicit(dataStore.get(HideExplicitKey, false))
+                            .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                    }
+                } catch (e: Exception) {
+                    if (queue is com.metrolist.music.playback.queues.NanoDjQueue) {
+                        com.metrolist.music.ai.NanoDjSession.shutdown()
+                    }
+                    Timber.tag(TAG).e(e, "Failed to load queue initial status")
+                    return@launch
                 }
             if (queue.preloadItem != null && player.playbackState == STATE_IDLE) return@launch
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
-            if (initialStatus.items.isEmpty()) return@launch
+            if (initialStatus.items.isEmpty()) {
+                if (queue is com.metrolist.music.playback.queues.NanoDjQueue) {
+                    com.metrolist.music.ai.NanoDjSession.shutdown()
+                }
+                return@launch
+            }
             // Track original queue size for shuffle playlist first feature
             originalQueueSize = initialStatus.items.size
             if (queue.preloadItem != null) {

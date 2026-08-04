@@ -44,6 +44,15 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import com.metrolist.music.ai.GeminiNanoClient
+import com.metrolist.music.ai.GeminiNanoStatus
+import com.metrolist.music.constants.EnableGeminiNanoKey
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import com.metrolist.music.constants.AiProviderKey
 import com.metrolist.music.constants.AiSystemPromptKey
 import com.metrolist.music.constants.DEFAULT_AI_SYSTEM_PROMPT
@@ -64,6 +73,7 @@ import com.metrolist.music.utils.rememberPreference
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiSettings(navController: NavController) {
+    val scope = rememberCoroutineScope()
     var aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
@@ -73,6 +83,24 @@ fun AiSettings(navController: NavController) {
     var deeplApiKey by rememberPreference(DeeplApiKey, "")
     var deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     var aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
+    val (enableGeminiNano, onEnableGeminiNanoChange) = rememberPreference(EnableGeminiNanoKey, true)
+    var geminiStatus by rememberSaveable { mutableStateOf(GeminiNanoStatus.Unavailable) }
+    var geminiBusy by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(enableGeminiNano) {
+        if (!enableGeminiNano) {
+            geminiStatus = GeminiNanoStatus.Unavailable
+            return@LaunchedEffect
+        }
+        geminiBusy = true
+        geminiStatus =
+            runCatching { GeminiNanoClient.get().checkStatus() }
+                .getOrElse {
+                    Timber.w(it, "Gemini Nano status check failed")
+                    GeminiNanoStatus.Error
+                }
+        geminiBusy = false
+    }
 
     val aiProviders =
         mapOf(
@@ -482,6 +510,77 @@ fun AiSettings(navController: NavController) {
                 ),
             ),
         )
+
+        Material3SettingsGroup(
+            title = stringResource(R.string.gemini_nano_section),
+            items =
+                listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.discover_tune),
+                        title = { Text(stringResource(R.string.gemini_nano_enable)) },
+                        description = { Text(stringResource(R.string.gemini_nano_enable_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = enableGeminiNano,
+                                onCheckedChange = onEnableGeminiNanoChange,
+                            )
+                        },
+                        onClick = { onEnableGeminiNanoChange(!enableGeminiNano) },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.info),
+                        title = { Text(stringResource(R.string.gemini_nano_status)) },
+                        description = {
+                            Text(
+                                when (geminiStatus) {
+                                    GeminiNanoStatus.Unavailable ->
+                                        stringResource(R.string.gemini_nano_status_unavailable)
+                                    GeminiNanoStatus.Downloadable ->
+                                        stringResource(R.string.gemini_nano_status_downloadable)
+                                    GeminiNanoStatus.Downloading ->
+                                        stringResource(R.string.gemini_nano_status_downloading)
+                                    GeminiNanoStatus.Available ->
+                                        stringResource(R.string.gemini_nano_status_available)
+                                    GeminiNanoStatus.Error ->
+                                        stringResource(R.string.gemini_nano_status_error)
+                                },
+                            )
+                        },
+                        trailingContent = {
+                            if (enableGeminiNano && geminiStatus == GeminiNanoStatus.Downloadable) {
+                                OutlinedButton(
+                                    enabled = !geminiBusy,
+                                    onClick = {
+                                        scope.launch {
+                                            geminiBusy = true
+                                            geminiStatus = GeminiNanoStatus.Downloading
+                                            runCatching {
+                                                GeminiNanoClient.get().download()
+                                            }.onFailure {
+                                                Timber.w(it, "Gemini Nano download failed")
+                                                geminiStatus = GeminiNanoStatus.Error
+                                            }.onSuccess {
+                                                geminiStatus =
+                                                    runCatching { GeminiNanoClient.get().checkStatus() }
+                                                        .getOrDefault(GeminiNanoStatus.Error)
+                                            }
+                                            geminiBusy = false
+                                        }
+                                    },
+                                ) {
+                                    Text(stringResource(R.string.gemini_nano_download))
+                                }
+                            }
+                        },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.info),
+                        title = { Text(stringResource(R.string.gemini_nano_privacy)) },
+                    ),
+                ),
+        )
+
+        Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
             title = stringResource(R.string.ai_provider),

@@ -1896,6 +1896,7 @@ fun BottomSheetPlayer(
                                 .animateContentSize()
                                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
                     ) {
+                        NanoDjCommentaryBanner()
                         Spacer(Modifier.weight(1f))
 
                         mediaMetadata?.let {

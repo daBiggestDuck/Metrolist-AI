@@ -1182,6 +1182,58 @@ fun HomeScreen(
                     )
                 }
 
+                item(key = "nano_dj_row") {
+                    val context = LocalContext.current
+                    val nanoScope = rememberCoroutineScope()
+                    val nanoDjSpeak by rememberPreference(com.metrolist.music.constants.NanoDjSpeakKey, true)
+                    var nanoDjStarting by remember { mutableStateOf(false) }
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = {
+                                if (isListenTogetherGuest || nanoDjStarting) return@Button
+                                nanoScope.launch {
+                                    nanoDjStarting = true
+                                    try {
+                                        val result =
+                                            com.metrolist.music.ai.NanoDjLauncher.start(
+                                                context = context,
+                                                playerConnection = playerConnection,
+                                                speak = nanoDjSpeak,
+                                            )
+                                        result.onFailure {
+                                            snackbarHostState.showSnackbar(
+                                                it.message ?: "Nano DJ failed to start",
+                                            )
+                                        }
+                                        result.onSuccess {
+                                            snackbarHostState.showSnackbar(
+                                                context.getString(R.string.nano_dj_started),
+                                            )
+                                        }
+                                    } finally {
+                                        nanoDjStarting = false
+                                    }
+                                }
+                            },
+                            enabled = !isListenTogetherGuest && !nanoDjStarting,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.radio),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.nano_dj_home_start))
+                        }
+                    }
+                }
+
                 if (isLoading && homePage?.chips.isNullOrEmpty()) {
                     item(key = "chips_shimmer") {
                         ShimmerHost(showGradient = false) {

@@ -2,9 +2,15 @@
 
 <img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/icon.png" alt="Metrolist app icon" width="200" />
 
-# Metrolist
+# Metrolist Nano
 
-### YouTube Music client for Android
+### Fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist) — YouTube Music client for Android
+
+**Metrolist Nano** adds on-device **Google Gemini Nano** as **Nano DJ** — a Spotify DJ replacement that curates a personalized radio and speaks short host commentary — plus **Spotify account taste + playlist import** (OAuth PKCE → match tracks on YouTube Music → local playlists). Licensed under **GPL-3.0**. Upstream credit: [MetrolistGroup/Metrolist](https://github.com/MetrolistGroup/Metrolist).
+
+**Nano DJ:** Connect Spotify (Integrations), optionally import taste, enable Gemini Nano in AI settings (GMS / AICore devices), then tap **Start Nano DJ** on Home or in Spotify settings. Without AICore, Nano DJ still runs using heuristic picks from your taste profile.
+
+Application ID: `com.metrolist.nano` (override with `METROLIST_APPLICATION_ID` / `METROLIST_APP_NAME` env vars as upstream).
 
 <br/>
 

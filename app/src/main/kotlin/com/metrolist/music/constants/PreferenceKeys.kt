@@ -469,6 +469,12 @@ val TranslateLanguageKey = stringPreferencesKey("translateLanguage")
 val DeeplApiKey = stringPreferencesKey("deeplApiKey")
 val DeeplFormalityKey = stringPreferencesKey("deeplFormality")
 val AiSystemPromptKey = stringPreferencesKey("aiSystemPrompt")
+val EnableGeminiNanoKey = booleanPreferencesKey("enableGeminiNano")
+val NanoDjSpeakKey = booleanPreferencesKey("nanoDjSpeak")
+val SpotifyClientIdKey = stringPreferencesKey("spotifyClientId")
+val SpotifyDisplayNameKey = stringPreferencesKey("spotifyDisplayName")
+val SpotifyTasteSummaryKey = stringPreferencesKey("spotifyTasteSummary")
+val SpotifyTasteHintsKey = stringPreferencesKey("spotifyTasteHints")
 
 const val DEFAULT_AI_SYSTEM_PROMPT = """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON array of strings.
 

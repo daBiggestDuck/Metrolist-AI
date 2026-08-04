@@ -19,7 +19,7 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
-val baseApplicationId = "com.metrolist.music"
+val baseApplicationId = "com.metrolist.nano"
 val applicationIdOverride = System.getenv("METROLIST_APPLICATION_ID")?.takeIf { it.isNotBlank() }
 val appNameOverride = System.getenv("METROLIST_APP_NAME")?.takeIf { it.isNotBlank() }
 val debugKeystorePathOverride = System.getenv("METROLIST_DEBUG_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
@@ -103,7 +103,7 @@ android {
         targetSdk = 36
         versionCode = 150
         versionName = "13.6.1"
-        resValue("string", "app_name", appNameOverride ?: "Metrolist")
+        resValue("string", "app_name", appNameOverride ?: "Metrolist Nano")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -120,6 +120,7 @@ android {
         buildConfigField("String", "LASTFM_SECRET", "\"$lastFmSecret\"")
         buildConfigField("String", "ARCHITECTURE", "\"universal\"")
         buildConfigField("Long", "DISCORD_APP_ID", "1447278780795064401L")
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"\"")
     }
 
     flavorDimensions += listOf("variant")
@@ -191,7 +192,7 @@ android {
             }
             isDebuggable = true
             if (appNameOverride == null) {
-                resValue("string", "app_name", "Metrolist Debug")
+                resValue("string", "app_name", "Metrolist Nano Debug")
             }
             signingConfig =
                 if (workflowDebugKeystoreFile != null) {
@@ -375,6 +376,9 @@ dependencies {
     "gmsImplementation"(libs.media3.cast)
     "gmsImplementation"(libs.mediarouter)
     "gmsImplementation"(libs.cast.framework)
+
+    // Gemini Nano via ML Kit GenAI Prompt API (GMS / AICore only)
+    "gmsImplementation"(libs.mlkit.genai.prompt)
 
     implementation(libs.room.runtime)
     implementation(libs.kuromoji.ipadic)
