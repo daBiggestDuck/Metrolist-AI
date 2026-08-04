@@ -44,23 +44,18 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -103,6 +98,9 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
 import androidx.compose.material3.IconButton as MaterialIconButton
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -329,15 +327,9 @@ fun ListenTogetherScreen(
 
                 // Leave room button
                 item {
-                    Button(
-                        onClick = { listenTogetherManager.leaveRoom() },
+                    AuraPrimaryButton(onClick = { listenTogetherManager.leaveRoom() },
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                            ),
-                        shape = RoundedCornerShape(16.dp),
-                    ) {
+                        shape = RoundedCornerShape(16.dp)) {
                         Icon(
                             painter = painterResource(R.drawable.logout),
                             contentDescription = null,
@@ -602,15 +594,9 @@ private fun ConnectionStatusCard(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (connectionState == ConnectionState.DISCONNECTED || connectionState == ConnectionState.ERROR) {
-                    Button(
-                        onClick = onConnect,
+                    AuraPrimaryButton(onClick = onConnect,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                            ),
-                    ) {
+                        shape = RoundedCornerShape(12.dp)) {
                         Icon(
                             painter = painterResource(R.drawable.link),
                             contentDescription = null,
@@ -620,22 +606,14 @@ private fun ConnectionStatusCard(
                         Text(stringResource(R.string.connect), fontWeight = FontWeight.SemiBold)
                     }
                 } else {
-                    Button(
-                        onClick = onDisconnect,
+                    AuraPrimaryButton(onClick = onDisconnect,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                            ),
-                    ) {
+                        shape = RoundedCornerShape(12.dp)) {
                         Text(stringResource(R.string.disconnect), fontWeight = FontWeight.SemiBold)
                     }
-                    FilledTonalButton(
-                        onClick = onReconnect,
+                    AuraTonalButton(onClick = onReconnect,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
+                        shape = RoundedCornerShape(12.dp)) {
                         Text("Reconnect", fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -704,15 +682,13 @@ private fun RoomStatusCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    FilledTonalButton(
-                        onClick = {
+                    AuraTonalButton(onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             val clip = android.content.ClipData.newPlainText("Listen Together Link", inviteLink)
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
                         },
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
+                        shape = RoundedCornerShape(12.dp)) {
                         Icon(
                             painter = painterResource(R.drawable.link),
                             contentDescription = stringResource(R.string.copy_link),
@@ -722,15 +698,13 @@ private fun RoomStatusCard(
                         Text(stringResource(R.string.copy_link))
                     }
 
-                    FilledTonalButton(
-                        onClick = {
+                    AuraTonalButton(onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             val clip = android.content.ClipData.newPlainText("Room Code", roomCode)
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
                         },
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
+                        shape = RoundedCornerShape(12.dp)) {
                         Icon(
                             painter = painterResource(R.drawable.content_copy),
                             contentDescription = stringResource(R.string.copy_code),
@@ -1230,16 +1204,10 @@ private fun JoinCreateRoomSection(
 
             // Create Room button - visible when username is provided
             AnimatedVisibility(visible = hasUsername && !hasRoomCode) {
-                Button(
-                    onClick = onCreateRoom,
+                AuraPrimaryButton(onClick = onCreateRoom,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = hasUsername,
-                    shape = RoundedCornerShape(16.dp),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                        ),
-                ) {
+                    shape = RoundedCornerShape(16.dp)) {
                     Icon(
                         painter = painterResource(R.drawable.add),
                         contentDescription = null,
@@ -1252,16 +1220,10 @@ private fun JoinCreateRoomSection(
 
             // Join Room button - visible when username and room code are provided
             AnimatedVisibility(visible = hasUsername && hasRoomCode) {
-                Button(
-                    onClick = onJoinRoom,
+                AuraPrimaryButton(onClick = onJoinRoom,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = hasUsername && hasRoomCode,
-                    shape = RoundedCornerShape(16.dp),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary,
-                        ),
-                ) {
+                    shape = RoundedCornerShape(16.dp)) {
                     Icon(
                         painter = painterResource(R.drawable.login),
                         contentDescription = null,
@@ -1352,7 +1314,7 @@ private fun UserActionDialog(
             }
         },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         },

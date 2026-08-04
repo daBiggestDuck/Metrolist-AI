@@ -19,15 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -46,6 +41,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.R
 import com.metrolist.music.viewmodels.ConvertedSongLog
 import com.metrolist.music.viewmodels.CsvImportState
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @Composable
 fun CsvColumnMappingDialog(
@@ -190,11 +187,10 @@ fun CsvColumnMappingDialog(
                         .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                OutlinedButton(onClick = onDismiss) {
+                AuraOutlinedButton(onClick = onDismiss) {
                     Text(stringResource(R.string.cancel))
                 }
-                Button(
-                    onClick = {
+                AuraPrimaryButton(onClick = {
                         onConfirm(
                             CsvImportState(
                                 previewRows = csvState.previewRows,
@@ -204,8 +200,7 @@ fun CsvColumnMappingDialog(
                                 hasHeader = hasHeader,
                             ),
                         )
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.continue_action))
                 }
             }
@@ -240,17 +235,13 @@ private fun ColumnSelector(
         ) {
             if (allowNone) {
                 if (selectedIndex == -1) {
-                    Button(
-                        onClick = { onSelected(-1) },
-                        modifier = Modifier.height(36.dp),
-                    ) {
+                    AuraPrimaryButton(onClick = { onSelected(-1) },
+                        modifier = Modifier.height(36.dp)) {
                         Text(stringResource(R.string.none), style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
-                    OutlinedButton(
-                        onClick = { onSelected(-1) },
-                        modifier = Modifier.height(36.dp),
-                    ) {
+                    AuraOutlinedButton(onClick = { onSelected(-1) },
+                        modifier = Modifier.height(36.dp)) {
                         Text(stringResource(R.string.none), style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -258,20 +249,16 @@ private fun ColumnSelector(
 
             repeat(maxColumns) { index ->
                 if (selectedIndex == index) {
-                    Button(
-                        onClick = { onSelected(index) },
-                        modifier = Modifier.height(36.dp),
-                    ) {
+                    AuraPrimaryButton(onClick = { onSelected(index) },
+                        modifier = Modifier.height(36.dp)) {
                         Text(
                             stringResource(R.string.column_label, index + 1),
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
                 } else {
-                    OutlinedButton(
-                        onClick = { onSelected(index) },
-                        modifier = Modifier.height(36.dp),
-                    ) {
+                    AuraOutlinedButton(onClick = { onSelected(index) },
+                        modifier = Modifier.height(36.dp)) {
                         Text(
                             stringResource(R.string.column_label, index + 1),
                             style = MaterialTheme.typography.labelSmall,

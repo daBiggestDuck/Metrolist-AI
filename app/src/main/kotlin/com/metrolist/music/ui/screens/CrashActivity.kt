@@ -24,13 +24,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -43,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraExtendedFab
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.theme.MetrolistTheme
 import com.metrolist.music.utils.CrashHandler
 import java.io.File
@@ -138,17 +138,17 @@ fun CrashScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            AuraExtendedFab(
+                text = stringResource(R.string.crash_share_logs),
                 onClick = onShare,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 icon = {
                     Icon(
                         painter = painterResource(R.drawable.share),
-                        contentDescription = null
+                        contentDescription = null,
                     )
                 },
-                text = { Text(stringResource(R.string.crash_share_logs)) },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         },
         containerColor = MaterialTheme.colorScheme.surface

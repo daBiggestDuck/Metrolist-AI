@@ -35,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import com.metrolist.music.ui.component.aura.AuraFilterPill
@@ -43,7 +42,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -114,6 +112,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -278,10 +278,8 @@ fun DiscordSettings(
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Spacer(Modifier.height(8.dp))
-                        TextButton(
-                            onClick = { infoDismissed = true },
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
+                        AuraSecondaryAction(onClick = { infoDismissed = true },
+                            modifier = Modifier.align(Alignment.End)) {
                             Text(stringResource(R.string.dismiss))
                         }
                     }
@@ -332,10 +330,8 @@ fun DiscordSettings(
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
                         Spacer(Modifier.height(8.dp))
-                        TextButton(
-                            onClick = { DiscordRpcManager.clearLastError() },
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
+                        AuraSecondaryAction(onClick = { DiscordRpcManager.clearLastError() },
+                            modifier = Modifier.align(Alignment.End)) {
                             Text(stringResource(R.string.dismiss))
                         }
                     }
@@ -419,7 +415,7 @@ fun DiscordSettings(
                 }
 
                 if (isLoggedIn) {
-                    OutlinedButton(onClick = {
+                    AuraOutlinedButton(onClick = {
                         discordName = ""
                         discordUsername = ""
                         discordAvatar = ""
@@ -445,8 +441,7 @@ fun DiscordSettings(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (!isBusy) {
-                        OutlinedButton(
-                            onClick = {
+                        AuraOutlinedButton(onClick = {
                                 isBusy = true
                                 val activity = findActivity(context)
                                 if (activity == null) {
@@ -472,8 +467,7 @@ fun DiscordSettings(
                                         }
                                     }
                                 }
-                            },
-                        ) {
+                            }) {
                             Text(stringResource(R.string.action_login))
                         }
                     }
@@ -907,10 +901,10 @@ private fun TemplateFieldDialog(
         onDismiss = onDismiss,
         title = { Text(text = title) },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
-            TextButton(onClick = {
+            AuraSecondaryAction(onClick = {
                 onDone(text)
                 onDismiss()
             }) {
@@ -1105,8 +1099,7 @@ fun RichPresence(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (btn1Enabled) {
-                OutlinedButton(
-                    enabled = song != null,
+                AuraOutlinedButton(enabled = song != null,
                     onClick = {
                         val intent =
                                 Intent(
@@ -1115,15 +1108,13 @@ fun RichPresence(
                                 )
                         context.startActivity(intent)
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                    modifier = Modifier.fillMaxWidth()) {
                     Text(renderedBtn1Label)
                 }
             }
 
             if (btn2Enabled) {
-                OutlinedButton(
-                    onClick = {
+                AuraOutlinedButton(onClick = {
                         val intent =
                             Intent(
                                 Intent.ACTION_VIEW,
@@ -1131,8 +1122,7 @@ fun RichPresence(
                             )
                         context.startActivity(intent)
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                    modifier = Modifier.fillMaxWidth()) {
                     Text(renderedBtn2Label)
                 }
             }

@@ -25,13 +25,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
@@ -83,6 +80,8 @@ import com.metrolist.music.ui.utils.backToMain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 private data class Contributor(
     val name: String,
@@ -190,22 +189,16 @@ private fun DeveloperSocials(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        FilledTonalButton(
-            onClick = { uriHandler.openUri("https://metrolist.cc") },
-            modifier = Modifier.weight(1f).height(48.dp)
-        ) {
+        AuraTonalButton(onClick = { uriHandler.openUri("https://metrolist.cc") },
+            modifier = Modifier.weight(1f).height(48.dp)) {
             Icon(painterResource(R.drawable.language), contentDescription = null)
         }
-        FilledTonalButton(
-            onClick = { uriHandler.openUri("https://github.com/mostafaalagamy") },
-            modifier = Modifier.weight(1f).height(48.dp)
-        ) {
+        AuraTonalButton(onClick = { uriHandler.openUri("https://github.com/mostafaalagamy") },
+            modifier = Modifier.weight(1f).height(48.dp)) {
             Icon(painterResource(R.drawable.github), contentDescription = null)
         }
-        FilledTonalButton(
-            onClick = { uriHandler.openUri("https://www.instagram.com/mostafaalagamy") },
-            modifier = Modifier.weight(1f).height(48.dp)
-        ) {
+        AuraTonalButton(onClick = { uriHandler.openUri("https://www.instagram.com/mostafaalagamy") },
+            modifier = Modifier.weight(1f).height(48.dp)) {
             Icon(painterResource(R.drawable.instagram), contentDescription = null)
         }
     }
@@ -392,15 +385,9 @@ fun AboutScreen(
                 
                 Spacer(Modifier.height(16.dp))
                 
-                Button(
-                    onClick = { uriHandler.openUri("https://buymeacoffee.com/mostafaalagamy") },
+                AuraPrimaryButton(onClick = { uriHandler.openUri("https://buymeacoffee.com/mostafaalagamy") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
+                    shape = CircleShape) {
                     Icon(painterResource(R.drawable.buymeacoffee), contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.buy_mo_a_coffee), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)

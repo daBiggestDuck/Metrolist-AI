@@ -37,13 +37,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -132,6 +130,7 @@ import com.metrolist.music.viewmodels.ArtistViewModel
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -362,22 +361,11 @@ fun ArtistScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     // Subscribe Button
-                                    OutlinedButton(
-                                        onClick = {
+                                    AuraOutlinedButton(onClick = {
                                             viewModel.toggleChannelSubscription()
                                         },
-                                        colors =
-                                            ButtonDefaults.outlinedButtonColors(
-                                                containerColor =
-                                                    if (isChannelSubscribed) {
-                                                        MaterialTheme.colorScheme.surface
-                                                    } else {
-                                                        Color.Transparent
-                                                    },
-                                            ),
                                         shape = RoundedCornerShape(50),
-                                        modifier = Modifier.height(40.dp),
-                                    ) {
+                                        modifier = Modifier.height(40.dp)) {
                                         Text(
                                             text = stringResource(if (isChannelSubscribed) R.string.subscribed else R.string.subscribe),
                                             fontSize = 14.sp,
@@ -394,13 +382,11 @@ fun ArtistScreen(
                                         // Radio Button
                                         if (!showLocal && !isGuest) {
                                             artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                                                OutlinedButton(
-                                                    onClick = {
+                                                AuraOutlinedButton(onClick = {
                                                         playerConnection.playQueue(YouTubeQueue(radioEndpoint))
                                                     },
                                                     shape = RoundedCornerShape(50),
-                                                    modifier = Modifier.height(40.dp),
-                                                ) {
+                                                    modifier = Modifier.height(40.dp)) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.radio),
                                                         contentDescription = null,

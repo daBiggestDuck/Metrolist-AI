@@ -30,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,6 +63,7 @@ import com.metrolist.music.utils.SearchRoutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,19 +87,17 @@ fun RecognitionHistoryScreen(navController: NavController) {
             },
             title = { Text(stringResource(R.string.clear_recognition_history)) },
             buttons = {
-                TextButton(onClick = { showClearDialog = false }) {
+                AuraSecondaryAction(onClick = { showClearDialog = false }) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             database.query {
                                 clearRecognitionHistory()
                             }
                         }
                         showClearDialog = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.clear))
                 }
             },
@@ -122,19 +120,17 @@ fun RecognitionHistoryScreen(navController: NavController) {
             },
             title = { Text(stringResource(R.string.delete)) },
             buttons = {
-                TextButton(onClick = { itemToDelete = null }) {
+                AuraSecondaryAction(onClick = { itemToDelete = null }) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             database.query {
                                 deleteRecognitionHistoryById(item.id)
                             }
                         }
                         itemToDelete = null
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.delete))
                 }
             },

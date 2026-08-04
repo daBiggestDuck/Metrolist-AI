@@ -28,6 +28,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -60,6 +61,7 @@ import kotlinx.coroutines.flow.map
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.math.roundToInt
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 enum class AndroidAutoSection(val id: String) {
     LIKED("liked"),
@@ -276,9 +278,7 @@ fun AndroidAutoSettings(
                     }
                 },
                 confirmButton = {
-                    androidx.compose.material3.TextButton(
-                        onClick = { showTargetPlaylistDialog = false }
-                    ) {
+                    AuraSecondaryAction(onClick = { showTargetPlaylistDialog = false }) {
                         Text(stringResource(android.R.string.cancel))
                     }
                 }

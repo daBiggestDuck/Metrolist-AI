@@ -33,7 +33,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -121,6 +120,7 @@ import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -419,30 +419,24 @@ fun AppearanceSettings(
                 showLyricsTextSizeDialog = false
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         tempTextSize = 24f
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.reset))
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         tempTextSize = lyricsTextSize
                         showLyricsTextSizeDialog = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         onLyricsTextSizeChange(tempTextSize)
                         showLyricsTextSizeDialog = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -482,30 +476,24 @@ fun AppearanceSettings(
                 showLyricsLineSpacingDialog = false
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         tempLineSpacing = 1.3f
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.reset))
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         tempLineSpacing = lyricsLineSpacing
                         showLyricsLineSpacingDialog = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         onLyricsLineSpacingChange(tempLineSpacing)
                         showLyricsLineSpacingDialog = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -676,13 +664,10 @@ fun AppearanceSettings(
         DefaultDialog(
             onDismiss = { showRestartDialog = false },
             buttons = {
-                TextButton(
-                    onClick = { showRestartDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showRestartDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRestartDialog = false
                         val intent =
                             context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
@@ -690,8 +675,7 @@ fun AppearanceSettings(
                             }
                         context.startActivity(intent)
                         Runtime.getRuntime().exit(0)
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(R.string.restart))
                 }
             },
@@ -715,9 +699,7 @@ fun AppearanceSettings(
         DefaultDialog(
             onDismiss = { showDensityScaleDialog = false },
             buttons = {
-                TextButton(
-                    onClick = { showDensityScaleDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showDensityScaleDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
             },
@@ -753,9 +735,7 @@ fun AppearanceSettings(
     if (showSliderOptionDialog) {
         DefaultDialog(
             buttons = {
-                TextButton(
-                    onClick = { showSliderOptionDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showSliderOptionDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
             },
@@ -1333,30 +1313,24 @@ fun AppearanceSettings(
                     showSensitivityDialog = false
                 },
                 buttons = {
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempSensitivity = 0.73f
-                        },
-                    ) {
+                        }) {
                         Text(stringResource(R.string.reset))
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempSensitivity = swipeSensitivity
                             showSensitivityDialog = false
-                        },
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.cancel))
                     }
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             onSwipeSensitivityChange(tempSensitivity)
                             showSensitivityDialog = false
-                        },
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.ok))
                     }
                 },
@@ -1876,10 +1850,10 @@ fun AppearanceSettings(
                 onDismiss = { showExperimentalLyricsBetaDialog = false },
                 title = { Text(stringResource(R.string.experimental_lyrics_beta_title)) },
                 buttons = {
-                    TextButton(onClick = { showExperimentalLyricsBetaDialog = false }) {
+                    AuraSecondaryAction(onClick = { showExperimentalLyricsBetaDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
-                    TextButton(onClick = {
+                    AuraSecondaryAction(onClick = {
                         showExperimentalLyricsBetaDialog = false
                         onExperimentalLyricsChange(true)
                     }) {

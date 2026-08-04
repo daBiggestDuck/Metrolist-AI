@@ -24,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,6 +67,8 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -203,7 +203,7 @@ fun AiSettings(navController: NavController) {
         AlertDialog(
             onDismissRequest = { showProviderHelpDialog = false },
             confirmButton = {
-                TextButton(onClick = { showProviderHelpDialog = false }) {
+                AuraSecondaryAction(onClick = { showProviderHelpDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -270,7 +270,7 @@ fun AiSettings(navController: NavController) {
         AlertDialog(
             onDismissRequest = { showTranslateModeHelpDialog = false },
             confirmButton = {
-                TextButton(onClick = { showTranslateModeHelpDialog = false }) {
+                AuraSecondaryAction(onClick = { showTranslateModeHelpDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -480,12 +480,10 @@ fun AiSettings(navController: NavController) {
                                 .padding(top = 8.dp),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        TextButton(
-                            onClick = {
+                        AuraSecondaryAction(onClick = {
                                 aiSystemPrompt = ""
                                 showSystemPromptDialog = false
-                            },
-                        ) {
+                            }) {
                             Text(stringResource(R.string.ai_system_prompt_reset))
                         }
                     }
@@ -548,8 +546,7 @@ fun AiSettings(navController: NavController) {
                         },
                         trailingContent = {
                             if (enableGeminiNano && geminiStatus == GeminiNanoStatus.Downloadable) {
-                                OutlinedButton(
-                                    enabled = !geminiBusy,
+                                AuraOutlinedButton(enabled = !geminiBusy,
                                     onClick = {
                                         scope.launch {
                                             geminiBusy = true
@@ -566,8 +563,7 @@ fun AiSettings(navController: NavController) {
                                             }
                                             geminiBusy = false
                                         }
-                                    },
-                                ) {
+                                    }) {
                                     Text(stringResource(R.string.gemini_nano_download))
                                 }
                             }

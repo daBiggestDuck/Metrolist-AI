@@ -33,7 +33,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -95,6 +94,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -292,13 +292,10 @@ fun YouTubePlaylistMenu(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = { showRemoveDownloadDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showRemoveDownloadDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         songs.forEach { song ->
                             DownloadService.sendRemoveDownload(
@@ -308,8 +305,7 @@ fun YouTubePlaylistMenu(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },

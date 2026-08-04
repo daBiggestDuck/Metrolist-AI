@@ -35,7 +35,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -61,6 +60,7 @@ import com.metrolist.music.LocalNavController
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.settings.AccountSettings
 import kotlinx.coroutines.delay
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @Composable
 fun DefaultDialog(
@@ -212,25 +212,19 @@ fun ActionPromptDialog(
         buttons = {
             if (onReset != null) {
                 Row(modifier = Modifier.weight(1f)) {
-                    TextButton(
-                        onClick = { onReset() },
-                    ) {
+                    AuraSecondaryAction(onClick = { onReset() }) {
                         Text(stringResource(R.string.reset))
                     }
                 }
             }
 
             if (onCancel != null) {
-                TextButton(
-                    onClick = { onCancel() },
-                ) {
+                AuraSecondaryAction(onClick = { onCancel() }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }
 
-            TextButton(
-                onClick = { onConfirm() },
-            ) {
+            AuraSecondaryAction(onClick = { onConfirm() }) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -325,7 +319,7 @@ fun TextFieldDialog(
         icon = icon,
         title = title,
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(text = stringResource(android.R.string.cancel))
             }
 
@@ -333,8 +327,7 @@ fun TextFieldDialog(
                 textFields?.all { isInputValid(it.second.text) }
                     ?: isInputValid(legacyFieldState.value.text)
 
-            TextButton(
-                enabled = isValid,
+            AuraSecondaryAction(enabled = isValid,
                 onClick = {
                     if (autoDismiss) onDismiss()
                     if (textFields != null && onDoneMultiple != null) {
@@ -342,8 +335,7 @@ fun TextFieldDialog(
                     } else {
                         onDone(legacyFieldState.value.text)
                     }
-                },
-            ) {
+                }) {
                 Text(text = stringResource(android.R.string.ok))
             }
         },

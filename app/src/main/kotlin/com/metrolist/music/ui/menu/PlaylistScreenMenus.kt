@@ -20,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +43,7 @@ import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
 import com.metrolist.music.utils.saveToPublicDocuments
 import kotlinx.coroutines.launch
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 /**
  * Menu for Local Playlist Screen
@@ -614,13 +614,13 @@ fun ExportDialog(
         onDismiss = onDismiss,
         title = { Text(stringResource(R.string.export_playlist)) },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(text = stringResource(android.R.string.cancel))
             }
-            TextButton(onClick = { onSave(selected) }) {
+            AuraSecondaryAction(onClick = { onSave(selected) }) {
                 Text(text = stringResource(R.string.export_option_save))
             }
-            TextButton(onClick = { onShare(selected) }) {
+            AuraSecondaryAction(onClick = { onShare(selected) }) {
                 Text(text = stringResource(R.string.export_option_share))
             }
         },

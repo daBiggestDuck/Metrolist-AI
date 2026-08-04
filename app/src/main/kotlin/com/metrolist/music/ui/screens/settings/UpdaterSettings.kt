@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,6 +49,7 @@ import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -216,13 +216,11 @@ fun UpdaterScreen(
 
         if (updateAvailable && latestVersion != null) {
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { showChangelog = !showChangelog },
+            AuraPrimaryButton(onClick = { showChangelog = !showChangelog },
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-            ) {
+                        .padding(horizontal = 16.dp)) {
                 Text(if (showChangelog) stringResource(R.string.hide_changelog) else stringResource(R.string.view_changelog))
             }
 

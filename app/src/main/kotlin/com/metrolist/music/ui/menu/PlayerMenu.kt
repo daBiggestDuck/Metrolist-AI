@@ -35,10 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,7 +45,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -106,6 +102,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.round
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 @Composable
 fun PlayerMenu(
@@ -784,20 +783,16 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
             Text(stringResource(R.string.tempo_and_pitch))
         },
         dismissButton = {
-            TextButton(
-                onClick = {
+            AuraSecondaryAction(onClick = {
                     tempo = 1f
                     transposeValue = 0
                     updatePlaybackParameters()
-                },
-            ) {
+                }) {
                 Text(stringResource(R.string.reset))
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -850,19 +845,15 @@ fun SpeedDialog(onDismiss: () -> Unit) {
             Text(stringResource(R.string.speed))
         },
         dismissButton = {
-            TextButton(
-                onClick = {
+            AuraSecondaryAction(onClick = {
                     speed = 1f
                     updatePlaybackParameters()
-                },
-            ) {
+                }) {
                 Text(stringResource(R.string.reset))
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -980,13 +971,7 @@ fun ListenTogetherDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onDismiss,
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                            ),
-                    ) {
+                    AuraPrimaryButton(onClick = onDismiss) {
                         Text(stringResource(android.R.string.ok))
                     }
                 }
@@ -1362,31 +1347,17 @@ fun ListenTogetherDialog(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (connectionState == ConnectionState.DISCONNECTED || connectionState == ConnectionState.ERROR) {
-                            Button(
-                                onClick = { listenTogetherManager.connect() },
-                                modifier = Modifier.weight(1f),
-                                colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                            ) {
+                            AuraPrimaryButton(onClick = { listenTogetherManager.connect() },
+                                modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.connect), fontWeight = FontWeight.SemiBold)
                             }
                         } else {
-                            Button(
-                                onClick = { listenTogetherManager.disconnect() },
-                                modifier = Modifier.weight(1f),
-                                colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                            ) {
+                            AuraPrimaryButton(onClick = { listenTogetherManager.disconnect() },
+                                modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.disconnect), fontWeight = FontWeight.SemiBold)
                             }
-                            FilledTonalButton(
-                                onClick = { listenTogetherManager.forceReconnect() },
-                                modifier = Modifier.weight(1f),
-                            ) {
+                            AuraTonalButton(onClick = { listenTogetherManager.forceReconnect() },
+                                modifier = Modifier.weight(1f)) {
                                 Text("Reconnect", fontWeight = FontWeight.SemiBold)
                             }
                         }
@@ -1454,8 +1425,7 @@ fun ListenTogetherDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center,
                                 ) {
-                                    FilledTonalButton(
-                                        onClick = {
+                                    AuraTonalButton(onClick = {
                                             val clipboard =
                                                 context.getSystemService(
                                                     Context.CLIPBOARD_SERVICE,
@@ -1463,8 +1433,7 @@ fun ListenTogetherDialog(
                                             val clip = android.content.ClipData.newPlainText("Listen Together Link", inviteLink)
                                             clipboard.setPrimaryClip(clip)
                                             Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
-                                        },
-                                    ) {
+                                        }) {
                                         Icon(
                                             painter = painterResource(R.drawable.link),
                                             contentDescription = stringResource(R.string.copy_link),
@@ -1476,8 +1445,7 @@ fun ListenTogetherDialog(
 
                                     Spacer(modifier = Modifier.width(8.dp))
 
-                                    FilledTonalButton(
-                                        onClick = {
+                                    AuraTonalButton(onClick = {
                                             val clipboard =
                                                 context.getSystemService(
                                                     Context.CLIPBOARD_SERVICE,
@@ -1485,8 +1453,7 @@ fun ListenTogetherDialog(
                                             val clip = android.content.ClipData.newPlainText("Room Code", room.roomCode)
                                             clipboard.setPrimaryClip(clip)
                                             Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
-                                        },
-                                    ) {
+                                        }) {
                                         Icon(
                                             painter = painterResource(R.drawable.content_copy),
                                             contentDescription = stringResource(R.string.copy_code),
@@ -1828,26 +1795,18 @@ fun ListenTogetherDialog(
                                 .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        TextButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.weight(1f),
-                        ) {
+                        AuraSecondaryAction(onClick = onDismiss,
+                            modifier = Modifier.weight(1f)) {
                             Text(
                                 stringResource(R.string.cancel),
                                 fontWeight = FontWeight.Medium,
                             )
                         }
-                        Button(
-                            onClick = {
+                        AuraPrimaryButton(onClick = {
                                 listenTogetherManager.leaveRoom()
                                 onDismiss()
                             },
-                            modifier = Modifier.weight(1f),
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                ),
-                        ) {
+                            modifier = Modifier.weight(1f)) {
                             Icon(
                                 painter = painterResource(R.drawable.logout),
                                 contentDescription = null,
@@ -2019,8 +1978,7 @@ fun ListenTogetherDialog(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         // Create Room button (left side)
-                        Button(
-                            onClick = {
+                        AuraPrimaryButton(onClick = {
                                 val username = usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
                                 val finalUsername = username.trim()
                                 if (finalUsername.isNotBlank()) {
@@ -2036,12 +1994,7 @@ fun ListenTogetherDialog(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            enabled = (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()),
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                ),
-                        ) {
+                            enabled = (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank())) {
                             Icon(
                                 painter = painterResource(R.drawable.add),
                                 contentDescription = null,
@@ -2053,8 +2006,7 @@ fun ListenTogetherDialog(
 
                         // Join Room button (right side - only visible when room code is complete)
                         if (roomCodeInput.length == 8) {
-                            Button(
-                                onClick = {
+                            AuraPrimaryButton(onClick = {
                                     val username = usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
                                     val finalUsername = username.trim()
                                     if (finalUsername.isNotBlank()) {
@@ -2075,12 +2027,7 @@ fun ListenTogetherDialog(
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                enabled = (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()),
-                                colors =
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary,
-                                    ),
-                            ) {
+                                enabled = (usernameInput.trim().isNotBlank() || savedUsername.isNotBlank())) {
                                 Icon(
                                     painter = painterResource(R.drawable.login),
                                     contentDescription = null,
@@ -2092,10 +2039,8 @@ fun ListenTogetherDialog(
                         }
                     }
 
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                    AuraSecondaryAction(onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()) {
                         Text(
                             stringResource(R.string.cancel),
                             fontWeight = FontWeight.Medium,

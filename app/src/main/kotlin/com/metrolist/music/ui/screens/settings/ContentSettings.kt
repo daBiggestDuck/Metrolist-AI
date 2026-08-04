@@ -32,7 +32,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -95,6 +94,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import java.net.Proxy
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -272,19 +272,17 @@ fun ContentSettings(
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         onProxyUrlChange(tempProxyUrl)
                         onProxyUsernameChange(if (authEnabled) tempProxyUsername else "")
                         onProxyPasswordChange(if (authEnabled) tempProxyPassword else "")
                         showProxyConfigurationDialog = false
-                    }
-                ) {
+                    }) {
                     Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
+                AuraSecondaryAction(onClick = {
                     showProxyConfigurationDialog = false
                 }) {
                     Text(stringResource(R.string.cancel))
@@ -523,9 +521,7 @@ fun ContentSettings(
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = { showProviderSelectionDialog = false }
-                ) {
+                AuraSecondaryAction(onClick = { showProviderSelectionDialog = false }) {
                     Text(stringResource(R.string.close))
                 }
             }
@@ -581,12 +577,10 @@ fun ContentSettings(
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         onLengthTopChange(tempLength.toInt().toString())
                         showTopLengthDialog = false
-                    }
-                ) {
+                    }) {
                     Text(stringResource(R.string.save))
                 }
             }
@@ -659,9 +653,7 @@ fun ContentSettings(
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = { showProviderPriorityDialog = false }
-                ) {
+                AuraSecondaryAction(onClick = { showProviderPriorityDialog = false }) {
                     Text(stringResource(R.string.close))
                 }
             }

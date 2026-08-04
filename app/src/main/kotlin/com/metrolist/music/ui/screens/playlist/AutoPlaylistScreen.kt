@@ -43,7 +43,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import com.metrolist.music.ui.component.aura.AuraFab
@@ -128,6 +127,7 @@ import com.metrolist.music.viewmodels.AutoPlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -415,14 +415,11 @@ fun AutoPlaylistScreen(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = { showRemoveDownloadDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showRemoveDownloadDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         songs!!.forEach { song ->
                             DownloadService.sendRemoveDownload(
@@ -432,8 +429,7 @@ fun AutoPlaylistScreen(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -458,15 +454,13 @@ fun AutoPlaylistScreen(
             },
             title = { Text(stringResource(R.string.uploading)) },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         if (isUploading) {
                             uploadJob?.cancel()
                             isUploading = false
                         }
                         showUploadDialog = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

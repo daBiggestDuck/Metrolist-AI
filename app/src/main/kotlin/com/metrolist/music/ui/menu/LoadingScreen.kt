@@ -21,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @Composable
 fun LoadingScreen(
@@ -104,10 +104,8 @@ fun LoadingScreen(
 
             if (onCancel != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onCancel,
-                    modifier = Modifier.align(Alignment.End)
-                ) {
+                AuraSecondaryAction(onClick = onCancel,
+                    modifier = Modifier.align(Alignment.End)) {
                     Text(stringResource(R.string.cancel))
                 }
             }

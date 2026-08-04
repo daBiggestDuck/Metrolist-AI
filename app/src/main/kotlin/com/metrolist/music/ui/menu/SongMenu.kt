@@ -33,7 +33,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -103,6 +102,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.LocalDateTime
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @Composable
 fun SongMenu(
@@ -300,14 +300,11 @@ fun SongMenu(
             },
             title = { Text(stringResource(R.string.delete_uploaded_song)) },
             buttons = {
-                TextButton(
-                    onClick = { showDeleteUploadedDialog = false },
-                    enabled = !isDeleting,
-                ) {
+                AuraSecondaryAction(onClick = { showDeleteUploadedDialog = false },
+                    enabled = !isDeleting) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         val entityId = song.song.uploadEntityId
                         if (entityId == null) {
                             Toast
@@ -317,7 +314,7 @@ fun SongMenu(
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             showDeleteUploadedDialog = false
-                            return@TextButton
+                            return@AuraSecondaryAction
                         }
                         isDeleting = true
                         coroutineScope.launch(Dispatchers.IO) {
@@ -352,8 +349,7 @@ fun SongMenu(
                                 }
                         }
                     },
-                    enabled = !isDeleting,
-                ) {
+                    enabled = !isDeleting) {
                     if (isDeleting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),

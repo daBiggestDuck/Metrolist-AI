@@ -116,6 +116,10 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.ui.component.aura.AuraPrimaryPill
+import com.metrolist.music.ui.component.aura.AuraCircleButton
+import com.metrolist.music.ui.component.aura.AuraFab
+import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
+import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -388,7 +392,7 @@ fun CommunityPlaylistCard(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             ) {
-                IconButton(
+                AuraFab(
                     onClick = {
                         if (!isListenTogetherGuest) {
                             item.playlist.playEndpoint?.let {
@@ -396,20 +400,18 @@ fun CommunityPlaylistCard(
                             }
                         }
                     },
-                    modifier =
-                        Modifier
-                            .size(48.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    size = 48.dp,
+                    containerColor = AuraSpotifyGreen,
+                    contentColor = AuraSpotifyOnGreen,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_widget_play),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(24.dp),
                     )
                 }
 
-                IconButton(
+                AuraCircleButton(
                     onClick = {
                         if (!isListenTogetherGuest) {
                             item.playlist.radioEndpoint?.let {
@@ -417,20 +419,16 @@ fun CommunityPlaylistCard(
                             }
                         }
                     },
-                    modifier =
-                        Modifier
-                            .size(48.dp)
-                            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), CircleShape),
+                    size = 48.dp,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.radio),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(24.dp),
                     )
                 }
 
-                IconButton(
+                AuraCircleButton(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
                             if (dbPlaylist?.playlist == null) {
@@ -477,15 +475,11 @@ fun CommunityPlaylistCard(
                             }
                         }
                     },
-                    modifier =
-                        Modifier
-                            .size(48.dp)
-                            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), CircleShape),
+                    size = 48.dp,
                 ) {
                     Icon(
                         painter = painterResource(if (isBookmarked) R.drawable.library_add_check else R.drawable.library_add),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(24.dp),
                     )
                 }

@@ -34,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import com.metrolist.music.ui.component.aura.AuraTopBar
@@ -99,6 +98,7 @@ import com.metrolist.music.ui.menu.TopPlaylistMenu
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.viewmodels.TopPlaylistViewModel
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -217,14 +217,11 @@ fun TopPlaylistScreen(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = { showRemoveDownloadDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showRemoveDownloadDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         songs!!.forEach { song ->
                             DownloadService.sendRemoveDownload(
@@ -234,8 +231,7 @@ fun TopPlaylistScreen(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },

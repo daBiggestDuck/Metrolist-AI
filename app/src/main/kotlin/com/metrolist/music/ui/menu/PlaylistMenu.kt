@@ -24,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,6 +74,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @Composable
 fun PlaylistMenu(
@@ -187,16 +187,13 @@ fun PlaylistMenu(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         songs.forEach { song ->
                             DownloadService.sendRemoveDownload(
@@ -206,8 +203,7 @@ fun PlaylistMenu(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -229,15 +225,13 @@ fun PlaylistMenu(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showDeletePlaylistDialog = false
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
+                AuraSecondaryAction(
                     onClick = {
                         showDeletePlaylistDialog = false
                         onDismiss()

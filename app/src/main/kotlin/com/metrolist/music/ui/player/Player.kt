@@ -60,15 +60,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -197,6 +193,10 @@ import com.metrolist.music.ui.component.Icon as MIcon
 import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
+import com.metrolist.music.ui.component.aura.AuraIconButton
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -639,23 +639,19 @@ fun BottomSheetPlayer(
             },
             title = { Text(stringResource(R.string.sleep_timer)) },
             confirmButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showSleepTimerDialog = false
                         playerConnection.service.sleepTimer?.start(
                             minute = sleepTimerValue.roundToInt(),
                             stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
                             fadeOut = sleepTimerFadeOut,
                         )
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showSleepTimerDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showSleepTimerDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
@@ -683,7 +679,7 @@ fun BottomSheetPlayer(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         if (isAtDefault) {
-                            FilledIconButton(
+                            AuraTonalButton(
                                 onClick = {
                                     scope.launch {
                                         context.safeDataStoreEdit { settings ->
@@ -696,15 +692,13 @@ fun BottomSheetPlayer(
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                 },
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                                ),
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
                             ) {
                                 Text(stringResource(R.string.set_as_default))
                             }
                         } else {
-                            OutlinedIconButton(
+                            AuraOutlinedButton(
                                 onClick = {
                                     scope.launch {
                                         context.safeDataStoreEdit { settings ->
@@ -722,7 +716,7 @@ fun BottomSheetPlayer(
                             }
                         }
 
-                        OutlinedIconButton(
+                        AuraOutlinedButton(
                             onClick = {
                                 showSleepTimerDialog = false
                                 playerConnection.service.sleepTimer?.start(minute = -1)
@@ -1147,16 +1141,10 @@ fun BottomSheetPlayer(
                     ) {
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                             if (showLyrics) {
-                                FilledIconButton(
-                                    onClick = { isFullScreen = !isFullScreen },
-                                    shape = shareShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
+                                AuraIconButton(onClick = { isFullScreen = !isFullScreen },
+                                    shape = shareShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
+                                    modifier = Modifier.size(42.dp)) {
                                     Icon(
                                         painter = painterResource(R.drawable.fullscreen),
                                         contentDescription = null,
@@ -1164,8 +1152,7 @@ fun BottomSheetPlayer(
                                     )
                                 }
                             } else {
-                                FilledIconButton(
-                                    onClick = {
+                                AuraIconButton(onClick = {
                                         val intent =
                                             Intent().apply {
                                                 action = Intent.ACTION_SEND
@@ -1177,14 +1164,9 @@ fun BottomSheetPlayer(
                                             }
                                         context.startActivity(Intent.createChooser(intent, null))
                                     },
-                                    shape = shareShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
+                                    shape = shareShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
+                                    modifier = Modifier.size(42.dp)) {
                                     Icon(
                                         painter = painterResource(R.drawable.share),
                                         contentDescription = null,
@@ -1197,8 +1179,7 @@ fun BottomSheetPlayer(
                         AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
                             if (showLyrics) {
                                 val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
-                                FilledIconButton(
-                                    onClick = {
+                                AuraIconButton(onClick = {
                                         menuState.show {
                                             com.metrolist.music.ui.menu.LyricsMenu(
                                                 lyricsProvider = { currentLyrics },
@@ -1215,14 +1196,9 @@ fun BottomSheetPlayer(
                                             )
                                         }
                                     },
-                                    shape = favShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
+                                    shape = favShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
+                                    modifier = Modifier.size(42.dp)) {
                                     Icon(
                                         painter = painterResource(R.drawable.more_horiz),
                                         contentDescription = null,
@@ -1233,16 +1209,10 @@ fun BottomSheetPlayer(
                                 // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                FilledIconButton(
-                                    onClick = playerConnection::toggleLike,
-                                    shape = favShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
+                                AuraIconButton(onClick = playerConnection::toggleLike,
+                                    shape = favShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
+                                    modifier = Modifier.size(42.dp)) {
                                     Icon(
                                         painter =
                                             painterResource(
@@ -1585,21 +1555,15 @@ fun BottomSheetPlayer(
                                 label = "nextButtonWeight",
                             )
 
-                            FilledIconButton(
-                                onClick = playerConnection::seekToPrevious,
+                            AuraIconButton(onClick = playerConnection::seekToPrevious,
                                 enabled = canSkipPrevious && !isListenTogetherGuest,
                                 shape = RoundedCornerShape(50),
-                                interactionSource = backInteractionSource,
-                                colors =
-                                    IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = sideButtonContainerColor,
+                                interactionSource = backInteractionSource, containerColor = sideButtonContainerColor,
                                         contentColor = sideButtonContentColor,
-                                    ),
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(backButtonWeight),
-                            ) {
+                                        .weight(backButtonWeight)) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_previous),
                                     contentDescription = null,
@@ -1609,11 +1573,10 @@ fun BottomSheetPlayer(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            FilledIconButton(
-                                onClick = {
+                            AuraIconButton(onClick = {
                                     if (isListenTogetherGuest) {
                                         playerConnection.toggleMute()
-                                        return@FilledIconButton
+                                        return@AuraIconButton
                                     }
                                     if (isCasting) {
                                         if (castIsPlaying) {
@@ -1629,18 +1592,13 @@ fun BottomSheetPlayer(
                                     }
                                 },
                                 shape = RoundedCornerShape(50),
-                                interactionSource = playPauseInteractionSource,
-                                colors =
-                                    IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = textButtonColor,
+                                interactionSource = playPauseInteractionSource, containerColor = textButtonColor,
                                         contentColor = iconButtonColor,
-                                    ),
                                 modifier =
                                     Modifier
                                         .height(68.dp)
                                         .weight(playPauseWeight)
-                                        .focusRequester(focusRequester),
-                            ) {
+                                        .focusRequester(focusRequester)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center,
@@ -1677,21 +1635,15 @@ fun BottomSheetPlayer(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            FilledIconButton(
-                                onClick = playerConnection::seekToNext,
+                            AuraIconButton(onClick = playerConnection::seekToNext,
                                 enabled = canSkipNext && !isListenTogetherGuest,
                                 shape = RoundedCornerShape(50),
-                                interactionSource = nextInteractionSource,
-                                colors =
-                                    IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = sideButtonContainerColor,
+                                interactionSource = nextInteractionSource, containerColor = sideButtonContainerColor,
                                         contentColor = sideButtonContentColor,
-                                    ),
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(nextButtonWeight),
-                            ) {
+                                        .weight(nextButtonWeight)) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_next),
                                     contentDescription = null,

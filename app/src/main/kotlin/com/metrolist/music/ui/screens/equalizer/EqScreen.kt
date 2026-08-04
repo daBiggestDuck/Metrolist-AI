@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,6 +48,8 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.eq.data.SavedEQProfile
 import timber.log.Timber
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 /**
  * EQ Screen - Manage and select EQ profiles
@@ -143,7 +143,7 @@ fun EqScreen(
                 Text(showError ?: "")
             },
             confirmButton = {
-                TextButton(onClick = { showError = null }) {
+                AuraSecondaryAction(onClick = { showError = null }) {
                     Text(stringResource(android.R.string.ok))
                 }
             }
@@ -161,7 +161,7 @@ fun EqScreen(
                 Text(stringResource(R.string.error_eq_apply_failed, state.error ?: ""))
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.clearError() }) {
+                AuraSecondaryAction(onClick = { viewModel.clearError() }) {
                     Text(stringResource(android.R.string.ok))
                 }
             }
@@ -297,7 +297,7 @@ private fun EqScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = onAddClicked) {
+                            AuraPrimaryButton(onClick = onAddClicked) {
                                 Text(stringResource(R.string.import_profile))
                             }
                         }
@@ -390,17 +390,15 @@ private fun EQProfileItem(
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         onDelete()
                         showDeleteDialog = false
-                    }
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                AuraSecondaryAction(onClick = { showDeleteDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }

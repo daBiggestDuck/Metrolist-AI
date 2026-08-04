@@ -55,11 +55,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -180,6 +178,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 /**
  * A composable function that displays lyrics for the currently playing song.
@@ -1735,7 +1735,7 @@ fun OriginalLyrics(
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
-                FilledTonalButton(onClick = latestResyncLyrics) {
+                AuraTonalButton(onClick = latestResyncLyrics) {
                     Icon(
                         painter = painterResource(id = R.drawable.sync),
                         contentDescription = stringResource(R.string.auto_scroll),
@@ -1755,20 +1755,17 @@ fun OriginalLyrics(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledTonalButton(
-                        onClick = {
+                    AuraTonalButton(onClick = {
                             isSelectionModeActive = false
                             selectedIndices.clear()
-                        },
-                    ) {
+                        }) {
                         Icon(
                             painter = painterResource(id = R.drawable.close),
                             contentDescription = stringResource(R.string.cancel),
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    FilledTonalButton(
-                        onClick = {
+                    AuraTonalButton(onClick = {
                             if (selectedIndices.isNotEmpty()) {
                                 val sortedIndices = selectedIndices.sorted()
                                 val selectedLyricsText =
@@ -1789,8 +1786,7 @@ fun OriginalLyrics(
                                 selectedIndices.clear()
                             }
                         },
-                        enabled = selectedIndices.isNotEmpty(),
-                    ) {
+                        enabled = selectedIndices.isNotEmpty()) {
                         Icon(
                             painter = painterResource(id = R.drawable.share),
                             contentDescription = stringResource(R.string.share_selected),
@@ -2153,8 +2149,7 @@ fun OriginalLyrics(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Button(
-                            onClick = {
+                        AuraPrimaryButton(onClick = {
                                 showColorPickerDialog = false
                                 showProgressDialog = true
                                 scope.launch {
@@ -2204,8 +2199,7 @@ fun OriginalLyrics(
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
+                            modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(id = R.string.share))
                         }
                     }

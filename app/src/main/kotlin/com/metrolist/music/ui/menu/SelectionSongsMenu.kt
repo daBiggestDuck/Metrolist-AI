@@ -24,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +67,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -176,16 +176,13 @@ fun SelectionSongMenu(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         songSelection.forEach { song ->
                             DownloadService.sendRemoveDownload(
@@ -195,8 +192,7 @@ fun SelectionSongMenu(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -227,14 +223,11 @@ fun SelectionSongMenu(
             },
             buttons = {
                 if (!isDeleting) {
-                    TextButton(
-                        onClick = { showDeleteUploadedDialog = false },
-                    ) {
+                    AuraSecondaryAction(onClick = { showDeleteUploadedDialog = false }) {
                         Text(text = stringResource(android.R.string.cancel))
                     }
 
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             totalToDelete = songSelection.size
                             deleteProgress = 0
                             isDeleting = true
@@ -266,8 +259,7 @@ fun SelectionSongMenu(
                                     clearAction()
                                 }
                             }
-                        },
-                    ) {
+                        }) {
                         Text(text = stringResource(R.string.delete))
                     }
                 }
@@ -739,16 +731,13 @@ fun SelectionMediaMetadataMenu(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         songSelection.forEach { song ->
                             DownloadService.sendRemoveDownload(
@@ -758,8 +747,7 @@ fun SelectionMediaMetadataMenu(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },

@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.PlaybackException
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @Composable
 fun PlaybackError(
@@ -121,13 +120,8 @@ fun PlaybackError(
         Spacer(modifier = Modifier.height(16.dp))
         
         // Retry button
-        Button(
-            onClick = retry,
-            shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
+        AuraPrimaryButton(onClick = retry,
+            shape = RoundedCornerShape(20.dp)) {
             Icon(
                 painter = painterResource(R.drawable.replay),
                 contentDescription = null,

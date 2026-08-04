@@ -7,7 +7,9 @@ package com.metrolist.music.ui.component.aura
 
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,18 +40,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
@@ -397,16 +402,10 @@ fun AuraPrimaryPill(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .clip(RoundedCornerShape(percent = 50))
-            .background(
-                if (enabled) AuraSpotifyGreen else AuraSpotifyGreen.copy(alpha = 0.35f),
-            )
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
+    AuraPrimaryButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(50.dp),
+        enabled = enabled,
     ) {
         Text(
             text = text,
@@ -419,7 +418,116 @@ fun AuraPrimaryPill(
     }
 }
 
-/** Muted / white text action button. */
+/**
+ * Flat green pill — drop-in visual replacement for Material3 [androidx.compose.material3.Button].
+ * No elevation / tonal overlay.
+ */
+@Composable
+fun AuraPrimaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = RoundedCornerShape(percent = 50),
+    containerColor: Color = AuraSpotifyGreen,
+    contentColor: Color = AuraSpotifyOnGreen,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier
+            .heightIn(min = 40.dp)
+            .clip(shape)
+            .background(if (enabled) containerColor else containerColor.copy(alpha = 0.35f))
+            .clickable(
+                enabled = enabled,
+                onClick = onClick,
+                role = Role.Button,
+                interactionSource = interactionSource,
+                indication = ripple(),
+            )
+            .padding(contentPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        content = {
+            val fg = if (enabled) contentColor else contentColor.copy(alpha = 0.5f)
+            CompositionLocalProvider(LocalContentColor provides fg) {
+                content()
+            }
+        },
+    )
+}
+
+/**
+ * Outlined / ghost pill — replaces Material3 [androidx.compose.material3.OutlinedButton].
+ */
+@Composable
+fun AuraOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = RoundedCornerShape(percent = 50),
+    containerColor: Color = Color.Transparent,
+    contentColor: Color = MaterialTheme.colorScheme.onBackground,
+    borderColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier
+            .heightIn(min = 40.dp)
+            .clip(shape)
+            .background(containerColor)
+            .border(width = 1.dp, color = borderColor, shape = shape)
+            .clickable(
+                enabled = enabled,
+                onClick = onClick,
+                role = Role.Button,
+                interactionSource = interactionSource,
+                indication = ripple(),
+            )
+            .padding(contentPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        content = {
+            val fg = if (enabled) contentColor else contentColor.copy(alpha = 0.5f)
+            CompositionLocalProvider(LocalContentColor provides fg) {
+                content()
+            }
+        },
+    )
+}
+
+/**
+ * Dark muted pill — replaces Material3 [androidx.compose.material3.FilledTonalButton].
+ */
+@Composable
+fun AuraTonalButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = RoundedCornerShape(percent = 50),
+    containerColor: Color = AuraSpotifyDark,
+    contentColor: Color = AuraSpotifyOnDark,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable RowScope.() -> Unit,
+) {
+    AuraPrimaryButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        shape = shape,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        contentPadding = contentPadding,
+        interactionSource = interactionSource,
+        content = content,
+    )
+}
+
+/** Muted / white text action — pure clickable text, no Material [TextButton] chrome. */
 @Composable
 fun AuraSecondaryAction(
     text: String,
@@ -427,10 +535,10 @@ fun AuraSecondaryAction(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    TextButton(
+    AuraSecondaryAction(
         onClick = onClick,
-        enabled = enabled,
         modifier = modifier,
+        enabled = enabled,
     ) {
         Text(
             text = text,
@@ -444,6 +552,127 @@ fun AuraSecondaryAction(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/**
+ * Content-slot secondary action — drop-in for Material3 [androidx.compose.material3.TextButton]
+ * confirm/dismiss slots. Flat text/box, zero M3 button chrome.
+ */
+@Composable
+fun AuraSecondaryAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .clickable(
+                enabled = enabled,
+                onClick = onClick,
+                role = Role.Button,
+                interactionSource = interactionSource,
+                indication = ripple(bounded = true),
+            )
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        val fg =
+            if (enabled) {
+                MaterialTheme.colorScheme.onBackground
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            }
+        CompositionLocalProvider(LocalContentColor provides fg) {
+            content()
+        }
+    }
+}
+
+/**
+ * Flat filled icon control — replaces Material3 [FilledIconButton] / [OutlinedIconButton].
+ * Supports pill shapes and weighted modifiers for player transport.
+ */
+@Composable
+fun AuraIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = CircleShape,
+    containerColor: Color = AuraSpotifyDark,
+    contentColor: Color = AuraSpotifyOnDark,
+    borderColor: Color? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier =
+            modifier
+                .clip(shape)
+                .background(if (enabled) containerColor else containerColor.copy(alpha = 0.35f))
+                .then(
+                    if (borderColor != null) {
+                        Modifier.border(width = 1.dp, color = borderColor, shape = shape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .clickable(
+                    enabled = enabled,
+                    onClick = onClick,
+                    role = Role.Button,
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                ),
+        contentAlignment = Alignment.Center,
+    ) {
+        val fg = if (enabled) contentColor else contentColor.copy(alpha = 0.5f)
+        CompositionLocalProvider(LocalContentColor provides fg) {
+            content()
+        }
+    }
+}
+
+/**
+ * Extended FAB replacement: green (or custom) pill with optional leading icon + label.
+ * Zero elevation — not Material [ExtendedFloatingActionButton].
+ */
+@Composable
+fun AuraExtendedFab(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = AuraSpotifyGreen,
+    contentColor: Color = AuraSpotifyOnGreen,
+    icon: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        modifier
+            .heightIn(min = 56.dp)
+            .widthIn(min = 80.dp)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(if (enabled) containerColor else containerColor.copy(alpha = 0.35f))
+            .clickable(enabled = enabled, onClick = onClick, role = Role.Button)
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+    ) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            if (icon != null) icon()
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

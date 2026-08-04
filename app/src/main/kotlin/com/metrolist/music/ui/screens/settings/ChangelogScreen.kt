@@ -32,6 +32,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.BuildConfig
+import com.metrolist.music.ui.component.aura.AuraExtendedFab
 import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.Updater
 
@@ -136,12 +137,18 @@ fun ChangelogScreen(
                     .padding(16.dp)
             ) {
                 val githubReleasesUrl = stringResource(R.string.github_releases_url)
-                ExtendedFloatingActionButton(
+                AuraExtendedFab(
+                    text = stringResource(R.string.view_on_github),
                     onClick = { uriHandler.openUri(githubReleasesUrl) },
-                    icon = { Icon(painterResource(R.drawable.github), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    text = { Text(stringResource(R.string.view_on_github)) },
                     containerColor = MaterialTheme.colorScheme.onPrimary,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.github),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    },
                 )
             }
         }

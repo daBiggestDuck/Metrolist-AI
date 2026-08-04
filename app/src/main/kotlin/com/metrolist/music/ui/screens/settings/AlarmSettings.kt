@@ -22,16 +22,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -68,6 +65,9 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -291,10 +291,10 @@ private fun AlarmTimePickerDialog(
         title = { Text(title) },
         onDismiss = onDismiss,
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
-            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+            AuraSecondaryAction(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
                 Text(stringResource(android.R.string.ok))
             }
         }
@@ -370,7 +370,7 @@ private fun AlarmEditorDialog(
             onDismiss = { showPlaylistDialog = false },
             title = { Text(stringResource(R.string.alarm_playlist)) },
             buttons = {
-                TextButton(onClick = { showPlaylistDialog = false }) {
+                AuraSecondaryAction(onClick = { showPlaylistDialog = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             }
@@ -449,18 +449,17 @@ private fun AlarmEditorDialog(
             )
         },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
-            TextButton(
-                enabled = !hasSameTimeAlarm && hasValidPlaylist,
+            AuraSecondaryAction(enabled = !hasSameTimeAlarm && hasValidPlaylist,
                 onClick = {
                     if (hasSameTimeAlarm) {
-                        return@TextButton
+                        return@AuraSecondaryAction
                     }
                     if (!hasValidPlaylist) {
                         Toast.makeText(context, selectPlaylistText, Toast.LENGTH_SHORT).show()
-                        return@TextButton
+                        return@AuraSecondaryAction
                     }
                     onSave(
                         (existing ?: MusicAlarmStore.createEmpty()).copy(
@@ -471,8 +470,7 @@ private fun AlarmEditorDialog(
                             randomSong = randomSong
                         )
                     )
-                }
-            ) {
+                }) {
                 Text(stringResource(R.string.alarm_save))
             }
         }
@@ -489,10 +487,8 @@ private fun AlarmEditorDialog(
                 AlarmSwitch(checked = enabled, onCheckedChange = { enabled = it })
             }
 
-            FilledTonalButton(
-                onClick = { showTimePickerDialog = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            AuraTonalButton(onClick = { showTimePickerDialog = true },
+                modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(
                         R.string.alarm_time_picker_value,
@@ -503,8 +499,7 @@ private fun AlarmEditorDialog(
 
             HorizontalDivider()
 
-            OutlinedButton(
-                onClick = {
+            AuraOutlinedButton(onClick = {
                     if (playlists.isEmpty()) {
                         Toast.makeText(context, noPlaylistsText, Toast.LENGTH_SHORT).show()
                     } else {
@@ -512,8 +507,7 @@ private fun AlarmEditorDialog(
                     }
                 },
                 enabled = playlists.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+                modifier = Modifier.fillMaxWidth()) {
                 Text(text = selectedPlaylist?.title ?: selectPlaylistText)
             }
 

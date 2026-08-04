@@ -28,7 +28,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,6 +69,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -318,18 +318,15 @@ fun BackupAndRestore(
             },
             title = { Text(stringResource(R.string.restore_confirm_title)) },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRestoreConfirmDialog = false
                         pendingRestoreUri = null
                         backupPreviewInfo = null
                         accountCheckFailed = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRestoreConfirmDialog = false
                         pendingRestoreUri?.let { uri ->
                             viewModel.restore(context, uri, clearAuthData = false)
@@ -337,8 +334,7 @@ fun BackupAndRestore(
                         pendingRestoreUri = null
                         backupPreviewInfo = null
                         accountCheckFailed = false
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.restore))
                 }
             },

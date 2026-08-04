@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 /**
  * EQ Wizard - Device Setup Flow
@@ -172,7 +173,7 @@ private fun ModelSelectionStep(
                     )
                 }
             } else {
-                Button(onClick = onDownloadDatabase) {
+                AuraPrimaryButton(onClick = onDownloadDatabase) {
                     Icon(
                         painter = painterResource(R.drawable.download),
                         contentDescription = null,
@@ -335,14 +336,12 @@ private fun VariantSelectionStep(
             shadowElevation = 8.dp
         ) {
             val bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
-            Button(
-                onClick = onCompleteClicked,
+            AuraPrimaryButton(onClick = onCompleteClicked,
                 enabled = canComplete && !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + bottomPadding)
-                    .height(56.dp)
-            ) {
+                    .height(56.dp)) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),

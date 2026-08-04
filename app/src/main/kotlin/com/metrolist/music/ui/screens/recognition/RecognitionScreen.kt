@@ -39,16 +39,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -91,6 +87,9 @@ import com.metrolist.shazamkit.models.RecognitionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -413,7 +412,7 @@ private fun ListeningState(onCancel: () -> Unit) {
             color = MaterialTheme.colorScheme.primary,
         )
 
-        OutlinedButton(onClick = onCancel) {
+        AuraOutlinedButton(onClick = onCancel) {
             Text(stringResource(R.string.cancel))
         }
     }
@@ -552,10 +551,8 @@ private fun SuccessState(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Button(
-                onClick = { onPlayOnApp(result) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            AuraPrimaryButton(onClick = { onPlayOnApp(result) },
+                modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     painter = painterResource(R.drawable.play),
                     contentDescription = null,
@@ -565,10 +562,8 @@ private fun SuccessState(
                 Text(stringResource(R.string.play_on_app))
             }
 
-            FilledTonalButton(
-                onClick = onTryAgain,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            AuraTonalButton(onClick = onTryAgain,
+                modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     painter = painterResource(R.drawable.mic),
                     contentDescription = null,
@@ -579,10 +574,8 @@ private fun SuccessState(
             }
 
             // Close button - Material 3 Expressive outlined style
-            OutlinedButton(
-                onClick = onClose,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            AuraOutlinedButton(onClick = onClose,
+                modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     painter = painterResource(R.drawable.close),
                     contentDescription = null,
@@ -634,7 +627,7 @@ private fun NoMatchState(
             modifier = Modifier.padding(horizontal = 32.dp),
         )
 
-        Button(onClick = onTryAgain) {
+        AuraPrimaryButton(onClick = onTryAgain) {
             Icon(
                 painter = painterResource(R.drawable.refresh),
                 contentDescription = null,
@@ -685,7 +678,7 @@ private fun ErrorState(
             modifier = Modifier.padding(horizontal = 32.dp),
         )
 
-        Button(onClick = onTryAgain) {
+        AuraPrimaryButton(onClick = onTryAgain) {
             Icon(
                 painter = painterResource(R.drawable.refresh),
                 contentDescription = null,

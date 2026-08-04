@@ -20,15 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -75,6 +72,8 @@ import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AccountSettingsViewModel
 import com.metrolist.music.viewmodels.HomeViewModel
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @Composable
 fun AccountSettings(
@@ -146,8 +145,7 @@ fun AccountSettings(
                     )
                 },
                 buttons = {
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             Timber.d("[LOGOUT_CLEAR] User chose to clear data")
                             scope.launch {
                                 try {
@@ -165,12 +163,10 @@ fun AccountSettings(
                                 showLogoutDialog = false
                                 onClose()
                             }
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(R.string.logout_clear))
                     }
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             Timber.d("[LOGOUT_KEEP] User chose to keep data")
                             scope.launch {
                                 Timber.d("[LOGOUT_KEEP] Starting logout process (keeping data)")
@@ -179,8 +175,7 @@ fun AccountSettings(
                                 showLogoutDialog = false
                                 onClose()
                             }
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(R.string.logout_keep))
                     }
                 }
@@ -276,16 +271,10 @@ fun AccountSettings(
                     icon = if (!isLoggedIn) painterResource(R.drawable.login) else null,
                     trailingContent = {
                         if (isLoggedIn) {
-                            OutlinedButton(
-                                onClick = {
+                            AuraOutlinedButton(onClick = {
                                     Timber.d("[LOGOUT] User clicked logout button, showing dialog")
                                     showLogoutDialog = true
-                                },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSurface
-                                )
-                            ) {
+                                }) {
                                 Text(stringResource(R.string.action_logout))
                             }
                         }

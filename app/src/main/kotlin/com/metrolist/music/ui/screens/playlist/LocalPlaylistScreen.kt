@@ -49,7 +49,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import com.metrolist.music.ui.component.aura.AuraTopBar
@@ -158,6 +157,7 @@ import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDateTime
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @SuppressLint("RememberReturnType")
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -344,14 +344,11 @@ fun LocalPlaylistScreen(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = { showRemoveDownloadDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showRemoveDownloadDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showRemoveDownloadDialog = false
                         if (!editable) {
                             database.transaction {
@@ -366,8 +363,7 @@ fun LocalPlaylistScreen(
                                 false,
                             )
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -392,15 +388,12 @@ fun LocalPlaylistScreen(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showDeletePlaylistDialog = false
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showDeletePlaylistDialog = false
                         database.query {
                             playlist?.let { delete(it.playlist) }
@@ -409,8 +402,7 @@ fun LocalPlaylistScreen(
                             playlist?.playlist?.browseId?.let { YouTube.deletePlaylist(it) }
                         }
                         navController.popBackStack()
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },

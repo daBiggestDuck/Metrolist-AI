@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @Composable
 fun ConclusionPage(onClose: () -> Unit) {
@@ -59,11 +58,8 @@ fun ConclusionPage(onClose: () -> Unit) {
                 )
             )
             Spacer(modifier = Modifier.height(48.dp))
-            Button(
-                onClick = onClose,
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-            ) {
+            AuraPrimaryButton(onClick = onClose,
+                shape = CircleShape) {
                 Text(
                     text = stringResource(R.string.wrapped_close),
                     style = TextStyle(

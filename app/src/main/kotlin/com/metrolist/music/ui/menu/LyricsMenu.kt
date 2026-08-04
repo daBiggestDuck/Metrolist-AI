@@ -40,7 +40,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,6 +88,7 @@ import com.metrolist.music.constants.OpenRouterDefaultModel
 import com.metrolist.music.constants.OpenRouterModelKey
 import com.metrolist.music.constants.DeeplFormalityKey
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,16 +187,13 @@ fun LyricsMenu(
             },
             title = { Text(stringResource(R.string.search_lyrics)) },
             buttons = {
-                TextButton(
-                    onClick = { showSearchDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showSearchDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
 
                 Spacer(Modifier.width(8.dp))
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showSearchDialog = false
                         onDismiss()
                         try {
@@ -210,15 +207,13 @@ fun LyricsMenu(
                             )
                         } catch (_: Exception) {
                         }
-                    },
-                ) {
+                    }) {
                     Text(stringResource(R.string.search_online))
                 }
 
                 Spacer(Modifier.width(8.dp))
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         // Try search regardless of network status indicator
                         // as it might be a false negative
                         viewModel.search(
@@ -234,8 +229,7 @@ fun LyricsMenu(
                         if (!isNetworkAvailable) {
                             Toast.makeText(context, context.getString(R.string.error_no_internet), Toast.LENGTH_SHORT).show()
                         }
-                    },
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },

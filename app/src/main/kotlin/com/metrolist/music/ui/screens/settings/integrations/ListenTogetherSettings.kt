@@ -34,23 +34,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -97,6 +92,8 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ListenTogetherViewModel
 import kotlinx.coroutines.flow.collectLatest
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,14 +189,14 @@ fun ListenTogetherSettings(
             icon = { Icon(painterResource(R.drawable.person), contentDescription = null) },
             title = { Text(stringResource(R.string.listen_together_username)) },
             buttons = {
-                TextButton(onClick = {
+                AuraSecondaryAction(onClick = {
                     username = ""
                     showUsernameDialog = false
                 }) {
                     Text(stringResource(R.string.reset))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = {
+                AuraPrimaryButton(onClick = {
                     username = tempUsername.trim()
                     showUsernameDialog = false
                 }) {
@@ -235,12 +232,11 @@ fun ListenTogetherSettings(
             icon = { Icon(painterResource(R.drawable.add), contentDescription = null) },
             title = { Text(stringResource(R.string.listen_together_create_room)) },
             buttons = {
-                TextButton(onClick = { showCreateRoomDialog = false }) {
+                AuraSecondaryAction(onClick = { showCreateRoomDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
+                AuraPrimaryButton(onClick = {
                         val finalUsername = createUsername.trim()
                         if (finalUsername.isNotBlank()) {
                             username = finalUsername
@@ -250,8 +246,7 @@ fun ListenTogetherSettings(
                             Toast.makeText(context, R.string.error_username_empty, Toast.LENGTH_SHORT).show()
                         }
                     },
-                    enabled = createUsername.trim().isNotBlank(),
-                ) {
+                    enabled = createUsername.trim().isNotBlank()) {
                     Text(stringResource(R.string.create))
                 }
             },
@@ -286,12 +281,11 @@ fun ListenTogetherSettings(
             icon = { Icon(painterResource(R.drawable.group_add), contentDescription = null) },
             title = { Text(stringResource(R.string.listen_together_join_room)) },
             buttons = {
-                TextButton(onClick = { showJoinRoomDialog = false }) {
+                AuraSecondaryAction(onClick = { showJoinRoomDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
+                AuraPrimaryButton(onClick = {
                         val finalUsername = joinUsername.trim()
                         if (finalUsername.isNotBlank() && roomCodeInput.length == 8) {
                             username = finalUsername
@@ -302,8 +296,7 @@ fun ListenTogetherSettings(
                             Toast.makeText(context, R.string.error_username_empty, Toast.LENGTH_SHORT).show()
                         }
                     },
-                    enabled = joinUsername.trim().isNotBlank() && roomCodeInput.length == 8,
-                ) {
+                    enabled = joinUsername.trim().isNotBlank() && roomCodeInput.length == 8) {
                     Text(stringResource(R.string.join))
                 }
             },
@@ -553,8 +546,7 @@ fun LogsDialog(
         icon = { Icon(painterResource(R.drawable.bug_report), contentDescription = null) },
         title = { Text(stringResource(R.string.listen_together_logs)) },
         buttons = {
-            TextButton(
-                onClick = {
+            AuraSecondaryAction(onClick = {
                     val textToCopy =
                         logs.joinToString("\n") { log ->
                             buildString {
@@ -571,15 +563,14 @@ fun LogsDialog(
                     cm.setPrimaryClip(clip)
                     Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
                 },
-                enabled = logs.isNotEmpty(),
-            ) {
+                enabled = logs.isNotEmpty()) {
                 Text(stringResource(R.string.copy))
             }
-            TextButton(onClick = onClear) {
+            AuraSecondaryAction(onClick = onClear) {
                 Text(stringResource(R.string.clear))
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onDismiss) {
+            AuraPrimaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -630,7 +621,7 @@ private fun ServerChooserDialog(
         icon = { Icon(painterResource(R.drawable.cloud), contentDescription = null) },
         title = { Text(stringResource(R.string.listen_together_choose_server)) },
         buttons = {
-            TextButton(onClick = onDismiss) {
+            AuraSecondaryAction(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         },
@@ -714,12 +705,10 @@ private fun ServerChooserDialog(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Button(
-                onClick = { onUseCustom(trimmedCustomUrl) },
+            AuraPrimaryButton(onClick = { onUseCustom(trimmedCustomUrl) },
                 enabled = trimmedCustomUrl.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-            ) {
+                shape = RoundedCornerShape(12.dp)) {
                 Text(stringResource(R.string.listen_together_use_custom_server))
             }
         }
@@ -803,7 +792,7 @@ fun BlockedUsersDialog(
         icon = { Icon(painterResource(R.drawable.person), contentDescription = null) },
         title = { Text(stringResource(R.string.listen_together_blocked_users)) },
         buttons = {
-            Button(onClick = onDismiss) {
+            AuraPrimaryButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -857,9 +846,7 @@ fun BlockedUsersDialog(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
-                            TextButton(
-                                onClick = { onUnblock(username) },
-                            ) {
+                            AuraSecondaryAction(onClick = { onUnblock(username) }) {
                                 Text(stringResource(R.string.unblock))
                             }
                         }

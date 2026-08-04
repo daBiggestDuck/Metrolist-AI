@@ -52,7 +52,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -61,7 +60,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -139,7 +137,9 @@ import androidx.compose.runtime.derivedStateOf
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.material3.Button
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 
 @SuppressLint("UnrememberedMutableState")
@@ -429,10 +429,8 @@ fun Queue(
                                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                             ),
                 ) {
-                    TextButton(
-                        onClick = { state.expandSoft() },
-                        modifier = Modifier.weight(1f),
-                    ) {
+                    AuraSecondaryAction(onClick = { state.expandSoft() },
+                        modifier = Modifier.weight(1f)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -456,8 +454,7 @@ fun Queue(
                         }
                     }
 
-                    TextButton(
-                        enabled = !isListenTogetherGuest,
+                    AuraSecondaryAction(enabled = !isListenTogetherGuest,
                         onClick = {
                             if (!isListenTogetherGuest) {
                                 if (sleepTimerEnabled) {
@@ -467,8 +464,7 @@ fun Queue(
                                 }
                             }
                         },
-                        modifier = Modifier.weight(1.2f),
-                    ) {
+                        modifier = Modifier.weight(1.2f)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -508,12 +504,10 @@ fun Queue(
                         }
                     }
 
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             onToggleLyrics()
                         },
-                        modifier = Modifier.weight(1f),
-                    ) {
+                        modifier = Modifier.weight(1f)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -598,8 +592,7 @@ fun Queue(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 if (isAtDefault) {
-                                    Button(
-                                        onClick = {
+                                    AuraPrimaryButton(onClick = {
                                             coroutineScope.launch {
                                                 context.safeDataStoreEdit { settings ->
                                                     settings[SleepTimerDefaultKey] = sleepTimerValue
@@ -610,17 +603,11 @@ fun Queue(
                                                 String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
                                                 Toast.LENGTH_SHORT,
                                             ).show()
-                                        },
-                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                    ) {
+                                        }) {
                                         Text(stringResource(R.string.set_as_default))
                                     }
                                 } else {
-                                    OutlinedButton(
-                                        onClick = {
+                                    AuraOutlinedButton(onClick = {
                                             coroutineScope.launch {
                                                 context.safeDataStoreEdit { settings ->
                                                     settings[SleepTimerDefaultKey] = sleepTimerValue
@@ -631,20 +618,17 @@ fun Queue(
                                                 String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
                                                 Toast.LENGTH_SHORT,
                                             ).show()
-                                        },
-                                    ) {
+                                        }) {
                                         Text(stringResource(R.string.set_as_default))
                                     }
                                 }
 
-                                OutlinedButton(
-                                    onClick = {
+                                AuraOutlinedButton(onClick = {
                                         showSleepTimerDialog = false
                                         playerConnection.service.sleepTimer?.start(
                                             minute = -1,
                                         )
-                                    },
-                                ) {
+                                    }) {
                                     Text(stringResource(R.string.end_of_song))
                                 }
                             }

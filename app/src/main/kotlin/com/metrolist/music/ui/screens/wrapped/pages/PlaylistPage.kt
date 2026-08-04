@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +44,7 @@ import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @Composable
 fun PlaylistPage() {
@@ -110,16 +109,13 @@ fun PlaylistPage() {
                 )
             )
             Spacer(modifier = Modifier.height(48.dp))
-            Button(
-                onClick = {
+            AuraPrimaryButton(onClick = {
                     if (playlistCreationState == PlaylistCreationState.Idle) {
                         manager.createPlaylist(playlistImageName)
                     }
                 },
                 shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                modifier = Modifier.height(50.dp)
-            ) {
+                modifier = Modifier.height(50.dp)) {
                 when (playlistCreationState) {
                     is PlaylistCreationState.Idle -> Text(
                         text = stringResource(R.string.wrapped_create_playlist),

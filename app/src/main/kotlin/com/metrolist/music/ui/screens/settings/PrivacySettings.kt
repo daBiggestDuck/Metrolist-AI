@@ -20,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +43,7 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,20 +79,16 @@ fun PrivacySettings(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = { showClearListenHistoryDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showClearListenHistoryDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showClearListenHistoryDialog = false
                         database.query {
                             clearListenHistory()
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -114,20 +110,16 @@ fun PrivacySettings(
                 )
             },
             buttons = {
-                TextButton(
-                    onClick = { showClearSearchHistoryDialog = false },
-                ) {
+                AuraSecondaryAction(onClick = { showClearSearchHistoryDialog = false }) {
                     Text(text = stringResource(android.R.string.cancel))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showClearSearchHistoryDialog = false
                         database.query {
                             clearSearchHistory()
                         }
-                    },
-                ) {
+                    }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },

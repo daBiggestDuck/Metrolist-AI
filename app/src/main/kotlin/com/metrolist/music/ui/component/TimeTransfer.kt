@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +22,7 @@ import com.metrolist.music.db.entities.SongWithStats
 import com.metrolist.music.viewmodels.StatsViewModel
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @Composable
 fun TimeTransfer(
@@ -95,8 +95,7 @@ fun TimeTransfer(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Button(
-                    onClick = {
+                AuraPrimaryButton(onClick = {
                         val from = sourceSong.value?.id
                         val to = targetSong.value?.id
                         if (from != null && to != null && from != to) {
@@ -110,8 +109,7 @@ fun TimeTransfer(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = sourceSong.value != null &&
                             targetSong.value != null &&
-                            sourceSong.value!!.id != targetSong.value!!.id,
-                ) {
+                            sourceSong.value!!.id != targetSong.value!!.id) {
                     Text(
                         text = stringResource(R.string.time_transfer_convert),
                         color = MaterialTheme.colorScheme.onPrimary,

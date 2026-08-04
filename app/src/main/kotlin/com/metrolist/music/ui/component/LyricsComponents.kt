@@ -36,11 +36,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -84,6 +82,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 @Composable
 internal fun LyricsTranslationHeader(
@@ -190,7 +190,7 @@ internal fun LyricsActionOverlay(
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()
         ) {
-            FilledTonalButton(onClick = onSyncClick) {
+            AuraTonalButton(onClick = onSyncClick) {
                 Icon(painterResource(R.drawable.sync), stringResource(R.string.auto_scroll), Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.auto_scroll))
@@ -206,13 +206,11 @@ internal fun LyricsActionOverlay(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilledTonalButton(onClick = onCancelSelection) {
+                AuraTonalButton(onClick = onCancelSelection) {
                     Icon(painterResource(R.drawable.close), stringResource(R.string.cancel), Modifier.size(20.dp))
                 }
-                FilledTonalButton(
-                    onClick = onShareSelection,
-                    enabled = anySelected
-                ) {
+                AuraTonalButton(onClick = onShareSelection,
+                    enabled = anySelected) {
                     Icon(painterResource(R.drawable.share), stringResource(R.string.share_selected), Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.share))
@@ -404,7 +402,7 @@ internal fun LyricsColorPickerDialog(
                 
                 Spacer(Modifier.height(12.dp))
                 
-                Button(onClick = {
+                AuraPrimaryButton(onClick = {
                     onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle)
                 }, Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.share))

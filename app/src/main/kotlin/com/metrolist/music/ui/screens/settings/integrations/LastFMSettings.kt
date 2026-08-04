@@ -24,13 +24,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,6 +71,8 @@ import com.metrolist.music.utils.reportException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -195,11 +195,10 @@ fun LastFMSettings(
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         if (tempUsername.isBlank() || tempPassword.isBlank()) {
                             loginError = "Please enter both username and password"
-                            return@TextButton
+                            return@AuraSecondaryAction
                         }
 
                         isLoggingIn = true
@@ -250,21 +249,18 @@ fun LastFMSettings(
                             }
                         }
                     },
-                    enabled = !isLoggingIn
-                ) {
+                    enabled = !isLoggingIn) {
                     Text(stringResource(R.string.login))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         if (!isLoggingIn) {
                             showLoginDialog = false
                             loginError = null
                         }
                     },
-                    enabled = !isLoggingIn
-                ) {
+                    enabled = !isLoggingIn) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -302,14 +298,14 @@ fun LastFMSettings(
                     },
                     trailingContent = {
                         if (isLoggedIn) {
-                            OutlinedButton(onClick = {
+                            AuraOutlinedButton(onClick = {
                                 lastfmSession = ""
                                 lastfmUsername = ""
                             }) {
                                 Text(stringResource(R.string.action_logout))
                             }
                         } else {
-                            OutlinedButton(onClick = { showLoginDialog = true }) {
+                            AuraOutlinedButton(onClick = { showLoginDialog = true }) {
                                 Text(stringResource(R.string.action_login))
                             }
                         }
@@ -402,30 +398,24 @@ fun LastFMSettings(
                     showMinTrackDurationDialog = false
                 },
                 buttons = {
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempMinTrackDuration = LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(R.string.reset))
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempMinTrackDuration = minTrackDuration
                             showMinTrackDurationDialog = false
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.cancel))
                     }
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             onMinTrackDurationChange(tempMinTrackDuration)
                             showMinTrackDurationDialog = false
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.ok))
                     }
                 }
@@ -467,30 +457,24 @@ fun LastFMSettings(
                     showScrobbleDelayPercentDialog = false
                 },
                 buttons = {
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempScrobbleDelayPercent = LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(R.string.reset))
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempScrobbleDelayPercent = scrobbleDelayPercent
                             showScrobbleDelayPercentDialog = false
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.cancel))
                     }
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             onScrobbleDelayPercentChange(tempScrobbleDelayPercent)
                             showScrobbleDelayPercentDialog = false
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.ok))
                     }
                 }
@@ -532,30 +516,24 @@ fun LastFMSettings(
                     showScrobbleDelaySecondsDialog = false
                 },
                 buttons = {
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempScrobbleDelaySeconds = LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(R.string.reset))
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             tempScrobbleDelaySeconds = scrobbleDelaySeconds
                             showScrobbleDelaySecondsDialog = false
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.cancel))
                     }
-                    TextButton(
-                        onClick = {
+                    AuraSecondaryAction(onClick = {
                             onScrobbleDelaySecondsChange(tempScrobbleDelaySeconds)
                             showScrobbleDelaySecondsDialog = false
-                        }
-                    ) {
+                        }) {
                         Text(stringResource(android.R.string.ok))
                     }
                 }

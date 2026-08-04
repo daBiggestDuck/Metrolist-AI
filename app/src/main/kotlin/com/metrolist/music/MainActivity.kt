@@ -65,7 +65,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
@@ -220,6 +219,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @AndroidEntryPoint
@@ -1436,17 +1436,15 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 confirmButton = {
-                                    TextButton(
-                                        onClick = {
+                                    AuraSecondaryAction(onClick = {
                                             kmpUpgradeDismissed = true
                                             startActivity(Intent(Intent.ACTION_VIEW, downloadUrl.toUri()))
-                                        },
-                                    ) {
+                                        }) {
                                         Text(stringResource(R.string.kmp_upgrade_action))
                                     }
                                 },
                                 dismissButton = {
-                                    TextButton(onClick = { kmpUpgradeDismissed = true }) {
+                                    AuraSecondaryAction(onClick = { kmpUpgradeDismissed = true }) {
                                         Text(stringResource(R.string.kmp_upgrade_later))
                                     }
                                 },

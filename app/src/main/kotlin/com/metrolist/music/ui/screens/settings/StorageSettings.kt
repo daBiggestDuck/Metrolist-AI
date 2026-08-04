@@ -25,7 +25,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,6 +68,7 @@ import kotlinx.coroutines.launch
 import okio.ByteString.Companion.encodeUtf8
 import java.io.File
 import kotlin.math.roundToInt
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalCoilApi::class, ExperimentalMaterial3Api::class, DelicateCoilApi::class)
 @Composable
@@ -260,12 +260,10 @@ fun StorageSettings(
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         onConfirmAction()
                         showCacheWarningDialog = false
-                    },
-                ) {
+                    }) {
                     Text(
                         stringResource(R.string.cache_size_warning_confirm),
                         color = MaterialTheme.colorScheme.error,
@@ -273,7 +271,7 @@ fun StorageSettings(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCacheWarningDialog = false }) {
+                AuraSecondaryAction(onClick = { showCacheWarningDialog = false }) {
                     Text(stringResource(id = android.R.string.cancel))
                 }
             },

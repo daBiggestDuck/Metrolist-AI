@@ -22,11 +22,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -85,6 +82,8 @@ import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.viewmodels.OnlinePodcastViewModel
+import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -160,7 +159,7 @@ fun OnlinePodcastScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )
-                        Button(onClick = { viewModel.retry() }) {
+                        AuraPrimaryButton(onClick = { viewModel.retry() }) {
                             Text(stringResource(R.string.retry))
                         }
                     }
@@ -360,17 +359,9 @@ private fun PodcastHeader(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
-                onClick = onLibraryClick,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (inLibrary)
-                        MaterialTheme.colorScheme.secondaryContainer
-                    else
-                        Color.Transparent
-                ),
+            AuraOutlinedButton(onClick = onLibraryClick,
                 shape = RoundedCornerShape(50),
-                modifier = Modifier.height(40.dp)
-            ) {
+                modifier = Modifier.height(40.dp)) {
                 Icon(
                     painter = painterResource(if (inLibrary) R.drawable.library_add_check else R.drawable.library_add),
                     contentDescription = null,
@@ -382,11 +373,9 @@ private fun PodcastHeader(
                 )
             }
 
-            OutlinedButton(
-                onClick = onViewChannelClick,
+            AuraOutlinedButton(onClick = onViewChannelClick,
                 shape = RoundedCornerShape(50),
-                modifier = Modifier.height(40.dp)
-            ) {
+                modifier = Modifier.height(40.dp)) {
                 Icon(
                     painter = painterResource(R.drawable.person),
                     contentDescription = null,

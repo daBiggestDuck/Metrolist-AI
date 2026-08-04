@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -108,6 +109,7 @@ import com.metrolist.music.viewmodels.OnlinePlaylistViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -224,7 +226,7 @@ fun OnlinePlaylistScreen(
                                 textAlign = TextAlign.Center,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            androidx.compose.material3.TextButton(onClick = { viewModel.retry() }) {
+                            AuraSecondaryAction(onClick = { viewModel.retry() }) {
                                 Text(stringResource(R.string.retry))
                             }
                         }

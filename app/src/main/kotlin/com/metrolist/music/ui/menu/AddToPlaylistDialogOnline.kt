@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -75,8 +74,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -87,6 +84,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraTonalButton
 
 @Composable
 fun AddToPlaylistDialogOnline(
@@ -167,19 +166,13 @@ fun AddToPlaylistDialogOnline(
                     ),
                     label = "buttonScale"
                 )
-                FilledTonalButton(
-                    onClick = { showCreatePlaylistDialog = true },
+                AuraTonalButton(onClick = { showCreatePlaylistDialog = true },
                     shape = RoundedCornerShape(50),
                     interactionSource = interactionSource,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .graphicsLayer { scaleX = scale; scaleY = scale }
-                ) {
+                        .graphicsLayer { scaleX = scale; scaleY = scale }) {
                     Icon(
                         painter = painterResource(R.drawable.add),
                         contentDescription = null,
@@ -449,8 +442,7 @@ fun AddToPlaylistDialogOnline(
         DefaultDialog(
             title = { Text(stringResource(R.string.duplicates)) },
             buttons = {
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showDuplicateDialog = false
                         onDismiss()
                          database.transaction {
@@ -462,28 +454,23 @@ fun AddToPlaylistDialogOnline(
                                 prepend = true,
                             )
                         }
-                    }
-                ) {
+                    }) {
                     Text(stringResource(R.string.skip_duplicates))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showDuplicateDialog = false
                         onDismiss()
                          database.transaction {
                             addSongsToPlaylist(selectedPlaylist!!, songIds!!.map { it to null }, prepend = true)
                         }
-                    }
-                ) {
+                    }) {
                     Text(stringResource(R.string.add_anyway))
                 }
 
-                TextButton(
-                    onClick = {
+                AuraSecondaryAction(onClick = {
                         showDuplicateDialog = false
-                    }
-                ) {
+                    }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
