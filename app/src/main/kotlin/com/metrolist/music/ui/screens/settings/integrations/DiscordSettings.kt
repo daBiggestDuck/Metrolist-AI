@@ -38,13 +38,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SuggestionChip
+import com.metrolist.music.ui.component.aura.AuraFilterPill
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -877,7 +877,7 @@ fun DiscordSettings(
         )
     }
 
-    TopAppBar(
+    AuraTopBar(
         title = { Text(stringResource(R.string.discord_integration)) },
         navigationIcon = {
             IconButton(
@@ -934,9 +934,10 @@ private fun TemplateFieldDialog(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             DiscordTemplateRenderer.PLACEHOLDERS.forEach { placeholder ->
-                SuggestionChip(
+                AuraFilterPill(
+                    label = placeholder,
+                    selected = false,
                     onClick = { text += placeholder },
-                    label = { Text(placeholder, style = MaterialTheme.typography.bodySmall) },
                 )
             }
         }

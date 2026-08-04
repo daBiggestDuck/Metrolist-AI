@@ -47,7 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -738,7 +738,7 @@ fun AutoPlaylistScreen(
             }
         }
 
-        TopAppBar(
+        AuraTopBar(
             title = {
                 when {
                     inSelectMode -> {

@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -191,7 +191,7 @@ fun LoginScreen(navController: NavController) {
         },
     )
 
-    TopAppBar(
+    AuraTopBar(
         title = { Text(stringResource(R.string.login)) },
         navigationIcon = {
             IconButton(

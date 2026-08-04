@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraTopBar
 
 /**
  * EQ Wizard - Device Setup Flow
@@ -64,7 +65,7 @@ private fun WizardScreenContent(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
+            AuraTopBar(
                 title = {
                     Text(
                         text = when (state.currentStep) {
@@ -78,9 +79,6 @@ private fun WizardScreenContent(
                         Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
             )
         }
     ) { paddingValues ->

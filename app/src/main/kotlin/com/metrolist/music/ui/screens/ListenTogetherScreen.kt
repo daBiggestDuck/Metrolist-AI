@@ -61,7 +61,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -417,7 +417,7 @@ fun ListenTogetherScreen(
     }
 
     if (shouldShowTopBar) {
-        TopAppBar(
+        AuraTopBar(
             title = { Text(stringResource(R.string.together)) },
             navigationIcon = {
                 IconButton(

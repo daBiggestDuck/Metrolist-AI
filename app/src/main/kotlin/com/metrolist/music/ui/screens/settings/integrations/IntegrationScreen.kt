@@ -13,7 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -64,7 +64,7 @@ fun IntegrationScreen(
         )
     }
 
-    TopAppBar(
+    AuraTopBar(
         title = { Text(stringResource(R.string.integrations)) },
         navigationIcon = {
             IconButton(

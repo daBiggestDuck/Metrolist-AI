@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -196,7 +196,7 @@ fun YouTubeBrowseScreen(
         }
     }
 
-    TopAppBar(
+    AuraTopBar(
         title = { Text(browseResult?.title.orEmpty()) },
         navigationIcon = {
             IconButton(

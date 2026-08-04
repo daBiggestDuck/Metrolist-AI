@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,29 +24,37 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.ui.component.IconButton
 
 /** Explicit Spotify green — stays brand-like even when theme primary shifts in light mode. */
@@ -133,6 +142,120 @@ fun AuraHeader(
                 modifier = Modifier.padding(bottom = 16.dp),
             )
         }
+    }
+}
+
+/**
+ * Drop-in visual replacement for Material3 [androidx.compose.material3.TopAppBar].
+ * Flat transparent / #121212 scrim row — no M3 elevation, container tint, or expressive bar chrome.
+ * Accepts the same slot API so call sites can swap with a mechanical rename.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuraTopBar(
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    expandedHeight: Dp = AppBarHeight,
+    windowInsets: WindowInsets = WindowInsets.statusBars,
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = Color.Transparent,
+        scrolledContainerColor = Color.Transparent,
+    ),
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+) {
+    // colors / scrollBehavior kept for API parity; Aura bars stay flat (no M3 elevation).
+    @Suppress("UNUSED_VARIABLE")
+    val ignoredColors = colors
+    @Suppress("UNUSED_VARIABLE")
+    val ignoredScroll = scrollBehavior
+
+    val barBg =
+        MaterialTheme.colorScheme.background.takeIf { it != Color.Unspecified } ?: AuraNearBlack
+
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(barBg)
+            .windowInsetsPadding(windowInsets),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(expandedHeight)
+                    .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            navigationIcon()
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                title()
+            }
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions,
+            )
+        }
+    }
+}
+
+/**
+ * Selectable Spotify-style pill — replaces FilterChip / SuggestionChip look.
+ */
+@Composable
+fun AuraFilterPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: Painter? = null,
+) {
+    val bg =
+        if (selected) {
+            Color.White
+        } else {
+            AuraMutedPill
+        }
+    val fg =
+        if (selected) {
+            Color.Black
+        } else {
+            MaterialTheme.colorScheme.onBackground
+        }
+    Row(
+        modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (leadingIcon != null) {
+            Icon(
+                painter = leadingIcon,
+                contentDescription = null,
+                tint = fg,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = fg,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

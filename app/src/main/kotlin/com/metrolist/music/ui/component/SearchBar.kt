@@ -34,7 +34,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -88,7 +88,7 @@ fun TopSearch(
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     Box(modifier = modifier) {
-        TopAppBar(
+        AuraTopBar(
             title = {
                 SearchBarInputField(
                     query = query,

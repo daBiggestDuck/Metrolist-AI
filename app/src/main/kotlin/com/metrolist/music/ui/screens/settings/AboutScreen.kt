@@ -42,7 +42,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -502,7 +502,7 @@ fun AboutScreen(
         Spacer(Modifier.height(48.dp))
     }
 
-    TopAppBar(
+    AuraTopBar(
         title = { Text(stringResource(R.string.about)) },
         navigationIcon = {
             IconButton(
