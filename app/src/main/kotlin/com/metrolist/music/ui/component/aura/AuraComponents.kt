@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component.aura
 
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,12 +43,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -156,8 +161,9 @@ fun AuraHeader(
 
 /**
  * Drop-in visual replacement for Material3 [androidx.compose.material3.TopAppBar].
- * Flat transparent / #121212 scrim row — no M3 elevation, container tint, or expressive bar chrome.
- * Accepts the same slot API so call sites can swap with a mechanical rename.
+ * Flat Aura chrome — no M3 elevation. Honors [colors] (including [Color.Transparent] for hero
+ * collapse) and [scrollBehavior] offset / overlapped color like Material TopAppBar.
+ * Default container is opaque Aura near-black when colors are not overridden.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,24 +174,36 @@ fun AuraTopBar(
     actions: @Composable RowScope.() -> Unit = {},
     expandedHeight: Dp = AppBarHeight,
     windowInsets: WindowInsets = WindowInsets.statusBars,
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-        containerColor = Color.Transparent,
-        scrolledContainerColor = Color.Transparent,
-    ),
+    colors: TopAppBarColors =
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = AuraNearBlack,
+            scrolledContainerColor = AuraNearBlack,
+        ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
-    // colors / scrollBehavior kept for API parity; Aura bars stay flat (no M3 elevation).
-    @Suppress("UNUSED_VARIABLE")
-    val ignoredColors = colors
-    @Suppress("UNUSED_VARIABLE")
-    val ignoredScroll = scrollBehavior
+    val density = LocalDensity.current
+    val expandedHeightPx = with(density) { expandedHeight.toPx() }
+    SideEffect {
+        if (scrollBehavior?.state?.heightOffsetLimit != -expandedHeightPx) {
+            scrollBehavior?.state?.heightOffsetLimit = -expandedHeightPx
+        }
+    }
 
+    val overlapFraction = (scrollBehavior?.state?.overlappedFraction ?: 0f).coerceIn(0f, 1f)
     val barBg =
-        MaterialTheme.colorScheme.background.takeIf { it != Color.Unspecified } ?: AuraNearBlack
+        lerp(
+            colors.containerColor,
+            colors.scrolledContainerColor,
+            FastOutLinearInEasing.transform(overlapFraction),
+        )
+    val heightOffset = scrollBehavior?.state?.heightOffset ?: 0f
+    val collapseOffset =
+        if (scrollBehavior != null && !scrollBehavior.isPinned) heightOffset else 0f
 
     Column(
         modifier
             .fillMaxWidth()
+            .graphicsLayer { translationY = collapseOffset }
             .background(barBg)
             .windowInsetsPadding(windowInsets),
     ) {
@@ -197,7 +215,9 @@ fun AuraTopBar(
                     .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            navigationIcon()
+            CompositionLocalProvider(LocalContentColor provides colors.navigationIconContentColor) {
+                navigationIcon()
+            }
             Box(
                 modifier =
                     Modifier
@@ -205,13 +225,17 @@ fun AuraTopBar(
                         .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                title()
+                CompositionLocalProvider(LocalContentColor provides colors.titleContentColor) {
+                    title()
+                }
             }
-            Row(
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions,
-            )
+            CompositionLocalProvider(LocalContentColor provides colors.actionIconContentColor) {
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = actions,
+                )
+            }
         }
     }
 }
