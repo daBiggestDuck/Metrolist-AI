@@ -1067,7 +1067,29 @@
     <string name="spotify_playlists">Your playlists</string>
     <string name="spotify_no_playlists">No playlists found</string>
     <string name="spotify_playlist_tracks">%1$d tracks</string>
+    <string name="spotify_playlist_tracks_owner">%1$d tracks • %2$s</string>
     <string name="spotify_import_action">Import</string>
     <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
     <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Connect Spotify (or import taste), enable Nano in AI settings, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
+    <string name="spotify_view_taste">Your music taste</string>
+    <string name="spotify_view_taste_desc">See what Nano DJ has learned about your listening habits from Spotify</string>
+    <string name="spotify_import_all_playlists">Import all playlists</string>
+    <string name="spotify_import_all_playlists_desc">Imports every Spotify playlist into Metrolist, one after another</string>
+    <string name="spotify_import_all_playlists_progress">Playlist %1$d of %2$d — %3$s</string>
+    <string name="spotify_import_all_playlists_result">Imported %1$d playlists: %2$d matched, %3$d missed</string>
+
+    <!-- Spotify taste profile screen -->
+    <string name="spotify_taste_title">Your music taste</string>
+    <string name="spotify_taste_top_artists">Top artists</string>
+    <string name="spotify_taste_top_tracks">Top tracks</string>
+    <string name="spotify_taste_hints">Nano DJ recommendation ideas</string>
+    <string name="spotify_taste_no_data">No taste data yet. Connect Spotify and import your taste, or refresh below, to build your profile.</string>
+    <string name="spotify_taste_no_artists">No top artists yet</string>
+    <string name="spotify_taste_no_tracks">No top tracks yet</string>
+    <string name="spotify_taste_no_hints">No recommendation ideas yet</string>
+    <string name="spotify_taste_refresh">Refresh taste analysis</string>
+    <string name="spotify_taste_refresh_desc">Re-fetches your Spotify top artists and tracks, then re-analyzes your taste with Gemini Nano</string>
+    <string name="spotify_taste_refresh_result">Taste analysis updated</string>
+    <string name="spotify_taste_loading">Loading your latest Spotify taste…</string>
+    <string name="spotify_taste_connect_note">Connect Spotify for live top artists and tracks — otherwise your last saved taste is shown below.</string>
 </resources>

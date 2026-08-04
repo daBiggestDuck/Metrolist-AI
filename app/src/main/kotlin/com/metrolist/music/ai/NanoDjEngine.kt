@@ -46,12 +46,17 @@ object NanoDjEngine {
 
         val prompt =
             """
-            You are Nano DJ, an on-device music radio host replacing Spotify DJ.
-            Speak briefly like a friendly DJ (1-2 sentences), then suggest the next songs
-            that fit the listener's taste but are not exact repeats of recent plays.
+            You are Nano DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
+            You are NOT a corporate assistant — you're a laid-back music nerd hyped to be hanging
+            out with the listener between songs. Talk like a real person: casual, warm, first
+            person ("I", "I'm loving", "let's..."), with personality and a bit of energy that
+            varies from chill to hyped depending on the vibe. In ONE natural spoken sentence,
+            react to what just played (or the listener's taste if nothing has played yet) and
+            tease what's coming up next — the way a DJ teases a transition, not a track listing.
+            Never sound like a press release, never use emoji, never use markdown.
 
             Reply with EXACTLY this format (no markdown):
-            TALK: <1-2 sentence DJ commentary>
+            TALK: <ONE short spoken sentence, Spotify-DJ style>
             NEXT:
             - <Song Title> - <Artist>
             - <Song Title> - <Artist>
@@ -67,11 +72,19 @@ object NanoDjEngine {
         val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
         if (raw.isBlank()) return fallback
 
-        return parseDjPick(raw, batchSize, usedAi = true) ?: fallback.copy(
-            commentary = raw.lines().firstOrNull { it.isNotBlank() }?.removePrefix("TALK:")?.trim()
-                ?: fallback.commentary,
-            usedAi = true,
-        )
+        val parsed = parseDjPick(raw, batchSize, usedAi = true)
+        return if (parsed != null) {
+            parsed.copy(commentary = interstitialOnly(parsed.commentary))
+        } else {
+            fallback.copy(
+                commentary =
+                    interstitialOnly(
+                        raw.lines().firstOrNull { it.isNotBlank() }?.removePrefix("TALK:")?.trim()
+                            ?: fallback.commentary,
+                    ),
+                usedAi = true,
+            )
+        }
     }
 
     suspend fun openingLine(
@@ -82,10 +95,11 @@ object NanoDjEngine {
         val fallback =
             when {
                 context.seedArtists.isNotEmpty() ->
-                    "Nano DJ on deck — locking into your ${context.seedArtists.take(2).joinToString(" & ")} energy."
+                    "Hey — it's Nano DJ, and I'm already locking into your " +
+                        "${context.seedArtists.take(2).joinToString(" & ")} energy, let's get into it."
                 context.tasteSummary.isNotBlank() ->
-                    "Nano DJ here. I read your Spotify taste — let's ride."
-                else -> "Nano DJ online. Building a station just for you."
+                    "Hey — it's Nano DJ. I read up on your taste, and I've got a station just for you."
+                else -> "Hey — it's Nano DJ, on-device and ready to build you a station from scratch."
             }
         if (!enableNano) return fallback
         val status = runCatching { client.checkStatus() }.getOrDefault(GeminiNanoStatus.Unavailable)
@@ -93,14 +107,17 @@ object NanoDjEngine {
 
         val prompt =
             """
-            You are Nano DJ, replacing Spotify DJ with on-device Gemini Nano.
-            Write ONE short spoken intro (max 25 words) for starting a personalized radio
-            based on this taste. No quotes, no markdown, no bullet points.
+            You are Nano DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
+            Write ONE short, warm, casual spoken intro (max 25 words) opening a personalized
+            radio session, in the style of "Hey — it's Nano DJ...". Sound like a real music-nerd
+            friend, first person, excited but relaxed, referencing the listener's taste.
+            No quotes, no markdown, no bullet points, no emoji.
             Taste: ${context.tasteSummary.ifBlank { "eclectic listening" }}
             Artists: ${context.seedArtists.take(8).joinToString(", ")}
             """.trimIndent()
 
-        return runCatching { client.generateContent(prompt) }.getOrNull()?.trim()?.take(200)
+        return runCatching { client.generateContent(prompt) }.getOrNull()?.trim()?.let(::interstitialOnly)?.take(200)
+            ?.ifBlank { null }
             ?: fallback
     }
 
@@ -119,10 +136,28 @@ object NanoDjEngine {
                 .toList()
         if (talk.isNullOrBlank() && queries.isEmpty()) return null
         return DjPick(
-            commentary = talk ?: "Up next — staying in your lane.",
+            commentary = talk ?: "Staying right in your lane — here's what's coming up next.",
             queries = queries,
             usedAi = usedAi,
         )
+    }
+
+    /**
+     * Condenses DJ commentary down to a single TTS-friendly spoken sentence, matching how
+     * Spotify's AI DJ speaks in short bursts between songs rather than long paragraphs.
+     * Avoids truncating on common abbreviations (Dr., Mr., vs., etc.).
+     */
+    internal fun interstitialOnly(text: String): String {
+        val cleaned = text.replace(Regex("""\s+"""), " ").trim()
+        if (cleaned.isBlank()) return cleaned
+        // Split on .!? only when not part of a short honorific / initialism before a capital letter
+        val abbrev = Regex("""\b(?:Dr|Mr|Mrs|Ms|Jr|Sr|vs|etc|feat|ft)\.$""", RegexOption.IGNORE_CASE)
+        val protected = abbrev.replace(cleaned) { m -> m.value.replace('.', '\u0001') }
+        val firstSentence =
+            Regex("""^(.*?[.!?])(\s|$)""").find(protected)?.groupValues?.getOrNull(1)?.trim()
+                ?.replace('\u0001', '.')
+        val result = firstSentence.takeUnless { it.isNullOrBlank() } ?: cleaned.replace('\u0001', '.')
+        return result.take(180)
     }
 
     internal fun heuristicPick(context: DjContext, batchSize: Int): DjPick {
@@ -147,9 +182,9 @@ object NanoDjEngine {
         val commentary =
             when {
                 context.seedArtists.isNotEmpty() ->
-                    "Keeping the ${context.seedArtists.first()} vibe going — here's what Nano DJ queued next."
-                else -> "Nano DJ mixing your station — fresh picks coming up."
+                    "Keeping the ${context.seedArtists.first()} vibe going — Nano DJ's got more like this coming up."
+                else -> "Nano DJ mixing your station live — fresh picks coming up right after this."
             }
-        return DjPick(commentary = commentary, queries = queries, usedAi = false)
+        return DjPick(commentary = interstitialOnly(commentary), queries = queries, usedAi = false)
     }
 }

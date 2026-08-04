@@ -13,6 +13,8 @@ import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
+import com.metrolist.music.constants.SpotifyTopArtistsKey
+import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.NanoDjQueue
@@ -49,8 +51,16 @@ object NanoDjLauncher {
                     .map { it.trim() }
                     .filter { it.isNotBlank() }
 
-            var seedArtists = emptyList<String>()
-            var seedTracks = emptyList<String>()
+            var seedArtists =
+                prefs.get(SpotifyTopArtistsKey, "")
+                    .split('\n')
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+            var seedTracks =
+                prefs.get(SpotifyTopTracksKey, "")
+                    .split('\n')
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
 
             val clientId = prefs.get(SpotifyClientIdKey, "")
             if (!SpotifyTokenStore.retrieve().isNullOrBlank() && clientId.isNotBlank()) {
@@ -60,8 +70,10 @@ object NanoDjLauncher {
                     try {
                         val artists = api.getTopArtists(access, "medium_term", 15)
                         val tracks = api.getTopTracks(access, "medium_term", 20)
-                        seedArtists = artists.map { it.name }
-                        seedTracks = tracks.map { "${it.name} - ${it.artistsJoined}" }
+                        if (artists.isNotEmpty()) seedArtists = artists.map { it.name }
+                        if (tracks.isNotEmpty()) {
+                            seedTracks = tracks.map { "${it.name} - ${it.artistsJoined}" }
+                        }
                         if (tasteSummary.isBlank()) {
                             val analysis =
                                 analyzeSpotifyTaste(

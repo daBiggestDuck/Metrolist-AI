@@ -475,6 +475,8 @@ val SpotifyClientIdKey = stringPreferencesKey("spotifyClientId")
 val SpotifyDisplayNameKey = stringPreferencesKey("spotifyDisplayName")
 val SpotifyTasteSummaryKey = stringPreferencesKey("spotifyTasteSummary")
 val SpotifyTasteHintsKey = stringPreferencesKey("spotifyTasteHints")
+val SpotifyTopArtistsKey = stringPreferencesKey("spotifyTopArtists")
+val SpotifyTopTracksKey = stringPreferencesKey("spotifyTopTracks")
 
 const val DEFAULT_AI_SYSTEM_PROMPT = """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON array of strings.
 

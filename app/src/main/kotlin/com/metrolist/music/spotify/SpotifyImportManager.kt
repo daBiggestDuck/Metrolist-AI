@@ -33,6 +33,19 @@ data class SpotifyImportResult(
     val matched: Int,
     val failed: Int,
     val tasteAnalysis: TasteAnalysisResult? = null,
+    val topArtists: List<String> = emptyList(),
+    val topTracks: List<Pair<String, String>> = emptyList(),
+)
+
+/**
+ * Snapshot of a listener's Spotify taste: top artists/tracks plus the derived analysis.
+ * Returned by [SpotifyImportManager.refreshTasteProfile] so the UI can persist and display it
+ * without necessarily building a playlist.
+ */
+data class SpotifyTasteProfile(
+    val topArtists: List<String>,
+    val topTracks: List<Pair<String, String>>,
+    val analysis: TasteAnalysisResult,
 )
 
 class SpotifyImportManager(
@@ -98,7 +111,47 @@ class SpotifyImportManager(
                 )
             }
 
-            matchResult.copy(tasteAnalysis = analysis)
+            matchResult.copy(
+                tasteAnalysis = analysis,
+                topArtists = artists.map { it.name },
+                topTracks = tracks.map { it.name to it.artistsJoined },
+            )
+        }
+
+    /**
+     * Fetches top artists/tracks and analyzes taste (Gemini Nano or heuristic) without creating
+     * any playlist. Lets the taste screen refresh its analysis on demand.
+     */
+    suspend fun refreshTasteProfile(
+        clientId: String,
+        enableGeminiNano: Boolean,
+        onProgress: (SpotifyImportProgress) -> Unit = {},
+    ): SpotifyTasteProfile =
+        withContext(Dispatchers.IO) {
+            val token = ensureValidToken(clientId)
+            onProgress(SpotifyImportProgress(phase = "Fetching top artists & tracks"))
+            val artists = api.getTopArtists(token, timeRange = "medium_term", limit = 20)
+            val tracks = api.getTopTracks(token, timeRange = "medium_term", limit = 50)
+
+            onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = tracks.size))
+            val analysis =
+                analyzeSpotifyTaste(
+                    topArtists = artists.map { it.name },
+                    topTracks = tracks.map { it.name to it.artistsJoined },
+                    enableNano = enableGeminiNano,
+                )
+            onProgress(
+                SpotifyImportProgress(
+                    phase = "Done",
+                    current = tracks.size,
+                    total = tracks.size,
+                ),
+            )
+            SpotifyTasteProfile(
+                topArtists = artists.map { it.name },
+                topTracks = tracks.map { it.name to it.artistsJoined },
+                analysis = analysis,
+            )
         }
 
     /**
@@ -180,17 +233,11 @@ class SpotifyImportManager(
             matchResult.copy(
                 tasteAnalysis =
                     analysis.copy(
-                        summary =
-                            buildString {
-                                append(analysis.summary)
-                                if (djPick.commentary.isNotBlank()) {
-                                    if (isNotEmpty()) append(' ')
-                                    append(djPick.commentary)
-                                }
-                            },
-                        searchHints = queries,
+                        // Keep the real taste summary; do not append one-shot DJ talk into prefs.
                         usedAi = analysis.usedAi || djPick.usedAi,
                     ),
+                topArtists = artists,
+                topTracks = tracks,
             )
         }
 

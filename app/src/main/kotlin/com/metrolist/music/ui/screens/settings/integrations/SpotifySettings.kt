@@ -51,6 +51,8 @@ import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyDisplayNameKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
+import com.metrolist.music.constants.SpotifyTopArtistsKey
+import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.spotify.SpotifyApi
 import com.metrolist.music.spotify.SpotifyAuth
 import com.metrolist.music.spotify.SpotifyAuthException
@@ -88,6 +90,8 @@ fun SpotifySettings(
     var displayName by rememberPreference(SpotifyDisplayNameKey, "")
     var tasteSummary by rememberPreference(SpotifyTasteSummaryKey, "")
     var tasteHints by rememberPreference(SpotifyTasteHintsKey, "")
+    var topArtistsPref by rememberPreference(SpotifyTopArtistsKey, "")
+    var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
     val enableGeminiNano by rememberPreference(EnableGeminiNanoKey, true)
     val (nanoDjSpeak, onNanoDjSpeakChange) = rememberPreference(NanoDjSpeakKey, true)
 
@@ -103,6 +107,14 @@ fun SpotifySettings(
     val redirectNote = stringResource(R.string.spotify_redirect_uri_note)
     val connectLabel = stringResource(R.string.spotify_connect)
     val disconnectLabel = stringResource(R.string.spotify_disconnect)
+
+    fun persistTasteProfile(
+        artists: List<String>,
+        tracks: List<Pair<String, String>>,
+    ) {
+        if (artists.isNotEmpty()) topArtistsPref = artists.joinToString("\n")
+        if (tracks.isNotEmpty()) topTracksPref = tracks.joinToString("\n") { "${it.first} - ${it.second}" }
+    }
 
     fun refreshPlaylists() {
         scope.launch {
@@ -211,6 +223,8 @@ fun SpotifySettings(
                                         displayName = ""
                                         tasteSummary = ""
                                         tasteHints = ""
+                                        topArtistsPref = ""
+                                        topTracksPref = ""
                                         playlists = emptyList()
                                         isConnected = false
                                         statusMessage = null
@@ -262,6 +276,23 @@ fun SpotifySettings(
         )
 
         Spacer(modifier = Modifier.height(27.dp))
+
+        if (isConnected || tasteSummary.isNotBlank() || tasteHints.isNotBlank()) {
+            Material3SettingsGroup(
+                items =
+                    listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.trending_up),
+                            title = { Text(stringResource(R.string.spotify_view_taste)) },
+                            description = { Text(stringResource(R.string.spotify_view_taste_desc)) },
+                            isHighlighted = true,
+                            onClick = { navController.navigate("settings/integrations/spotify/taste") },
+                        ),
+                    ),
+            )
+
+            Spacer(modifier = Modifier.height(27.dp))
+        }
 
         Material3SettingsGroup(
             title = stringResource(R.string.nano_dj_section),
@@ -327,6 +358,7 @@ fun SpotifySettings(
                                         tasteSummary = analysis.summary
                                         tasteHints = analysis.searchHints.joinToString("\n")
                                     }
+                                    persistTasteProfile(result.topArtists, result.topTracks)
                                     statusMessage =
                                         context.getString(
                                             R.string.nano_recommendations_result,
@@ -394,6 +426,7 @@ fun SpotifySettings(
                                                 tasteSummary = analysis.summary
                                                 tasteHints = analysis.searchHints.joinToString("\n")
                                             }
+                                            persistTasteProfile(result.topArtists, result.topTracks)
                                             statusMessage =
                                                 context.getString(
                                                     R.string.spotify_import_result,
@@ -439,16 +472,91 @@ fun SpotifySettings(
                             ),
                         )
                     } else {
-                        playlists.map { playlist ->
+                        buildList {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.library_add),
+                                    title = { Text(stringResource(R.string.spotify_import_all_playlists)) },
+                                    description = { Text(stringResource(R.string.spotify_import_all_playlists_desc)) },
+                                    isHighlighted = true,
+                                    enabled = !isBusy,
+                                    onClick = {
+                                        scope.launch {
+                                            isBusy = true
+                                            statusMessage = null
+                                            val snapshot = playlists
+                                            val totalPlaylists = snapshot.size
+                                            var totalMatched = 0
+                                            var totalFailed = 0
+                                            val manager = SpotifyImportManager(database)
+                                            try {
+                                                snapshot.forEachIndexed { index, pl ->
+                                                    val label =
+                                                        context.getString(
+                                                            R.string.spotify_import_all_playlists_progress,
+                                                            index + 1,
+                                                            totalPlaylists,
+                                                            pl.name,
+                                                        )
+                                                    progress =
+                                                        SpotifyImportProgress(
+                                                            current = index,
+                                                            total = totalPlaylists,
+                                                            phase = label,
+                                                        )
+                                                    try {
+                                                        val result =
+                                                            manager.importPlaylist(
+                                                                clientId = clientId,
+                                                                playlist = pl,
+                                                                onProgress = { p ->
+                                                                    scope.launch(Dispatchers.Main) {
+                                                                        progress = p.copy(phase = label)
+                                                                    }
+                                                                },
+                                                            )
+                                                        totalMatched += result.matched
+                                                        totalFailed += result.failed
+                                                    } catch (e: Exception) {
+                                                        Timber.tag("SpotifySettings")
+                                                            .w(e, "Failed importing playlist %s", pl.name)
+                                                        reportException(e)
+                                                    }
+                                                }
+                                                statusMessage =
+                                                    context.getString(
+                                                        R.string.spotify_import_all_playlists_result,
+                                                        totalPlaylists,
+                                                        totalMatched,
+                                                        totalFailed,
+                                                    )
+                                            } finally {
+                                                manager.close()
+                                                isBusy = false
+                                            }
+                                        }
+                                    },
+                                ),
+                            )
+                            addAll(
+                                playlists.map { playlist ->
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.queue_music),
                                 title = { Text(playlist.name) },
                                 description = {
                                     Text(
-                                        stringResource(
-                                            R.string.spotify_playlist_tracks,
-                                            playlist.trackCount,
-                                        ),
+                                        if (!playlist.ownerName.isNullOrBlank()) {
+                                            stringResource(
+                                                R.string.spotify_playlist_tracks_owner,
+                                                playlist.trackCount,
+                                                playlist.ownerName,
+                                            )
+                                        } else {
+                                            stringResource(
+                                                R.string.spotify_playlist_tracks,
+                                                playlist.trackCount,
+                                            )
+                                        },
                                     )
                                 },
                                 enabled = !isBusy,
@@ -490,6 +598,8 @@ fun SpotifySettings(
                                     ) {
                                         Text(stringResource(R.string.spotify_import_action))
                                     }
+                                },
+                            )
                                 },
                             )
                         }
