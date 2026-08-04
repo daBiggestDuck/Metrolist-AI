@@ -236,12 +236,7 @@ fun ChartsScreen(
                                 val lazyGridState = rememberLazyGridState()
                                 val snapLayoutInfoProvider =
                                     remember(lazyGridState) {
-                                        SnapLayoutInfoProvider(
-                                            lazyGridState = lazyGridState,
-                                            positionInLayout = { layoutSize, itemSize ->
-                                                (layoutSize * horizontalLazyGridItemWidthFactor / 2f - itemSize / 2f)
-                                            },
-                                        )
+                                        SnapLayoutInfoProvider(lazyGridState = lazyGridState)
                                     }
 
                                 LazyHorizontalGrid(

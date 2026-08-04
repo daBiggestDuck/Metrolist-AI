@@ -1151,23 +1151,14 @@ fun HomeScreen(
         ) {
             val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
             val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
+            // Snap each column flush to the content start (one page of picks per settle).
             val quickPicksSnapLayoutInfoProvider =
                 remember(quickPicksLazyGridState) {
-                    SnapLayoutInfoProvider(
-                        lazyGridState = quickPicksLazyGridState,
-                        positionInLayout = { layoutSize, itemSize ->
-                            (layoutSize * horizontalLazyGridItemWidthFactor / 2f - itemSize / 2f)
-                        },
-                    )
+                    SnapLayoutInfoProvider(lazyGridState = quickPicksLazyGridState)
                 }
             val forgottenFavoritesSnapLayoutInfoProvider =
                 remember(forgottenFavoritesLazyGridState) {
-                    SnapLayoutInfoProvider(
-                        lazyGridState = forgottenFavoritesLazyGridState,
-                        positionInLayout = { layoutSize, itemSize ->
-                            (layoutSize * horizontalLazyGridItemWidthFactor / 2f - itemSize / 2f)
-                        },
-                    )
+                    SnapLayoutInfoProvider(lazyGridState = forgottenFavoritesLazyGridState)
                 }
 
             LazyColumn(
