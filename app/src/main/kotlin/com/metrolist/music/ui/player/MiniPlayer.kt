@@ -42,7 +42,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +84,10 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.ui.component.aura.AuraPlayButton
+import com.metrolist.music.ui.component.aura.AuraPlayerChrome
+import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
+import com.metrolist.music.ui.component.aura.AuraTransportButton
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DarkModeKey
@@ -290,17 +293,17 @@ private fun NewMiniPlayer(
 
     // Memoize colors
     val backgroundColor = when (miniPlayerBackground) {
-        MiniPlayerBackgroundStyle.DEFAULT    -> MaterialTheme.colorScheme.surfaceContainer
+        MiniPlayerBackgroundStyle.DEFAULT    -> AuraPlayerChrome
         MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.BLUR       -> MaterialTheme.colorScheme.surfaceContainer
-        MiniPlayerBackgroundStyle.GRADIENT   -> MaterialTheme.colorScheme.surfaceContainer
+        MiniPlayerBackgroundStyle.BLUR       -> AuraPlayerChrome
+        MiniPlayerBackgroundStyle.GRADIENT   -> AuraPlayerChrome
         MiniPlayerBackgroundStyle.PURE_BLACK -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (miniPlayerBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
             miniPlayerBackground == MiniPlayerBackgroundStyle.BLUR ||
             miniPlayerBackground == MiniPlayerBackgroundStyle.GRADIENT)
 
-    val primaryColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.primary
+    val primaryColor = if (forceLightColors) Color.White else AuraSpotifyGreen
     val outlineColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.outline
     val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
     val errorColor = if (forceLightColors) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error
@@ -414,8 +417,8 @@ private fun NewMiniPlayer(
                 MiniPlayerBackgroundStyle.GRADIENT -> {
                     val colors = if (gradientColors.isNotEmpty()) gradientColors
                     else listOf(
-                        MaterialTheme.colorScheme.surfaceContainer,
-                        MaterialTheme.colorScheme.surfaceContainer,
+                        AuraPlayerChrome,
+                        AuraPlayerChrome,
                     )
                     Box(
                         Modifier
@@ -758,8 +761,8 @@ private fun LegacyMiniPlayer(
             (600 / (1f + kotlin.math.exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
         }
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val primaryColor = AuraSpotifyGreen
+    val trackColor = AuraPlayerChrome
 
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -774,7 +777,7 @@ private fun LegacyMiniPlayer(
                     if (pureBlack && isSystemInDarkTheme()) {
                         Color.Black
                     } else {
-                        MaterialTheme.colorScheme.surfaceContainer
+                        AuraPlayerChrome
                     },
                 ).clickable(
                     interactionSource = interactionSource,
@@ -879,9 +882,10 @@ private fun LegacyMiniPlayer(
                 listenTogetherManager = listenTogetherManager,
             )
 
-            IconButton(
+            AuraTransportButton(
                 enabled = canSkipNext && !isListenTogetherGuest,
                 onClick = if (isListenTogetherGuest) ({}) else ({ playerConnection.seekToNext() }),
+                tint = Color.White,
             ) {
                 Icon(painter = painterResource(R.drawable.skip_next), contentDescription = null)
             }
@@ -926,11 +930,11 @@ private fun LegacyPlayPauseButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
 
-    IconButton(
+    AuraPlayButton(
         onClick = {
             if (isListenTogetherGuest) {
                 playerConnection.toggleMute()
-                return@IconButton
+                return@AuraPlayButton
             }
             if (isCasting) {
                 if (castIsPlaying) castHandler?.pause() else castHandler?.play()
@@ -941,18 +945,19 @@ private fun LegacyPlayPauseButton(
                 playerConnection.togglePlayPause()
             }
         },
+        size = 40.dp,
     ) {
         Icon(
-            painter =
-                painterResource(
-                    when {
-                        isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
-                        playbackState == Player.STATE_ENDED -> R.drawable.replay
-                        effectiveIsPlaying -> R.drawable.pause
-                        else -> R.drawable.play
-                    },
-                ),
+            painter = painterResource(
+                when {
+                    isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+                    playbackState == Player.STATE_ENDED -> R.drawable.replay
+                    effectiveIsPlaying -> R.drawable.pause
+                    else -> R.drawable.play
+                },
+            ),
             contentDescription = null,
+            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -981,7 +986,7 @@ private fun LegacyMiniMediaInfo(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(AuraPlayerChrome),
             )
 
             val thumbnailUrl =

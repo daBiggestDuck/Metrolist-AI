@@ -11,6 +11,8 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.ui.component.aura.AuraSpotifyDark
+import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 
 /**
  * Player slider color configuration for consistent styling across all slider types
@@ -37,7 +39,7 @@ object PlayerSliderColors {
         val inactiveTrackColor = when (playerBackground) {
             PlayerBackgroundStyle.DEFAULT -> {
                 if (useDarkTheme) {
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    AuraSpotifyDark
                 } else {
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 }
@@ -48,9 +50,9 @@ object PlayerSliderColors {
         }
         
         return SliderDefaults.colors(
-            activeTrackColor = activeColor,
-            activeTickColor = activeColor,
-            thumbColor = activeColor,
+            activeTrackColor = if (activeColor == MaterialTheme.colorScheme.primary) AuraSpotifyGreen else activeColor,
+            activeTickColor = if (activeColor == MaterialTheme.colorScheme.primary) AuraSpotifyGreen else activeColor,
+            thumbColor = if (activeColor == MaterialTheme.colorScheme.primary) AuraSpotifyGreen else activeColor,
             inactiveTrackColor = inactiveTrackColor,
             disabledActiveTrackColor = activeColor,
             disabledInactiveTrackColor = inactiveTrackColor,

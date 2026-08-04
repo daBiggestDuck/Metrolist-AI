@@ -970,3 +970,52 @@ fun AuraTrackRow(
         }
     }
 }
+
+/** Full-player canvas — Spotify near-black (#121212). */
+val AuraPlayerCanvas = AuraNearBlack
+
+/** Mini-player / queue elevated chrome (#282828). */
+val AuraPlayerChrome = AuraSpotifyDark
+
+/** Flat icon-only transport — transparent fill, not Material IconButton. */
+@Composable
+fun AuraTransportButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    tint: Color = Color.White,
+    interactionSource: MutableInteractionSource? = null,
+    content: @Composable () -> Unit,
+) {
+    AuraIconButton(
+        onClick = onClick,
+        modifier = modifier.size(48.dp),
+        enabled = enabled,
+        containerColor = Color.Transparent,
+        contentColor = tint,
+        interactionSource = interactionSource,
+        content = content,
+    )
+}
+
+/** Spotify-style green play/pause circle. */
+@Composable
+fun AuraPlayButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 64.dp,
+    enabled: Boolean = true,
+    contentDescription: String? = null,
+    content: @Composable () -> Unit,
+) {
+    AuraFab(
+        onClick = onClick,
+        modifier = modifier,
+        size = size,
+        containerColor = AuraSpotifyGreen,
+        contentColor = AuraSpotifyOnGreen,
+        enabled = enabled,
+        contentDescription = contentDescription,
+        content = content,
+    )
+}

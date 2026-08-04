@@ -49,10 +49,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -138,6 +138,10 @@ import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import androidx.compose.runtime.derivedStateOf
 import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraPlayerChrome
+import com.metrolist.music.ui.component.aura.AuraSpotifyDark
+import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
+import com.metrolist.music.ui.component.aura.AuraTransportButton
 import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
@@ -583,6 +587,11 @@ fun Queue(
                                 valueRange = 5f..120f,
                                 steps = (120 - 5) / 5 - 1,
                                 modifier = Modifier.fillMaxWidth(),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = AuraSpotifyGreen,
+                                    activeTrackColor = AuraSpotifyGreen,
+                                    inactiveTrackColor = AuraSpotifyDark,
+                                ),
                             )
 
                             Spacer(Modifier.height(8.dp))
@@ -830,7 +839,7 @@ fun Queue(
                                             )
                                         } else {
                                             if (!isListenTogetherGuest) {
-                                                IconButton(
+                                                AuraTransportButton(
                                                     onClick = {
                                                         menuState.show {
                                                             QueueMenu(
@@ -847,6 +856,7 @@ fun Queue(
                                                             )
                                                         }
                                                     },
+                                                    tint = Color.White,
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.more_vert),
@@ -855,9 +865,10 @@ fun Queue(
                                                 }
                                             }
                                             if (!locked && !isListenTogetherGuest) {
-                                                IconButton(
+                                                AuraTransportButton(
                                                     onClick = { },
                                                     modifier = Modifier.draggableHandle(),
+                                                    tint = Color.White,
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.drag_handle),
@@ -953,26 +964,28 @@ fun Queue(
                                 mediaMetadata = item.metadata!!,
                                 trailingContent = {
                                     if (!isListenTogetherGuest) {
-                                        IconButton(
+                                        AuraTransportButton(
                                             onClick = {
                                                 playerConnection.service.playNextAutomix(
                                                     item,
                                                     index,
                                                 )
                                             },
+                                            tint = Color.White,
                                         ) {
                                             Icon(
                                                 painter = painterResource(R.drawable.playlist_play),
                                                 contentDescription = null,
                                             )
                                         }
-                                        IconButton(
+                                        AuraTransportButton(
                                             onClick = {
                                                 playerConnection.service.addToQueueAutomix(
                                                     item,
                                                     index,
                                                 )
                                             },
+                                            tint = Color.White,
                                         ) {
                                             Icon(
                                                 painter = painterResource(R.drawable.queue_music),
@@ -1021,9 +1034,7 @@ fun Queue(
                         if (pureBlack) {
                             Color.Black
                         } else {
-                            MaterialTheme.colorScheme
-                                .secondaryContainer
-                                .copy(alpha = 0.90f)
+                            AuraPlayerChrome.copy(alpha = 0.95f)
                         },
                     ).windowInsetsPadding(
                         WindowInsets.systemBars
@@ -1052,9 +1063,10 @@ fun Queue(
                     exit = fadeOut() + slideOutVertically { it },
                 ) {
                     Row {
-                        IconButton(
+                        AuraTransportButton(
                             onClick = { locked = !locked },
                             modifier = Modifier.padding(horizontal = 6.dp),
+                            tint = Color.White,
                         ) {
                             Icon(
                                 painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
@@ -1107,8 +1119,9 @@ fun Queue(
                             .height(48.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(
+                    AuraTransportButton(
                         onClick = onExitSelectionMode,
+                        tint = Color.White,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.close),
@@ -1132,7 +1145,7 @@ fun Queue(
                             }
                         },
                     )
-                    IconButton(
+                    AuraTransportButton(
                         enabled = count > 0,
                         onClick = {
                             menuState.show {
@@ -1144,6 +1157,7 @@ fun Queue(
                                 )
                             }
                         },
+                        tint = Color.White,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.more_vert),
@@ -1167,9 +1181,7 @@ fun Queue(
                         if (pureBlack) {
                             Color.Black
                         } else {
-                            MaterialTheme.colorScheme
-                                .secondaryContainer
-                                .copy(alpha = 0.90f)
+                            AuraPlayerChrome.copy(alpha = 0.95f)
                         },
                     ).fillMaxWidth()
                     .height(
@@ -1185,7 +1197,7 @@ fun Queue(
                             .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                     ).padding(12.dp),
         ) {
-            IconButton(
+            AuraTransportButton(
                 enabled = !isListenTogetherGuest,
                 modifier = Modifier.align(Alignment.CenterStart),
                 onClick = {
@@ -1199,6 +1211,7 @@ fun Queue(
                                 !playerConnection.player.shuffleModeEnabled
                         }
                 },
+                tint = Color.White,
             ) {
                 val baseAlpha = if (shuffleModeEnabled) 1f else 0.5f
                 val finalAlpha = if (!isListenTogetherGuest) baseAlpha else 0.3f
@@ -1215,10 +1228,11 @@ fun Queue(
                 modifier = Modifier.align(Alignment.Center),
             )
 
-            IconButton(
+            AuraTransportButton(
                 enabled = !isListenTogetherGuest,
                 modifier = Modifier.align(Alignment.CenterEnd),
                 onClick = playerConnection.player::toggleRepeatMode,
+                tint = Color.White,
             ) {
                 val baseAlpha = if (repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f
                 val finalAlpha = if (!isListenTogetherGuest) baseAlpha else 0.3f
