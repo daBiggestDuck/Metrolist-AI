@@ -351,6 +351,8 @@ fun BottomSheetPlayer(
             }
         }
     val isCasting by castHandler?.isCasting?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+    val castPosition by castHandler?.castPosition?.collectAsStateWithLifecycle() ?: remember { mutableLongStateOf(0L) }
+    val castDuration by castHandler?.castDuration?.collectAsStateWithLifecycle() ?: remember { mutableLongStateOf(0L) }
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
@@ -382,15 +384,16 @@ fun BottomSheetPlayer(
     var sliderPosition by remember {
         mutableStateOf<Long?>(null)
     }
-    val sliderPositionRef = rememberUpdatedState(sliderPosition)
     // Track when we last manually set position to avoid Cast overwriting it
     var lastManualSeekTime by remember { mutableLongStateOf(0L) }
-    val lastManualSeekTimeRef = rememberUpdatedState(lastManualSeekTime)
 
-    // Position is always mirrored into positionState (local poll or cast collect).
+    val castPositionLatest = rememberUpdatedState(castPosition)
+    val isCastingLatest = rememberUpdatedState(isCasting)
     val playbackPositionProvider =
         remember(positionState) {
-            { positionState.longValue }
+            {
+                if (isCastingLatest.value) castPositionLatest.value else positionState.longValue
+            }
         }
 
     var gradientColors by remember {
@@ -655,8 +658,8 @@ fun BottomSheetPlayer(
     LaunchedEffect(isPlaying, isCasting) {
         if (!isCasting && isPlaying) {
             while (isActive) {
-                delay(250)
-                if (sliderPositionRef.value == null) { // Only update if user isn't dragging
+                delay(200)
+                if (sliderPosition == null) { // Only update if user isn't dragging
                     positionState.longValue = playerConnection.player.currentPosition
                     // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
                     playerConnection.player.duration.takeIf { it > 0 }?.let { durationState.longValue = it }
@@ -698,24 +701,16 @@ fun BottomSheetPlayer(
         previousMediaId = currentId
     }
 
-    // Mirror cast ticks into positionState without collecting as composition state.
-    LaunchedEffect(castHandler, isCasting) {
-        val handler = castHandler ?: return@LaunchedEffect
-        if (!isCasting) return@LaunchedEffect
-        handler.castPosition.collect { pos ->
-            if (sliderPositionRef.value == null) {
-                val timeSinceManualSeek = System.currentTimeMillis() - lastManualSeekTimeRef.value
-                if (timeSinceManualSeek > 1500) {
-                    positionState.longValue = pos
-                }
+    // When casting, use Cast position/duration directly
+    // But wait a bit after manual seeks to let Cast catch up
+    LaunchedEffect(isCasting, castPosition, castDuration) {
+        if (isCasting && sliderPosition == null) {
+            val timeSinceManualSeek = System.currentTimeMillis() - lastManualSeekTime
+            if (timeSinceManualSeek > 1500) {
+                // Only update from Cast if we haven't manually seeked recently
+                positionState.longValue = castPosition
+                if (castDuration > 0) durationState.longValue = castDuration
             }
-        }
-    }
-    LaunchedEffect(castHandler, isCasting) {
-        val handler = castHandler ?: return@LaunchedEffect
-        if (!isCasting) return@LaunchedEffect
-        handler.castDuration.collect { dur ->
-            if (dur > 0) durationState.longValue = dur
         }
     }
 
@@ -758,10 +753,7 @@ fun BottomSheetPlayer(
                         val thumbnailUrl = mediaMetadata?.thumbnailUrl
                         if (thumbnailUrl != null) {
                             AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(thumbnailUrl)
-                                    .size(512)
-                                    .build(),
+                                model = thumbnailUrl,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize(),
@@ -1228,6 +1220,8 @@ fun BottomSheetPlayer(
             PlayerSeekBar(
                 positionState = positionState,
                 durationState = durationState,
+                isCasting = isCasting,
+                castPosition = castPosition,
                 sliderPosition = sliderPosition,
                 onSliderPositionChange = { sliderPosition = it },
                 onSeekFinished = { pos ->
@@ -1570,6 +1564,8 @@ Spacer(Modifier.width(8.dp))
 private fun PlayerSeekBar(
     positionState: MutableLongState,
     durationState: MutableLongState,
+    isCasting: Boolean,
+    castPosition: Long,
     sliderPosition: Long?,
     onSliderPositionChange: (Long?) -> Unit,
     onSeekFinished: (Long) -> Unit,
@@ -1584,7 +1580,7 @@ private fun PlayerSeekBar(
 ) {
     val position by positionState
     val duration by durationState
-    val effectivePosition = position
+    val effectivePosition = if (isCasting) castPosition else position
     val sliderColors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme)
     val value = (sliderPosition ?: effectivePosition).toFloat()
     val valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat())

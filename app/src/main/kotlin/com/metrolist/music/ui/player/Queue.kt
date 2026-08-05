@@ -7,6 +7,7 @@ package com.metrolist.music.ui.player
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
@@ -243,6 +244,21 @@ fun Queue(
     ) {
         playerConnection.service.sleepTimer?.isActive ?: false
     }
+    var sleepTimerTimeLeft by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(sleepTimerEnabled) {
+        if (sleepTimerEnabled) {
+            while (isActive) {
+                sleepTimerTimeLeft =
+                    if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
+                        playerConnection.player.duration - playerConnection.player.currentPosition
+                    } else {
+                        (playerConnection.service.sleepTimer?.triggerTime ?: 0L) - System.currentTimeMillis()
+                    }
+                delay(1000L)
+            }
+        }
+    }
 
     BottomSheet(
         state = state,
@@ -297,7 +313,8 @@ fun Queue(
                         playerBackground = playerBackground,
                     )
 
-                    SleepTimerQueueButton(
+                    PlayerQueueButton(
+                        icon = R.drawable.bedtime,
                         onClick = {
                             if (sleepTimerEnabled) {
                                 playerConnection.service.sleepTimer?.clear()
@@ -305,13 +322,13 @@ fun Queue(
                                 showSleepTimerDialog = true
                             }
                         },
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        playerConnection = playerConnection,
+                        isActive = sleepTimerEnabled,
                         enabled = !isListenTogetherGuest,
                         shape = middleShape,
                         modifier = Modifier.size(buttonSize),
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,
+                        text = if (sleepTimerEnabled) makeTimeString(sleepTimerTimeLeft) else null,
                         iconSize = iconSize,
                         textBackgroundColor = TextBackgroundColor,
                         playerBackground = playerBackground,
@@ -464,11 +481,30 @@ fun Queue(
                                 tint = TextBackgroundColor,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            SleepTimerCountdownLabel(
-                                enabled = sleepTimerEnabled,
-                                playerConnection = playerConnection,
-                                color = TextBackgroundColor,
-                            )
+                            AnimatedContent(
+                                label = "sleepTimer",
+                                targetState = sleepTimerEnabled,
+                            ) { enabled ->
+                                if (enabled) {
+                                    Text(
+                                        text = makeTimeString(sleepTimerTimeLeft),
+                                        color = TextBackgroundColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.basicMarquee(),
+                                    )
+                                } else {
+                                    Text(
+                                        text = stringResource(id = R.string.sleep_timer),
+                                        color = TextBackgroundColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.basicMarquee(),
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -1230,78 +1266,6 @@ fun Queue(
                     ).align(Alignment.BottomCenter),
         )
     }
-}
-
-@Composable
-private fun SleepTimerCountdownLabel(
-    enabled: Boolean,
-    playerConnection: com.metrolist.music.playback.PlayerConnection,
-    color: Color,
-) {
-    var timeLeft by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(enabled) {
-        if (!enabled) return@LaunchedEffect
-        while (isActive) {
-            timeLeft =
-                if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
-                    playerConnection.player.duration - playerConnection.player.currentPosition
-                } else {
-                    (playerConnection.service.sleepTimer?.triggerTime ?: 0L) - System.currentTimeMillis()
-                }
-            delay(1000L)
-        }
-    }
-    Text(
-        text = if (enabled) makeTimeString(timeLeft) else stringResource(id = R.string.sleep_timer),
-        color = color,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.basicMarquee(),
-    )
-}
-
-@Composable
-private fun SleepTimerQueueButton(
-    onClick: () -> Unit,
-    sleepTimerEnabled: Boolean,
-    playerConnection: com.metrolist.music.playback.PlayerConnection,
-    enabled: Boolean = true,
-    shape: RoundedCornerShape,
-    modifier: Modifier = Modifier,
-    textButtonColor: Color,
-    iconButtonColor: Color,
-    iconSize: androidx.compose.ui.unit.Dp,
-    textBackgroundColor: Color,
-    playerBackground: PlayerBackgroundStyle,
-) {
-    var timeLeft by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(sleepTimerEnabled) {
-        if (!sleepTimerEnabled) return@LaunchedEffect
-        while (isActive) {
-            timeLeft =
-                if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
-                    playerConnection.player.duration - playerConnection.player.currentPosition
-                } else {
-                    (playerConnection.service.sleepTimer?.triggerTime ?: 0L) - System.currentTimeMillis()
-                }
-            delay(1000L)
-        }
-    }
-    PlayerQueueButton(
-        icon = R.drawable.bedtime,
-        onClick = onClick,
-        isActive = sleepTimerEnabled,
-        enabled = enabled,
-        shape = shape,
-        modifier = modifier,
-        textButtonColor = textButtonColor,
-        iconButtonColor = iconButtonColor,
-        text = if (sleepTimerEnabled) makeTimeString(timeLeft) else null,
-        iconSize = iconSize,
-        textBackgroundColor = textBackgroundColor,
-        playerBackground = playerBackground,
-    )
 }
 
 @Composable

@@ -621,12 +621,15 @@ private fun ThumbnailImage(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer {
+                // Use offscreen compositing for hardware acceleration during animations
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(artworkUri)
-                .size(1080, 1080)
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .networkCachePolicy(CachePolicy.ENABLED)
