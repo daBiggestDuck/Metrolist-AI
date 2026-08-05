@@ -90,7 +90,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -843,13 +842,6 @@ class MainActivity : ComponentActivity() {
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))
                     }
-                appBarScrollBehavior(
-                    canScroll = {
-                        !inSearchScreen &&
-                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
-                    },
-                )
-
                 val topAppBarScrollBehavior =
                     appBarScrollBehavior(
                         canScroll = {
@@ -1245,10 +1237,9 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         },
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                        // Nested scroll on NavHost only. Scaffold + NavHost both attaching the same
+                        // connection double-fired TopAppBarState Snapshot writes per scroll frame.
+                        modifier = Modifier.fillMaxSize(),
                     ) {
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
@@ -1343,7 +1334,8 @@ class MainActivity : ComponentActivity() {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         }
                                     },
-                                    modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                                    // Pinned Aura top bar is a no-op nested-scroll target; skip attachment.
+                                    modifier = Modifier,
                                 ) {
                                     navigationBuilder(
                                         navController = navController,

@@ -296,7 +296,7 @@ class BottomSheetState(
     }
 
     fun snapTo(value: Dp) {
-        coroutineScope.launch {
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             animatable.snapTo(value)
         }
     }
@@ -339,8 +339,9 @@ class BottomSheetState(
         }
     }
 
-    val preUpPostDownNestedScrollConnection
-        get() = object : NestedScrollConnection {
+    // Stable instance — recreating per access restarted nested-scroll every recomposition.
+    val preUpPostDownNestedScrollConnection: NestedScrollConnection =
+        object : NestedScrollConnection {
             var isTopReached = false
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {

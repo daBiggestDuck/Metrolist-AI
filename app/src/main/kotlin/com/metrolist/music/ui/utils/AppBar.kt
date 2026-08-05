@@ -51,6 +51,9 @@ class AppBarScrollBehavior(
                 source: NestedScrollSource,
             ): Offset {
                 if (!canScroll()) return Offset.Zero
+                // Pinned Aura chrome does not collapse. Skip Snapshot writes — contentOffset
+                // churn on every list scroll frame was pure UI-thread overhead.
+                if (isPinned) return Offset.Zero
                 state.contentOffset += consumed.y
                 if (state.heightOffset == 0f || state.heightOffset == state.heightOffsetLimit) {
                     if (consumed.y == 0f && available.y > 0f) {
@@ -59,11 +62,7 @@ class AppBarScrollBehavior(
                         state.contentOffset = 0f
                     }
                 }
-                // Pinned bars never collapse — mutating heightOffset every scroll frame
-                // is pure Snapshot churn for any reader of TopAppBarState.
-                if (!isPinned) {
-                    state.heightOffset += consumed.y
-                }
+                state.heightOffset += consumed.y
                 return Offset.Zero
             }
         }
