@@ -802,11 +802,13 @@ class MainActivity : ComponentActivity() {
                         0.dp
                     }
 
-                val navigationBarHeight by animateDpAsState(
-                    targetValue = if (shouldShowNavigationBar && !showRail) NavigationBarHeight else 0.dp,
-                    animationSpec = NavigationBarAnimationSpec,
-                    label = "navBarHeight",
-                )
+                // Keep State — `by` would recompose Scaffold / NavHost every nav-hide spring frame.
+                val navigationBarHeight =
+                    animateDpAsState(
+                        targetValue = if (shouldShowNavigationBar && !showRail) NavigationBarHeight else 0.dp,
+                        animationSpec = NavigationBarAnimationSpec,
+                        label = "navBarHeight",
+                    )
 
                 val playerBottomSheetState =
                     rememberBottomSheetState(
@@ -1180,14 +1182,14 @@ class MainActivity : ComponentActivity() {
                                                 // Use graphicsLayer instead of offset to avoid recomposition
                                                 // graphicsLayer runs during draw phase, not composition phase
                                                 .graphicsLayer {
-                                                    val navBarHeightPx = navigationBarHeight.toPx()
+                                                    val navBarHeightPx = navigationBarHeight.value.toPx()
                                                     val totalHeightPx = navBarTotalHeight.toPx()
 
                                                     translationY =
                                                         if (navBarHeightPx == 0f) {
                                                             totalHeightPx
                                                         } else {
-                                                            // Read progress only during draw phase
+                                                            // Read progress / animated height only during draw
                                                             val progress = playerBottomSheetState.progressValue().coerceIn(0f, 1f)
                                                             val slideOffset = totalHeightPx * progress
                                                             val hideOffset =

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -426,7 +427,8 @@ fun rememberBottomSheetState(
 
         BottomSheetState(
             draggableState = DraggableState { delta ->
-                coroutineScope.launch {
+                // UNDISPATCHED: apply snap on this frame instead of scheduling a job per pixel.
+                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
                     animatable.snapTo(animatable.value - with(density) { delta.toDp() })
                 }
             },

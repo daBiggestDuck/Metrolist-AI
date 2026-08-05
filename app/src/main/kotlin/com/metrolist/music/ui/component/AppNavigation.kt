@@ -152,10 +152,11 @@ fun AppNavigationRail(
                 .width(72.dp)
                 .fillMaxHeight()
                 .padding(vertical = 16.dp, horizontal = 8.dp)
+                // elevation 0: soft shadows redraw every sheet-slide frame via graphicsLayer.
                 .auraFloatingIsland(
                     shape = AuraFloatingPillShape,
                     color = containerColor,
-                    elevation = 4.dp,
+                    elevation = 0.dp,
                 )
                 .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -282,10 +283,12 @@ fun AppNavigationBar(
                 Modifier
                     .fillMaxWidth()
                     .height(pillHeight)
+                    // elevation 0: pill translates with the player sheet every frame — soft
+                    // shadows here were a major overdraw source during expand/collapse.
                     .auraFloatingIsland(
                         shape = AuraFloatingPillShape,
                         color = containerColor,
-                        elevation = 4.dp,
+                        elevation = 0.dp,
                     ),
         ) {
             val tabCount = navigationItems.size.coerceAtLeast(1)
