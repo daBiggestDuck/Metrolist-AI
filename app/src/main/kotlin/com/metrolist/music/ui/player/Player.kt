@@ -191,9 +191,6 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
 import com.metrolist.music.ui.component.Icon as MIcon
-import com.metrolist.music.constants.SleepTimerDefaultKey
-import com.metrolist.music.constants.SleepTimerFadeOutKey
-import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.ui.component.aura.AuraIconButton
 import com.metrolist.music.ui.component.aura.AuraOutlinedButton
 import com.metrolist.music.ui.component.aura.AuraPlayButton
@@ -501,31 +498,8 @@ fun BottomSheetPlayer(
         .getDownload(mediaMetadata?.id ?: "")
         .collectAsStateWithLifecycle(initialValue = null)
 
-    val sleepTimerEnabled =
-        remember(
-            playerConnection.service.sleepTimer?.triggerTime,
-            playerConnection.service.sleepTimer?.pauseWhenSongEnd,
-        ) {
-            playerConnection.service.sleepTimer?.isActive ?: false
-        }
-
-    var sleepTimerTimeLeft by remember {
-        mutableLongStateOf(0L)
-    }
-
-    LaunchedEffect(sleepTimerEnabled) {
-        if (sleepTimerEnabled) {
-            while (isActive) {
-                sleepTimerTimeLeft =
-                    if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
-                        playerConnection.player.duration - playerConnection.player.currentPosition
-                    } else {
-                        (playerConnection.service.sleepTimer?.triggerTime ?: 0L) - System.currentTimeMillis()
-                    }
-                delay(1000L)
-            }
-        }
-    }
+    // Sleep-timer countdown lives in Queue leaf composables — do not poll here
+    // or BottomSheetPlayer recomposes every second for an unused value.
 
     val scope = rememberCoroutineScope()
     var showSleepTimerDialog by remember {
@@ -1432,9 +1406,6 @@ Spacer(Modifier.width(8.dp))
                                 .weight(1f)
                                 .nestedScroll(state.preUpPostDownNestedScrollConnection),
                     ) {
-                        // Remember lambdas to prevent unnecessary recomposition
-                        val currentSliderPosition by rememberUpdatedState(sliderPosition)
-                        val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         AnimatedContent(
                             targetState = showInlineLyrics,
@@ -1496,9 +1467,6 @@ Spacer(Modifier.width(8.dp))
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.weight(1f),
                     ) {
-                        // Remember lambdas to prevent unnecessary recomposition
-                        val currentSliderPosition by rememberUpdatedState(sliderPosition)
-                        val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         AnimatedContent(
                             targetState = showInlineLyrics,

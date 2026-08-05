@@ -525,6 +525,10 @@ class MusicService :
     private var cachedAudioTrackPlaybackParams = true
     @Volatile
     private var cachedAudioOffload = false
+    @Volatile
+    private var cachedAutoDownloadOnLike = false
+    @Volatile
+    private var cachedEnableGoogleCast = true
 
     // URL cache for stream URLs - class-level so it can be invalidated on errors
     private val songUrlCache = Collections.synchronizedMap(
@@ -1248,6 +1252,15 @@ class MusicService :
                 .map { (it[HistoryDuration] ?: 30f) * 1000f }
                 .distinctUntilChanged()
                 .collect { cachedHistoryDurationMs = it }
+        }
+        scope.launch {
+            dataStore.data.map { it[AutoDownloadOnLikeKey] ?: false }.distinctUntilChanged().collect { cachedAutoDownloadOnLike = it }
+        }
+        scope.launch {
+            dataStore.data
+                .map { it[com.metrolist.music.constants.EnableGoogleCastKey] ?: true }
+                .distinctUntilChanged()
+                .collect { cachedEnableGoogleCast = it }
         }
         // Keep YTPlayerUtils in sync with the stream source toggles (Settings → Stream sources).
         // Map to the derived set + distinctUntilChanged so an unrelated preference write doesn't
@@ -2275,7 +2288,7 @@ class MusicService :
                     update(song)
                     syncUtils.likeSong(song)
 
-                    if (dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
+                    if (cachedAutoDownloadOnLike && song.liked) {
                         val downloadRequest =
                             androidx.media3.exoplayer.offline.DownloadRequest
                                 .Builder(song.id, song.id.toUri())
@@ -2371,6 +2384,8 @@ class MusicService :
         cachedSkipSilenceInstant = prefs[SkipSilenceInstantKey] ?: false
         cachedAudioTrackPlaybackParams = prefs[AudioTrackPlaybackParamsKey] ?: true
         cachedAudioOffload = prefs[AudioOffload] ?: false
+        cachedAutoDownloadOnLike = prefs[AutoDownloadOnLikeKey] ?: false
+        cachedEnableGoogleCast = prefs[com.metrolist.music.constants.EnableGoogleCastKey] ?: true
     }
 
     private fun seedLoudnessCacheFromPrefs() {
@@ -4694,7 +4709,7 @@ class MusicService :
      * Initialize Google Cast support
      */
     private fun initializeCast() {
-        if (dataStore.get(com.metrolist.music.constants.EnableGoogleCastKey, true)) {
+        if (cachedEnableGoogleCast) {
             try {
                 castConnectionHandler = CastConnectionHandler(this, scope, this)
                 castConnectionHandler?.initialize()
