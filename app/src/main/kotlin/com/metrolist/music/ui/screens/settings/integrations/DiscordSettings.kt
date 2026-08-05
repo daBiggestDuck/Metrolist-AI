@@ -160,6 +160,7 @@ fun DiscordSettings(
     var showBtn2LabelDialog by remember { mutableStateOf(false) }
     var showBtn2UrlDialog by remember { mutableStateOf(false) }
     var showUserStatusDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
 
     val fetchedUser by DiscordRpcManager.currentUser.collectAsState()
     val accessToken by DiscordRpcManager.accessTokenFlow.collectAsState()
@@ -415,18 +416,7 @@ fun DiscordSettings(
                 }
 
                 if (isLoggedIn) {
-                    AuraOutlinedButton(onClick = {
-                        discordName = ""
-                        discordUsername = ""
-                        discordAvatar = ""
-                        coroutineScope.launch(Dispatchers.IO) {
-                            try {
-                                DiscordRpcManager.logout()
-                            } catch (e: Exception) {
-                                Timber.e(e, "Discord logout failed")
-                            }
-                        }
-                    }) {
+                    AuraOutlinedButton(onClick = { showLogoutConfirm = true }) {
                         Text(stringResource(R.string.action_logout))
                     }
                 }
@@ -715,6 +705,42 @@ fun DiscordSettings(
         )
 
         Spacer(Modifier.height(24.dp))
+    }
+
+    if (showLogoutConfirm) {
+        DefaultDialog(
+            onDismiss = { showLogoutConfirm = false },
+            title = { Text(stringResource(R.string.discord_logout_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.discord_logout_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showLogoutConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(
+                    onClick = {
+                        showLogoutConfirm = false
+                        discordName = ""
+                        discordUsername = ""
+                        discordAvatar = ""
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                DiscordRpcManager.logout()
+                            } catch (e: Exception) {
+                                Timber.e(e, "Discord logout failed")
+                            }
+                        }
+                    },
+                ) {
+                    Text(text = stringResource(R.string.action_logout))
+                }
+            },
+        )
     }
 
     if (showActivityTypeDialog) {

@@ -120,8 +120,37 @@ fun LastFMSettings(
     )
 
     var showLoginDialog by rememberSaveable { mutableStateOf(false) }
+    var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
     var isLoggingIn by rememberSaveable { mutableStateOf(false) }
     var loginError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    if (showLogoutConfirm) {
+        DefaultDialog(
+            onDismiss = { showLogoutConfirm = false },
+            title = { Text(stringResource(R.string.lastfm_logout_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.lastfm_logout_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showLogoutConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(
+                    onClick = {
+                        showLogoutConfirm = false
+                        lastfmSession = ""
+                        lastfmUsername = ""
+                    },
+                ) {
+                    Text(text = stringResource(R.string.action_logout))
+                }
+            },
+        )
+    }
 
     if (showLoginDialog) {
         var tempUsername by rememberSaveable { mutableStateOf("") }
@@ -298,10 +327,7 @@ fun LastFMSettings(
                     },
                     trailingContent = {
                         if (isLoggedIn) {
-                            AuraOutlinedButton(onClick = {
-                                lastfmSession = ""
-                                lastfmUsername = ""
-                            }) {
+                            AuraOutlinedButton(onClick = { showLogoutConfirm = true }) {
                                 Text(stringResource(R.string.action_logout))
                             }
                         } else {

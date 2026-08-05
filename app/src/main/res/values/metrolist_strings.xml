@@ -27,6 +27,17 @@
     <string name="sync_playlist">Sync playlist</string>
     <string name="sync_disabled">Sync disabled</string>
     <string name="allows_for_sync_witch_youtube">NOTE: This option enables syncing with YouTube Music and CANNOT be changed later</string>
+    <string name="sync_playlist_confirm">Syncing will replace all songs in this playlist with the YouTube Music version. Continue?</string>
+    <string name="remove_songs_from_playlist_confirm">Do you really want to remove %1$d songs from this playlist?</string>
+    <string name="remove_song_from_playlist_confirm">Do you really want to remove this song from the playlist?</string>
+    <string name="remove_playlist_from_library_confirm">Do you really want to remove \"%1$s\" from your library?</string>
+    <string name="remove_from_library_confirm">Do you really want to remove %1$d songs from your library?</string>
+    <string name="remove_download_confirm">Do you really want to remove this download?</string>
+    <string name="remove_download_album_confirm">Do you really want to remove all downloads for \"%1$s\"?</string>
+    <string name="disable_most_stats_playlists_confirm">Disabling this will delete your Weekly Most and Monthly Most playlists. Continue?</string>
+    <string name="unsubscribe_artist_confirm">Do you really want to unsubscribe from this channel?</string>
+    <string name="remove_podcast_from_library_confirm">Do you really want to remove \"%1$s\" from your library?</string>
+    <string name="delete_alarm_confirm">Do you really want to delete this alarm?</string>
 
     <string name="and">and</string>
     <string name="generating_image">Generating image…</string>
@@ -167,6 +178,8 @@
     <string name="token_hidden">Tap to show token</string>
     <string name="token_shown">Tap again to copy or edit</string>
     <string name="token_adv_login_description">This is an ADVANCED login method. Instead of using the web portal, you can enter or update your login token directly. This can be useful for signing in across multiple devices quickly. Tokens in an unrecognized format will be rejected</string>
+    <string name="token_replace_confirm_title">Replace login token?</string>
+    <string name="token_replace_confirm_message">Saving will replace your current YouTube Music session and restart the app.</string>
     <string name="yt_sync">Auto-sync with account</string>
     <string name="more_content">More content</string>
 
@@ -435,6 +448,8 @@
     <string name="lastfm_now_playing">Send Now Playing status</string>
     <string name="last_fm_send_likes">Sync Loved and Unloved</string>
     <string name="last_fm_send_likes_description">Love or unlove songs in Last.fm when you like or unlike them in Metrolist</string>
+    <string name="lastfm_logout_confirm_title">Log out of Last.fm?</string>
+    <string name="lastfm_logout_confirm_message">Scrobbling will stop until you sign in again.</string>
     <string name="logging_in">Logging in…</string>
 
     <string name="scrobbling_configuration">Scrobbling configuration</string>
@@ -830,15 +845,20 @@
     <string name="csv_import_success">Imported %1$d tracks</string>
     <string name="csv_import_partial">Imported %1$d of %2$d tracks</string>
     <string name="csv_import_no_matches">No tracks matched on YouTube Music (%1$d in file)</string>
-    <string name="csv_import_taste_success">Updated taste from %1$d tracks (%2$d artists). Nano DJ seeds refreshed.</string>
+    <string name="csv_import_taste_success">Your music taste has been updated from %1$d tracks (%2$d artists).</string>
     <string name="csv_import_taste_failed">CSV import failed: %1$s</string>
     <string name="csv_import_complete_title">Taste updated</string>
+    <string name="taste_updated_title">Your music taste has been updated</string>
+    <string name="taste_updated_message">%1$d tracks analyzed.\n\n%2$s</string>
+    <string name="taste_updated_snackbar">Your music taste has been updated · %1$d tracks</string>
     <string name="csv_import_add_to_playlist">Add to playlist</string>
     <string name="csv_import_add_playlist_prompt">Optionally match these %1$d tracks on YouTube Music and add them to a playlist.</string>
 
     <string name="recently_converted">Recently converted</string>
     <string name="column_label">Column %d</string>
 
+    <string name="discord_logout_confirm_title">Log out of Discord?</string>
+    <string name="discord_logout_confirm_message">Rich Presence will stop until you sign in again.</string>
     <string name="discord_connect_description">Sign in with Discord to share what you\'re listening to</string>
     <string name="discord_information_warning">Metrolist uses Discord\'s public OAuth2 and Gateway APIs to share what you\'re listening to. Authorization happens through a local browser session that closes itself after capturing the code — nothing is sent to third-party servers. Your token is stored on this device in encrypted preferences and is never shared. Metrolist connects directly to wss://gateway.discord.gg to publish your activity, and only requests the minimum scope required (sdk.social_layer_presence).</string>
     <string name="discord_status_connecting">Connecting to Discord…</string>
@@ -955,7 +975,7 @@
 
     <!-- Restore confirmation dialog -->
     <string name="restore_confirm_title">Restore backup?</string>
-    <string name="restore_confirm_message">This will restore your app data from the selected backup</string>
+    <string name="restore_confirm_message">This permanently replaces your current library, playlists, history, and settings with the selected backup. This cannot be undone.</string>
     <string name="restore_account_warning">The following account information will be restored and preserved:</string>
     <string name="restore">Restore</string>
     <string name="restore_database_incompatible">Cannot restore backup: database version incompatible. Your current data has been preserved.</string>
@@ -1108,6 +1128,8 @@
     <string name="spotify_redirect_uri_note">Register metrolistspotify://callback as a Redirect URI in your Spotify Developer Dashboard app settings.</string>
     <string name="spotify_connect">Connect</string>
     <string name="spotify_disconnect">Disconnect</string>
+    <string name="spotify_disconnect_confirm_title">Disconnect Spotify?</string>
+    <string name="spotify_disconnect_confirm_message">You\'ll need to sign in again to import playlists or refresh Spotify taste. Local taste from playlists or files is kept.</string>
     <string name="spotify_connect_description">Sign in with Spotify so Nano DJ can learn your taste and import playlists into Metrolist</string>
     <string name="spotify_connected_as">Connected as %1$s</string>
     <string name="spotify_not_connected">Not connected</string>
@@ -1181,6 +1203,37 @@
     <string name="listening_taste_excluded_count">Excluded from taste: %1$d songs</string>
     <string name="listening_taste_excluded_section">Excluded songs</string>
     <string name="listening_taste_clear_exclusions">Clear all exclusions</string>
+    <string name="listening_taste_clear_exclusions_confirm_title">Clear taste exclusions?</string>
+    <string name="listening_taste_clear_exclusions_confirm_message">All songs marked “Don’t use for taste” will be included in listening taste again.</string>
+    <string name="listening_taste_reset">Reset listening taste</string>
+    <string name="listening_taste_reset_desc">Clears artists, tracks, and categories learned from your listening history</string>
+    <string name="listening_taste_reset_confirm_title">Reset listening taste?</string>
+    <string name="listening_taste_reset_confirm_message">This clears taste learned from songs you’ve played. Imported Spotify taste and exclusions are kept.</string>
+    <string name="taste_overwrite_confirm_title">Overwrite music taste?</string>
+    <string name="taste_overwrite_confirm_message">This will replace your current taste profile used by Nano DJ with the imported data.</string>
+    <string name="taste_overwrite_confirm">Overwrite</string>
+    <string name="spotify_import_all_playlists_confirm_title">Import all playlists?</string>
+    <string name="spotify_import_all_playlists_confirm_message">This imports every Spotify playlist into Metrolist and may take a long time. Continue?</string>
+    <string name="clear_recent_searches_confirm_title">Clear recent searches?</string>
+    <string name="clear_recent_searches_confirm_message">This removes your recent search history from this device.</string>
+    <string name="ai_provider_switch_confirm_title">Switch AI provider?</string>
+    <string name="ai_provider_switch_confirm_message">Provider-specific settings such as model and base URL will be updated for %1$s. Your API key is kept until you clear it.</string>
+    <string name="ai_clear_api_key">Clear API key</string>
+    <string name="ai_clear_api_key_confirm_title">Clear API key?</string>
+    <string name="ai_clear_api_key_confirm_message">Cloud AI features that use this key will stop working until you enter a new key.</string>
+    <string name="dj_ai_provider_switch_confirm_title">Switch DJ AI provider?</string>
+    <string name="dj_ai_provider_switch_confirm_message">Nano DJ will use %1$s. Cloud requests may leave the device when not using on-device Nano.</string>
+    <string name="leave_room_confirm_title">Leave room?</string>
+    <string name="leave_room_confirm_message">You will disconnect from this Listen Together session.</string>
+    <string name="listen_together_disconnect_confirm_title">Disconnect?</string>
+    <string name="listen_together_disconnect_confirm_message">You will leave any active room and disconnect from the Listen Together server.</string>
+    <string name="kick_user_confirm_title">Kick %1$s?</string>
+    <string name="kick_user_confirm_message">They will be removed from the room but can rejoin.</string>
+    <string name="permanently_kick_user_confirm_title">Block and kick %1$s?</string>
+    <string name="permanently_kick_user_confirm_message">They will be removed and blocked from rejoining this room.</string>
+    <string name="player_dismiss_clear_queue_title">Clear queue and stop?</string>
+    <string name="player_dismiss_clear_queue_message">Dismissing the player stops playback and clears the current queue.</string>
+    <string name="player_dismiss_clear_queue_confirm">Clear queue</string>
     <string name="dont_use_for_taste">Don’t use for taste</string>
     <string name="use_for_taste">Use for taste</string>
     <string name="dont_use_for_taste_desc">Skip this song when updating Nano DJ’s listening taste</string>

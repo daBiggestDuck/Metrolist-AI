@@ -101,6 +101,13 @@ fun AccountSettings(
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showTokenReplaceConfirm by remember { mutableStateOf(false) }
+    var pendingTokenCookie by remember { mutableStateOf("") }
+    var pendingTokenVisitorData by remember { mutableStateOf("") }
+    var pendingTokenDataSyncId by remember { mutableStateOf("") }
+    var pendingTokenAccountName by remember { mutableStateOf("") }
+    var pendingTokenAccountEmail by remember { mutableStateOf("") }
+    var pendingTokenAccountChannelHandle by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     val updateAvailable =
@@ -109,6 +116,45 @@ fun AccountSettings(
     fun navigateAndClose(route: String) {
         onClose()
         navController.navigate(route)
+    }
+
+    fun applyPendingTokenAndRestart() {
+        accountSettingsViewModel.saveTokenAndRestart(
+            context = context,
+            cookie = pendingTokenCookie,
+            visitorData = pendingTokenVisitorData,
+            dataSyncId = pendingTokenDataSyncId,
+            accountName = pendingTokenAccountName,
+            accountEmail = pendingTokenAccountEmail,
+            accountChannelHandle = pendingTokenAccountChannelHandle,
+        )
+    }
+
+    if (showTokenReplaceConfirm) {
+        DefaultDialog(
+            onDismiss = { showTokenReplaceConfirm = false },
+            title = { Text(stringResource(R.string.token_replace_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.token_replace_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showTokenReplaceConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(
+                    onClick = {
+                        showTokenReplaceConfirm = false
+                        applyPendingTokenAndRestart()
+                    },
+                ) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
     }
 
     if (showLogoutDialog) {
@@ -196,18 +242,21 @@ fun AccountSettings(
                             accountChannelHandleValue = it.substringAfter("=")
                     }
                 }
-                // Write all credentials atomically to DataStore and wait for completion
-                // before restarting, preventing the race condition where the process
-                // would be killed before async DataStore coroutines finished writing.
-                accountSettingsViewModel.saveTokenAndRestart(
-                    context = context,
-                    cookie = cookie,
-                    visitorData = visitorDataValue,
-                    dataSyncId = dataSyncIdValue,
-                    accountName = accountNameValue,
-                    accountEmail = accountEmailValue,
-                    accountChannelHandle = accountChannelHandleValue,
-                )
+                pendingTokenCookie = cookie
+                pendingTokenVisitorData = visitorDataValue
+                pendingTokenDataSyncId = dataSyncIdValue
+                pendingTokenAccountName = accountNameValue
+                pendingTokenAccountEmail = accountEmailValue
+                pendingTokenAccountChannelHandle = accountChannelHandleValue
+                if (isLoggedIn) {
+                    showTokenEditor = false
+                    showTokenReplaceConfirm = true
+                } else {
+                    // Write all credentials atomically to DataStore and wait for completion
+                    // before restarting, preventing the race condition where the process
+                    // would be killed before async DataStore coroutines finished writing.
+                    applyPendingTokenAndRestart()
+                }
             },
             onDismiss = { showTokenEditor = false },
             singleLine = false,

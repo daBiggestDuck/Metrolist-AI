@@ -66,6 +66,7 @@ import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.spotify.SpotifyImportProgress
 import com.metrolist.music.spotify.SpotifyPlaylistSummary
 import com.metrolist.music.spotify.SpotifyTokenStore
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraBanner
@@ -75,6 +76,7 @@ import com.metrolist.music.ui.component.aura.AuraHeroPanel
 import com.metrolist.music.ui.component.aura.AuraPrimaryPill
 import com.metrolist.music.ui.component.aura.AuraRow
 import com.metrolist.music.ui.component.aura.AuraScreen
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.component.aura.AuraSectionLabel
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.utils.backToMain
@@ -121,11 +123,20 @@ fun SpotifySettings(
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableStateOf(SpotifyImportProgress()) }
     var showClientIdDialog by rememberSaveable { mutableStateOf(false) }
+    var showDisconnectConfirm by rememberSaveable { mutableStateOf(false) }
     var pendingFileTracks by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
     var showFilePlaylistNameDialog by remember { mutableStateOf(false) }
     var pendingFilePlaylistName by remember { mutableStateOf(SpotifyImportManager.TASTE_PLAYLIST_NAME) }
     var showLocalPlaylistPicker by remember { mutableStateOf(false) }
     var pendingSpotifyPlaylist by remember { mutableStateOf<SpotifyPlaylistSummary?>(null) }
+    var showTasteOverwriteConfirm by remember { mutableStateOf(false) }
+    var pendingTasteOverwrite by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showImportAllConfirm by remember { mutableStateOf(false) }
+
+    fun requestTasteOverwrite(action: () -> Unit) {
+        pendingTasteOverwrite = action
+        showTasteOverwriteConfirm = true
+    }
 
     val localPlaylists by remember {
         database.playlists(PlaylistSortType.NAME, false).map { list ->
@@ -288,6 +299,63 @@ fun SpotifySettings(
         }
     }
 
+    fun importAllPlaylists() {
+        scope.launch {
+            isBusy = true
+            statusMessage = null
+            val snapshot = playlists
+            val totalPlaylists = snapshot.size
+            var totalMatched = 0
+            var totalFailed = 0
+            val manager = SpotifyImportManager(database, context)
+            try {
+                snapshot.forEachIndexed { index, pl ->
+                    val label =
+                        context.getString(
+                            R.string.spotify_import_all_playlists_progress,
+                            index + 1,
+                            totalPlaylists,
+                            pl.name,
+                        )
+                    progress =
+                        SpotifyImportProgress(
+                            current = index,
+                            total = totalPlaylists,
+                            phase = label,
+                        )
+                    try {
+                        val result =
+                            manager.importPlaylist(
+                                clientId = clientId,
+                                playlist = pl,
+                                onProgress = { p ->
+                                    scope.launch(Dispatchers.Main) {
+                                        progress = p.copy(phase = label)
+                                    }
+                                },
+                            )
+                        totalMatched += result.matched
+                        totalFailed += result.failed
+                    } catch (e: Exception) {
+                        Timber.tag("SpotifySettings")
+                            .w(e, "Failed importing playlist %s", pl.name)
+                        reportException(e)
+                    }
+                }
+                statusMessage =
+                    context.getString(
+                        R.string.spotify_import_all_playlists_result,
+                        totalPlaylists,
+                        totalMatched,
+                        totalFailed,
+                    )
+            } finally {
+                manager.close()
+                isBusy = false
+            }
+        }
+    }
+
     val fileImportMimeTypes =
         remember {
             arrayOf(
@@ -358,6 +426,102 @@ fun SpotifySettings(
         }
     }
 
+    fun disconnectSpotify() {
+        SpotifyTokenStore.clear()
+        displayName = ""
+        tasteSummary = ""
+        tasteHints = ""
+        topArtistsPref = ""
+        topTracksPref = ""
+        playlists = emptyList()
+        isConnected = false
+        statusMessage = null
+    }
+
+    if (showDisconnectConfirm) {
+        DefaultDialog(
+            onDismiss = { showDisconnectConfirm = false },
+            title = { Text(stringResource(R.string.spotify_disconnect_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.spotify_disconnect_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showDisconnectConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(
+                    onClick = {
+                        showDisconnectConfirm = false
+                        disconnectSpotify()
+                    },
+                ) {
+                    Text(text = stringResource(R.string.spotify_disconnect))
+                }
+            },
+        )
+    }
+
+    if (showTasteOverwriteConfirm) {
+        DefaultDialog(
+            onDismiss = {
+                showTasteOverwriteConfirm = false
+                pendingTasteOverwrite = null
+            },
+            title = { Text(stringResource(R.string.taste_overwrite_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.taste_overwrite_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    showTasteOverwriteConfirm = false
+                    pendingTasteOverwrite = null
+                }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showTasteOverwriteConfirm = false
+                    pendingTasteOverwrite?.invoke()
+                    pendingTasteOverwrite = null
+                }) {
+                    Text(text = stringResource(R.string.taste_overwrite_confirm))
+                }
+            },
+        )
+    }
+
+    if (showImportAllConfirm) {
+        DefaultDialog(
+            onDismiss = { showImportAllConfirm = false },
+            title = { Text(stringResource(R.string.spotify_import_all_playlists_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.spotify_import_all_playlists_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showImportAllConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showImportAllConfirm = false
+                    importAllPlaylists()
+                }) {
+                    Text(text = stringResource(R.string.spotify_import_all_playlists))
+                }
+            },
+        )
+    }
+
     if (showClientIdDialog) {
         TextFieldDialog(
             title = { Text(stringResource(R.string.spotify_client_id)) },
@@ -380,10 +544,12 @@ fun SpotifySettings(
                 showFilePlaylistNameDialog = false
                 val tracks = pendingFileTracks
                 if (tracks != null) {
-                    runFileTasteImport(
-                        tracks = tracks,
-                        playlistName = name.trim().ifBlank { SpotifyImportManager.TASTE_PLAYLIST_NAME },
-                    )
+                    requestTasteOverwrite {
+                        runFileTasteImport(
+                            tracks = tracks,
+                            playlistName = name.trim().ifBlank { SpotifyImportManager.TASTE_PLAYLIST_NAME },
+                        )
+                    }
                 }
             },
             onDismiss = {
@@ -426,7 +592,7 @@ fun SpotifySettings(
                         modifier =
                             Modifier.clickable {
                                 showLocalPlaylistPicker = false
-                                runLocalPlaylistTaste(playlist)
+                                requestTasteOverwrite { runLocalPlaylistTaste(playlist) }
                             },
                     )
                 }
@@ -452,7 +618,7 @@ fun SpotifySettings(
                     modifier =
                         Modifier.clickable {
                             pendingSpotifyPlaylist = null
-                            runSpotifyPlaylistTaste(spotifyPl)
+                            requestTasteOverwrite { runSpotifyPlaylistTaste(spotifyPl) }
                         },
                 )
             }
@@ -579,15 +745,7 @@ fun SpotifySettings(
             trailingText = if (isConnected) disconnectLabel else connectLabel,
             onClick = {
                 if (isConnected) {
-                    SpotifyTokenStore.clear()
-                    displayName = ""
-                    tasteSummary = ""
-                    tasteHints = ""
-                    topArtistsPref = ""
-                    topTracksPref = ""
-                    playlists = emptyList()
-                    isConnected = false
-                    statusMessage = null
+                    showDisconnectConfirm = true
                 } else {
                     val activity = context as? Activity ?: return@AuraRow
                     scope.launch {
@@ -736,39 +894,41 @@ fun SpotifySettings(
                 subtitle = stringResource(R.string.spotify_import_taste_desc),
                 enabled = !isBusy,
                 onClick = {
-                    scope.launch {
-                        isBusy = true
-                        statusMessage = null
-                        progress = SpotifyImportProgress(phase = "Starting")
-                        val manager = SpotifyImportManager(database, context)
-                        try {
-                            val result =
-                                manager.importTaste(
-                                    clientId = clientId,
-                                    enableGeminiNano = enableGeminiNano,
-                                    onProgress = { p ->
-                                        scope.launch(Dispatchers.Main) {
-                                            progress = p
-                                        }
-                                    },
-                                )
-                            result.tasteAnalysis?.let { analysis ->
-                                tasteSummary = analysis.summary
-                                tasteHints = analysis.searchHints.joinToString("\n")
+                    requestTasteOverwrite {
+                        scope.launch {
+                            isBusy = true
+                            statusMessage = null
+                            progress = SpotifyImportProgress(phase = "Starting")
+                            val manager = SpotifyImportManager(database, context)
+                            try {
+                                val result =
+                                    manager.importTaste(
+                                        clientId = clientId,
+                                        enableGeminiNano = enableGeminiNano,
+                                        onProgress = { p ->
+                                            scope.launch(Dispatchers.Main) {
+                                                progress = p
+                                            }
+                                        },
+                                    )
+                                result.tasteAnalysis?.let { analysis ->
+                                    tasteSummary = analysis.summary
+                                    tasteHints = analysis.searchHints.joinToString("\n")
+                                }
+                                persistTasteProfile(result.topArtists, result.topTracks)
+                                statusMessage =
+                                    context.getString(
+                                        R.string.spotify_import_result,
+                                        result.matched,
+                                        result.failed,
+                                    )
+                            } catch (e: Exception) {
+                                statusMessage = e.message
+                                reportException(e)
+                            } finally {
+                                manager.close()
+                                isBusy = false
                             }
-                            persistTasteProfile(result.topArtists, result.topTracks)
-                            statusMessage =
-                                context.getString(
-                                    R.string.spotify_import_result,
-                                    result.matched,
-                                    result.failed,
-                                )
-                        } catch (e: Exception) {
-                            statusMessage = e.message
-                            reportException(e)
-                        } finally {
-                            manager.close()
-                            isBusy = false
                         }
                     }
                 },
@@ -805,62 +965,7 @@ fun SpotifySettings(
                     subtitle = stringResource(R.string.spotify_import_all_playlists_desc),
                     enabled = !isBusy,
                     trailingText = stringResource(R.string.spotify_import_action),
-                    onClick = {
-                        scope.launch {
-                            isBusy = true
-                            statusMessage = null
-                            val snapshot = playlists
-                            val totalPlaylists = snapshot.size
-                            var totalMatched = 0
-                            var totalFailed = 0
-                            val manager = SpotifyImportManager(database, context)
-                            try {
-                                snapshot.forEachIndexed { index, pl ->
-                                    val label =
-                                        context.getString(
-                                            R.string.spotify_import_all_playlists_progress,
-                                            index + 1,
-                                            totalPlaylists,
-                                            pl.name,
-                                        )
-                                    progress =
-                                        SpotifyImportProgress(
-                                            current = index,
-                                            total = totalPlaylists,
-                                            phase = label,
-                                        )
-                                    try {
-                                        val result =
-                                            manager.importPlaylist(
-                                                clientId = clientId,
-                                                playlist = pl,
-                                                onProgress = { p ->
-                                                    scope.launch(Dispatchers.Main) {
-                                                        progress = p.copy(phase = label)
-                                                    }
-                                                },
-                                            )
-                                        totalMatched += result.matched
-                                        totalFailed += result.failed
-                                    } catch (e: Exception) {
-                                        Timber.tag("SpotifySettings")
-                                            .w(e, "Failed importing playlist %s", pl.name)
-                                        reportException(e)
-                                    }
-                                }
-                                statusMessage =
-                                    context.getString(
-                                        R.string.spotify_import_all_playlists_result,
-                                        totalPlaylists,
-                                        totalMatched,
-                                        totalFailed,
-                                    )
-                            } finally {
-                                manager.close()
-                                isBusy = false
-                            }
-                        }
-                    },
+                    onClick = { showImportAllConfirm = true },
                 )
                 AuraDivider()
                 playlists.forEach { playlist ->
