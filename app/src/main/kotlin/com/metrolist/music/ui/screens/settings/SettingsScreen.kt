@@ -52,6 +52,7 @@ import com.metrolist.music.LocalChangelogState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
@@ -102,6 +103,7 @@ fun SettingsScreen(
         }
 
     var searchQuery by remember { mutableStateOf("") }
+    var showAccountDialog by remember { mutableStateOf(false) }
     val query = searchQuery.trim()
 
     fun matches(title: String, extra: String? = null): Boolean {
@@ -163,9 +165,7 @@ fun SettingsScreen(
                     SettingsHubEntry(
                         title = title,
                         icon = if (isLoggedIn) personIcon else loginIcon,
-                        onClick = {
-                            navController.navigate(if (isLoggedIn) "account" else "login")
-                        },
+                        onClick = { showAccountDialog = true },
                     ),
                 )
             }
@@ -255,8 +255,49 @@ fun SettingsScreen(
             }
         }
 
+    val notificationIcon = painterResource(R.drawable.notification)
+    val systemNotificationsTitle = stringResource(R.string.settings_system_notifications)
+    val systemNotificationsDesc = stringResource(R.string.settings_system_notifications_desc)
+
     val notificationItems =
         buildList {
+            if (matches(systemNotificationsTitle, notificationsSectionTitle) ||
+                matches(systemNotificationsDesc, notificationsSectionTitle)
+            ) {
+                add(
+                    SettingsHubEntry(
+                        title = systemNotificationsTitle,
+                        icon = notificationIcon,
+                        description = systemNotificationsDesc,
+                        onClick = {
+                            try {
+                                val intent =
+                                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    val intent =
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = "package:${context.packageName}".toUri()
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            R.string.open_app_settings_error,
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                }
+                            }
+                        },
+                    ),
+                )
+            }
             if (BuildConfig.UPDATER_AVAILABLE && matches(updaterTitle, notificationsSectionTitle)) {
                 add(
                     SettingsHubEntry(
@@ -409,6 +450,23 @@ fun SettingsScreen(
             modifier = Modifier.padding(bottom = 16.dp),
         )
 
+        val hasAnyResults =
+            accountItems.isNotEmpty() ||
+                contentDisplayItems.isNotEmpty() ||
+                playbackItems.isNotEmpty() ||
+                privacyItems.isNotEmpty() ||
+                notificationItems.isNotEmpty() ||
+                aboutDataItems.isNotEmpty()
+
+        if (!hasAnyResults) {
+            Text(
+                text = stringResource(R.string.settings_no_results),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
+            )
+        }
+
         if (accountItems.isNotEmpty()) {
             Material3SettingsGroup(
                 title = accountSectionTitle,
@@ -478,6 +536,13 @@ fun SettingsScreen(
             }
         },
     )
+
+    if (showAccountDialog) {
+        AccountSettingsDialog(
+            onDismiss = { showAccountDialog = false },
+            latestVersionName = latestVersionName,
+        )
+    }
 }
 
 @Composable

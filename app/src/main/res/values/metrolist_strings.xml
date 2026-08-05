@@ -387,6 +387,10 @@
     <string name="search_settings">Search settings</string>
     <string name="your_profile">Your profile</string>
     <string name="whats_new">What\'s new</string>
+    <string name="guest">Guest</string>
+    <string name="settings_system_notifications">App notification settings</string>
+    <string name="settings_system_notifications_desc">Open Android notification settings for Metrolist</string>
+    <string name="settings_no_results">No settings match your search</string>
 
     <!-- Updater -->
     <string name="updater">Updater</string>
