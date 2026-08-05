@@ -107,13 +107,13 @@ fun SpotifySettings(
     var tasteHints by rememberPreference(SpotifyTasteHintsKey, "")
     var topArtistsPref by rememberPreference(SpotifyTopArtistsKey, "")
     var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
-    val listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
+    var listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
     val enableGeminiNano by rememberPreference(EnableGeminiNanoKey, true)
     val (nanoDjSpeak, _) = rememberPreference(NanoDjSpeakKey, true)
 
     val displayTasteSummary =
         remember(listeningSummary, tasteSummary) {
-            TasteSummary.coalesce(listeningSummary, tasteSummary)
+            TasteSummary.coalesce(tasteSummary, listeningSummary)
         }
 
     var isConnected by remember {
@@ -184,7 +184,10 @@ fun SpotifySettings(
         summary: String,
         hints: List<String>,
     ) {
-        TasteSummary.sanitizeOrNull(summary)?.let { tasteSummary = it }
+        TasteSummary.sanitizeOrNull(summary)?.let {
+            tasteSummary = it
+            listeningSummary = it
+        }
         if (hints.isNotEmpty()) {
             tasteHints = hints.filter { TasteSummary.isUsable(it) }.joinToString("\n")
         }
@@ -934,7 +937,10 @@ fun SpotifySettings(
                             manager.generateRecommendations(
                                 clientId = clientId,
                                 enableGeminiNano = enableGeminiNano,
-                                cachedSummary = TasteSummary.sanitizeOrNull(tasteSummary).orEmpty(),
+                                cachedSummary =
+                                    TasteSummary
+                                        .coalesce(tasteSummary, listeningSummary)
+                                        .orEmpty(),
                                 cachedHints =
                                     tasteHints
                                         .split('\n')
@@ -947,7 +953,10 @@ fun SpotifySettings(
                                 },
                             )
                         result.tasteAnalysis?.let { analysis ->
-                            TasteSummary.sanitizeOrNull(analysis.summary)?.let { tasteSummary = it }
+                            TasteSummary.sanitizeOrNull(analysis.summary)?.let {
+                                tasteSummary = it
+                                listeningSummary = it
+                            }
                             tasteHints =
                                 analysis.searchHints
                                     .filter { TasteSummary.isUsable(it) }

@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.constants.EnableGeminiNanoKey
+import com.metrolist.music.constants.ListeningTasteSummaryKey
 import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
@@ -47,9 +48,17 @@ object NanoDjLauncher {
             val enableNano = prefs.get(EnableGeminiNanoKey, true)
             val djClient = GeminiNanoClient.get(context)
 
-            // Optionally refresh Spotify tops into prefs (still merged with live listening below).
+            // Do NOT overwrite imported CSV / taste prefs with live Spotify tops.
+            // If the user already saved a taste summary, keep it as the DJ source of truth.
+            val hasSavedTaste =
+                TasteSummary.isUsable(prefs.get(SpotifyTasteSummaryKey, "")) ||
+                    TasteSummary.isUsable(prefs.get(ListeningTasteSummaryKey, ""))
             val clientId = prefs.get(SpotifyClientIdKey, "")
-            if (!SpotifyTokenStore.retrieve().isNullOrBlank() && clientId.isNotBlank()) {
+            if (
+                !hasSavedTaste &&
+                !SpotifyTokenStore.retrieve().isNullOrBlank() &&
+                clientId.isNotBlank()
+            ) {
                 withContext(Dispatchers.IO) {
                     val access = ensureAccessToken(clientId) ?: return@withContext
                     val api = SpotifyApi()

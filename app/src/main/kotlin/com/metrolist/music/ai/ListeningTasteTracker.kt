@@ -564,10 +564,11 @@ object ListeningTasteTracker {
         val spotify = TasteSummary.sanitizeOrNull(spotifySummary)
         val summary =
             when {
-                live != null && spotify != null && live != spotify ->
-                    "$live Also informed by import: ${spotify.take(220)}"
-                live != null -> live
+                // Prefer explicit import (CSV / Spotify taste) over listening heuristic when both exist.
+                spotify != null && live != null && spotify != live ->
+                    "$spotify Also refined by listening: ${live.take(180)}"
                 spotify != null -> spotify
+                live != null -> live
                 seedArtists.isNotEmpty() ->
                     TasteSummary.fromArtistsAndTracks(
                         artists = seedArtists,

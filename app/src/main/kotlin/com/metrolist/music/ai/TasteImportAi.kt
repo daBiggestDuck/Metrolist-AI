@@ -191,6 +191,120 @@ object TasteImportAi {
 
         return parsed.copy(summary = usable, usedAi = true)
     }
+
+    /** Prompt for recommendations: saved taste text → playable HINTS only. */
+    fun buildRecommendPrompt(savedSummary: String): String {
+        val taste = TasteSummary.sanitizeOrNull(savedSummary) ?: savedSummary.trim()
+        return """
+            My music taste is: $taste
+            Suggest playable songs as HINTS:
+            - Title - Artist
+            - Title - Artist
+            (up to 12 HINTS of real playable songs matching this taste)
+
+            Reply EXACTLY:
+            HINTS:
+            - <Song> - <Artist>
+            """.trimIndent()
+    }
+
+    /**
+     * Load-path for Nano Recommendations / find-more: ask DJ AI for HINTS from the
+     * **saved taste summary string** — never from random Spotify tops.
+     */
+    suspend fun recommendFromSavedTaste(
+        context: Context,
+        savedSummary: String,
+        client: GeminiNanoClient = GeminiNanoClient.get(context),
+    ): List<String> {
+        val usable =
+            TasteSummary.sanitizeOrNull(savedSummary)
+                ?: throw TasteImportException(
+                    TasteImportFailReason.NO_TRACKS,
+                    "No saved taste summary. Import an Exportify CSV first.",
+                )
+
+        val prefs = context.dataStore.data.first()
+        val aiEnabled = prefs[EnableGeminiNanoKey] ?: true
+        if (!aiEnabled) {
+            Timber.tag(TAG).i("DJ AI disabled — no AI recommend hints from saved taste")
+            return emptyList()
+        }
+
+        val provider = DjAiProvider.fromId(prefs[DjAiProviderKey])
+        val apiKey =
+            prefs[DjAiApiKey]
+                ?.takeIf { it.isNotBlank() }
+                ?: prefs[OpenRouterApiKey]?.takeIf { it.isNotBlank() }.orEmpty()
+
+        if (provider != DjAiProvider.NANO && provider.requiresApiKey() && apiKey.isBlank()) {
+            throw TasteImportException(
+                TasteImportFailReason.NO_API_KEY,
+                "No API key for ${provider.displayName}. Set it in Settings → Playback → Nano DJ.",
+            )
+        }
+
+        val status =
+            runCatching { client.checkStatus() }
+                .getOrDefault(GeminiNanoStatus.Unavailable)
+        if (status != GeminiNanoStatus.Available) {
+            throw TasteImportException(
+                TasteImportFailReason.NANO_UNAVAILABLE,
+                "${provider.displayName} is not ready (status=$status).",
+            )
+        }
+
+        val prompt = buildRecommendPrompt(usable)
+        Timber.tag(TAG).i("Recommend from saved taste (%d chars) via %s", usable.length, provider.id)
+
+        val raw =
+            try {
+                client.generateContent(prompt)?.trim().orEmpty()
+            } catch (e: DjAiException) {
+                throw TasteImportException(
+                    when (e.kind) {
+                        DjAiException.Kind.NO_API_KEY -> TasteImportFailReason.NO_API_KEY
+                        DjAiException.Kind.HTTP, DjAiException.Kind.NETWORK -> TasteImportFailReason.HTTP_ERROR
+                        else -> TasteImportFailReason.EMPTY_RESPONSE
+                    },
+                    e.message ?: "DJ AI request failed",
+                    e,
+                )
+            } catch (e: TasteImportException) {
+                throw e
+            } catch (e: Exception) {
+                throw TasteImportException(
+                    TasteImportFailReason.HTTP_ERROR,
+                    "DJ AI request failed: ${e.message ?: e.javaClass.simpleName}",
+                    e,
+                )
+            }
+
+        if (raw.isBlank()) {
+            throw TasteImportException(
+                TasteImportFailReason.EMPTY_RESPONSE,
+                "DJ AI returned empty recommendations.",
+            )
+        }
+
+        val hints =
+            Regex("""(?im)^[-*]\s*(.+)$""")
+                .findAll(raw)
+                .map { it.groupValues[1].trim() }
+                .filter { it.isNotBlank() && !it.equals("HINTS:", ignoreCase = true) }
+                .filter { TasteSummary.isUsable(it) || it.length >= 3 }
+                .distinct()
+                .take(12)
+                .toList()
+
+        if (hints.isEmpty()) {
+            throw TasteImportException(
+                TasteImportFailReason.PARSE_FAILED,
+                "DJ AI returned no playable song HINTS from your saved taste.",
+            )
+        }
+        return hints
+    }
 }
 
 enum class TasteImportFailReason {

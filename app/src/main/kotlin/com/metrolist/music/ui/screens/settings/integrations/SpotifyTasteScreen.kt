@@ -141,7 +141,7 @@ fun SpotifyTasteScreen(
     var tasteHints by rememberPreference(SpotifyTasteHintsKey, "")
     var topArtistsPref by rememberPreference(SpotifyTopArtistsKey, "")
     var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
-    val listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
+    var listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
     val listeningArtistsPref by rememberPreference(ListeningTasteArtistsKey, "")
     val listeningTracksPref by rememberPreference(ListeningTasteTracksKey, "")
     val listeningCategoriesPref by rememberPreference(ListeningTasteCategoriesKey, "")
@@ -202,7 +202,8 @@ fun SpotifyTasteScreen(
 
     val displaySummary =
         remember(listeningSummary, tasteSummary, artists, tracks) {
-            TasteSummary.coalesce(listeningSummary, tasteSummary)
+            // Prefer imported Spotify/CSV AI summary over live listening heuristic.
+            TasteSummary.coalesce(tasteSummary, listeningSummary)
                 ?: TasteSummary.fromArtistsAndTracks(artists, tracks).takeIf {
                     artists.isNotEmpty() || tracks.isNotEmpty()
                 }
@@ -258,7 +259,10 @@ fun SpotifyTasteScreen(
         summary: String,
         searchHints: List<String>,
     ) {
-        TasteSummary.sanitizeOrNull(summary)?.let { tasteSummary = it }
+        TasteSummary.sanitizeOrNull(summary)?.let {
+            tasteSummary = it
+            listeningSummary = it
+        }
         if (searchHints.isNotEmpty()) {
             tasteHints =
                 searchHints

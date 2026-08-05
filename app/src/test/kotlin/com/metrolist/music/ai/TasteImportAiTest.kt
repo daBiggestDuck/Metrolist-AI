@@ -74,4 +74,16 @@ class TasteImportAiTest {
         assertTrue(DjAiProvider.OPENROUTER.requiresApiKey())
         assertTrue(DjAiProvider.GROQ.requiresApiKey())
     }
+
+    @Test
+    fun `buildRecommendPrompt uses saved summary text only`() {
+        val prompt =
+            TasteImportAi.buildRecommendPrompt(
+                "Energetic J-pop and darkwave — kakizaki yuta next to Jfarrari.",
+            )
+        assertTrue(prompt.contains("My music taste is: Energetic J-pop and darkwave"))
+        assertTrue(prompt.contains("Suggest playable songs as HINTS:"))
+        assertTrue(prompt.contains("- Title - Artist"))
+        assertFalse(prompt.contains("spotify:track:"))
+    }
 }

@@ -39,8 +39,8 @@ import com.metrolist.music.ui.utils.resize
 /** Spotify Home shortcut tile — flat dark chip, no Material elevation/shadow. */
 private val AuraShortcutBg = Color(0xFF2A2A2A)
 private val AuraShortcutShape = RoundedCornerShape(4.dp)
-private val AuraShortcutHeight = 48.dp
-private val AuraShortcutThumb = 48.dp
+private val AuraShortcutHeight = 44.dp
+private val AuraShortcutThumb = 44.dp
 private val AuraShortcutGap = 8.dp
 
 /**
@@ -109,7 +109,8 @@ fun AuraShortcutTile(
 }
 
 /**
- * Fixed Spotify Home 4×2 shortcut grid (8 tiles, no pager, no section title).
+ * Fixed Spotify Home shortcut grid: **4 columns × 2 rows** (8 tiles).
+ * Compact tiles so a phone-width row fits four wide chips.
  */
 @Composable
 fun AuraHomeShortcutGrid(
@@ -117,7 +118,8 @@ fun AuraHomeShortcutGrid(
     modifier: Modifier = Modifier,
 ) {
     val columns = 4
-    val rows = remember(items) { items.chunked(columns) }
+    val limited = remember(items) { items.take(8) }
+    val rows = remember(limited) { limited.chunked(columns) }
     Column(
         modifier =
             modifier
