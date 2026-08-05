@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,7 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.ai.DjAiProvider
+import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.constants.AiProviderKey
+import com.metrolist.music.constants.DjAiApiKey
+import com.metrolist.music.constants.DjAiModelKey
+import com.metrolist.music.constants.DjAiProviderKey
 import com.metrolist.music.constants.AiSystemPromptKey
 import com.metrolist.music.constants.DEFAULT_AI_SYSTEM_PROMPT
 import com.metrolist.music.constants.DeeplApiKey
@@ -54,6 +60,7 @@ import com.metrolist.music.constants.OpenRouterBaseUrlKey
 import com.metrolist.music.constants.OpenRouterModelKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
@@ -64,7 +71,10 @@ import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiSettings(navController: NavController) {
-    var aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    var djAiProviderId by rememberPreference(DjAiProviderKey, DjAiProvider.NANO.id)
+    var djAiApiKey by rememberPreference(DjAiApiKey, "")
+    var djAiModel by rememberPreference(DjAiModelKey, "")
+    var aiProvider by rememberPreference(AiProviderKey, djAiProviderId)
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
     var openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
@@ -75,17 +85,30 @@ fun AiSettings(navController: NavController) {
     var aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
 
     val aiProviders =
-        mapOf(
-            "OpenRouter" to "https://openrouter.ai/api/v1/chat/completions",
-            "OpenAI" to "https://api.openai.com/v1/chat/completions",
-            "Perplexity" to "https://api.perplexity.ai/chat/completions",
-            "Claude" to "https://api.anthropic.com/v1/messages",
-            "Gemini" to "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-            "XAi" to "https://api.x.ai/v1/chat/completions",
-            "Mistral" to "https://api.mistral.ai/v1/chat/completions",
+        linkedMapOf(
+            DjAiProvider.NANO.id to "",
+            DjAiProvider.OPENAI.id to "https://api.openai.com/v1/chat/completions",
+            DjAiProvider.ANTHROPIC.id to "https://api.anthropic.com/v1/messages",
+            DjAiProvider.HUGGINGFACE.id to "",
+            DjAiProvider.OPENROUTER.id to "https://openrouter.ai/api/v1/chat/completions",
+            DjAiProvider.GROQ.id to "https://api.groq.com/openai/v1/chat/completions",
+            DjAiProvider.HACKCLUB.id to "https://ai.hackclub.com/chat/completions",
             "DeepL" to "https://api.deepl.com/v2/translate",
             "Custom" to "",
         )
+    val aiProviderLabels =
+        mapOf(
+            DjAiProvider.NANO.id to DjAiProvider.NANO.displayName,
+            DjAiProvider.OPENAI.id to DjAiProvider.OPENAI.displayName,
+            DjAiProvider.ANTHROPIC.id to DjAiProvider.ANTHROPIC.displayName,
+            DjAiProvider.HUGGINGFACE.id to DjAiProvider.HUGGINGFACE.displayName,
+            DjAiProvider.OPENROUTER.id to DjAiProvider.OPENROUTER.displayName,
+            DjAiProvider.GROQ.id to DjAiProvider.GROQ.displayName,
+            DjAiProvider.HACKCLUB.id to DjAiProvider.HACKCLUB.displayName,
+            "DeepL" to "DeepL",
+            "Custom" to "Custom",
+        )
+    val isDjBackend = DjAiProvider.entries.any { it.id.equals(aiProvider, ignoreCase = true) }
 
     val providerHelpText =
         mapOf(
@@ -164,6 +187,10 @@ fun AiSettings(navController: NavController) {
     var showTranslateModeHelpDialog by rememberSaveable { mutableStateOf(false) }
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
+    var showProviderSwitchConfirm by rememberSaveable { mutableStateOf(false) }
+    var pendingAiProvider by rememberSaveable { mutableStateOf<String?>(null) }
+    var showClearApiKeyConfirm by rememberSaveable { mutableStateOf(false) }
+    var clearApiKeyTarget by rememberSaveable { mutableStateOf("lyrics") }
     var showDeeplApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDeeplFormalityDialog by rememberSaveable { mutableStateOf(false) }
     var showBaseUrlDialog by rememberSaveable { mutableStateOf(false) }
@@ -274,30 +301,102 @@ fun AiSettings(navController: NavController) {
         )
     }
 
+
+    fun applyAiProvider(provider: String) {
+        aiProvider = provider
+        if (provider != "Custom" && provider != "DeepL") {
+            openRouterBaseUrl = aiProviders[provider] ?: ""
+        } else {
+            openRouterBaseUrl = ""
+        }
+        val modelsForProvider = modelsByProvider[provider] ?: listOf()
+        openRouterModel =
+            if (modelsForProvider.isNotEmpty()) {
+                modelsForProvider[0]
+            } else {
+                ""
+            }
+    }
+
+
+    if (showProviderSwitchConfirm) {
+        val pending = pendingAiProvider
+        DefaultDialog(
+            onDismiss = {
+                showProviderSwitchConfirm = false
+                pendingAiProvider = null
+            },
+            title = { Text(stringResource(R.string.ai_provider_switch_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(
+                        R.string.ai_provider_switch_confirm_message,
+                        pending.orEmpty(),
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    showProviderSwitchConfirm = false
+                    pendingAiProvider = null
+                }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showProviderSwitchConfirm = false
+                    pending?.let { applyAiProvider(it) }
+                    pendingAiProvider = null
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    if (showClearApiKeyConfirm) {
+        DefaultDialog(
+            onDismiss = { showClearApiKeyConfirm = false },
+            title = { Text(stringResource(R.string.ai_clear_api_key_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.ai_clear_api_key_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showClearApiKeyConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showClearApiKeyConfirm = false
+                    if (clearApiKeyTarget == "deepl") {
+                        deeplApiKey = ""
+                    } else {
+                        openRouterApiKey = ""
+                    }
+                }) {
+                    Text(text = stringResource(R.string.ai_clear_api_key))
+                }
+            },
+        )
+    }
+
     if (showProviderDialog) {
         EnumDialog(
             onDismiss = { showProviderDialog = false },
             onSelect = {
-                aiProvider = it
-                if (it != "Custom" && it != "DeepL") {
-                    openRouterBaseUrl = aiProviders[it] ?: ""
-                } else {
-                    openRouterBaseUrl = ""
-                }
-                // Set model to first available model for the selected provider
-                val modelsForProvider = modelsByProvider[it] ?: listOf()
-                openRouterModel =
-                    if (modelsForProvider.isNotEmpty()) {
-                        modelsForProvider[0]
-                    } else {
-                        ""
-                    }
                 showProviderDialog = false
+                if (it == aiProvider) return@EnumDialog
+                pendingAiProvider = it
+                showProviderSwitchConfirm = true
             },
             title = stringResource(R.string.ai_provider),
             current = aiProvider,
             values = aiProviders.keys.toList(),
-            valueText = { it },
+            valueText = { aiProviderLabels[it] ?: it },
         )
     }
 
@@ -345,6 +444,25 @@ fun AiSettings(navController: NavController) {
                 showApiKeyDialog = false
             },
             onDismiss = { showApiKeyDialog = false },
+            extraContent = {
+                if (openRouterApiKey.isNotEmpty()) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        AuraSecondaryAction(onClick = {
+                            showApiKeyDialog = false
+                            clearApiKeyTarget = "lyrics"
+                            showClearApiKeyConfirm = true
+                        }) {
+                            Text(stringResource(R.string.ai_clear_api_key))
+                        }
+                    }
+                }
+            },
         )
     }
 
@@ -358,6 +476,25 @@ fun AiSettings(navController: NavController) {
                 showDeeplApiKeyDialog = false
             },
             onDismiss = { showDeeplApiKeyDialog = false },
+            extraContent = {
+                if (deeplApiKey.isNotEmpty()) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        AuraSecondaryAction(onClick = {
+                            showDeeplApiKeyDialog = false
+                            clearApiKeyTarget = "deepl"
+                            showClearApiKeyConfirm = true
+                        }) {
+                            Text(stringResource(R.string.ai_clear_api_key))
+                        }
+                    }
+                }
+            },
         )
     }
 
@@ -470,7 +607,9 @@ fun AiSettings(navController: NavController) {
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                 ),
-            ).verticalScroll(rememberScrollState())
+            )
+            .background(com.metrolist.music.ui.component.aura.AuraPlayerCanvas)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
         Spacer(
@@ -488,7 +627,7 @@ fun AiSettings(navController: NavController) {
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.explore_outlined),
                         title = { Text(stringResource(R.string.ai_provider)) },
-                        description = { Text(aiProvider) },
+                        description = { Text(aiProviders[aiProvider] ?: aiProvider) },
                         onClick = { showProviderDialog = true },
                         trailingContent = {
                             IconButton(onClick = { showProviderHelpDialog = true }) {

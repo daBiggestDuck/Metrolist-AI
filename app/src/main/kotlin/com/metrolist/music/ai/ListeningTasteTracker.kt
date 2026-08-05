@@ -802,6 +802,21 @@ object ListeningTasteTracker {
         persistProfile(context, toPersist.copy(summary = usable))
     }
 
+    /** Clears listening-derived taste signals. Keeps exclusions and imported Spotify taste prefs. */
+    suspend fun reset(context: Context) {
+        memoryProfile = null
+        nanoGeneration.set(0)
+        context.safeDataStoreEdit { prefs ->
+            prefs[ListeningTasteArtistsKey] = ""
+            prefs[ListeningTasteTracksKey] = ""
+            prefs[ListeningTasteCategoriesKey] = ""
+            prefs[ListeningTasteSummaryKey] = ""
+            prefs[ListeningTasteLastUpdatedKey] = 0L
+            prefs[ListeningTasteListenCountKey] = 0
+            prefs[ListeningTasteActiveLaneKey] = ""
+        }
+    }
+
     /** Test helper: drop in-memory cache so the next load reads DataStore. */
     fun clearMemoryCacheForTests() {
         memoryProfile = null

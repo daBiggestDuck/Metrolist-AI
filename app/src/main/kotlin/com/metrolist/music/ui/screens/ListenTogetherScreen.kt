@@ -139,6 +139,12 @@ fun ListenTogetherScreen(
 
     var selectedUserForMenu by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedUsername by rememberSaveable { mutableStateOf<String?>(null) }
+    var showLeaveRoomConfirm by rememberSaveable { mutableStateOf(false) }
+    var showDisconnectConfirm by rememberSaveable { mutableStateOf(false) }
+    var showKickConfirm by rememberSaveable { mutableStateOf(false) }
+    var showPermanentKickConfirm by rememberSaveable { mutableStateOf(false) }
+    var pendingKickUserId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingKickUsername by rememberSaveable { mutableStateOf<String?>(null) }
 
     val waitingForApprovalText = stringResource(R.string.waiting_for_approval)
     val invalidRoomCodeText = stringResource(R.string.invalid_room_code)
@@ -190,21 +196,18 @@ fun ListenTogetherScreen(
         UserActionDialog(
             username = selectedUsername ?: "",
             onKick = {
-                selectedUserForMenu?.let {
-                    listenTogetherManager.kickUser(it, "Removed by host")
-                }
+                pendingKickUserId = selectedUserForMenu
+                pendingKickUsername = selectedUsername
                 selectedUserForMenu = null
                 selectedUsername = null
+                showKickConfirm = true
             },
             onPermanentKick = {
-                selectedUserForMenu?.let { userId ->
-                    selectedUsername?.let { username ->
-                        listenTogetherManager.blockUser(username)
-                        listenTogetherManager.kickUser(userId, R.string.user_blocked_by_host.toString())
-                    }
-                }
+                pendingKickUserId = selectedUserForMenu
+                pendingKickUsername = selectedUsername
                 selectedUserForMenu = null
                 selectedUsername = null
+                showPermanentKickConfirm = true
             },
             onTransferOwnership = {
                 selectedUserForMenu?.let {
@@ -216,6 +219,136 @@ fun ListenTogetherScreen(
             onDismiss = {
                 selectedUserForMenu = null
                 selectedUsername = null
+            },
+        )
+    }
+
+
+    if (showLeaveRoomConfirm) {
+        DefaultDialog(
+            onDismiss = { showLeaveRoomConfirm = false },
+            title = { Text(stringResource(R.string.leave_room_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.leave_room_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showLeaveRoomConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showLeaveRoomConfirm = false
+                    listenTogetherManager.leaveRoom()
+                }) {
+                    Text(text = stringResource(R.string.leave_room))
+                }
+            },
+        )
+    }
+
+    if (showDisconnectConfirm) {
+        DefaultDialog(
+            onDismiss = { showDisconnectConfirm = false },
+            title = { Text(stringResource(R.string.listen_together_disconnect_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.listen_together_disconnect_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showDisconnectConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showDisconnectConfirm = false
+                    listenTogetherManager.disconnect()
+                }) {
+                    Text(text = stringResource(R.string.disconnect))
+                }
+            },
+        )
+    }
+
+    if (showKickConfirm) {
+        val name = pendingKickUsername.orEmpty()
+        DefaultDialog(
+            onDismiss = {
+                showKickConfirm = false
+                pendingKickUserId = null
+                pendingKickUsername = null
+            },
+            title = { Text(stringResource(R.string.kick_user_confirm_title, name)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.kick_user_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    showKickConfirm = false
+                    pendingKickUserId = null
+                    pendingKickUsername = null
+                }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showKickConfirm = false
+                    pendingKickUserId?.let {
+                        listenTogetherManager.kickUser(it, "Removed by host")
+                    }
+                    pendingKickUserId = null
+                    pendingKickUsername = null
+                }) {
+                    Text(text = stringResource(R.string.kick_user))
+                }
+            },
+        )
+    }
+
+    if (showPermanentKickConfirm) {
+        val name = pendingKickUsername.orEmpty()
+        DefaultDialog(
+            onDismiss = {
+                showPermanentKickConfirm = false
+                pendingKickUserId = null
+                pendingKickUsername = null
+            },
+            title = { Text(stringResource(R.string.permanently_kick_user_confirm_title, name)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.permanently_kick_user_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    showPermanentKickConfirm = false
+                    pendingKickUserId = null
+                    pendingKickUsername = null
+                }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showPermanentKickConfirm = false
+                    val uid = pendingKickUserId
+                    val uname = pendingKickUsername
+                    if (uid != null && uname != null) {
+                        listenTogetherManager.blockUser(uname)
+                        listenTogetherManager.kickUser(uid, R.string.user_blocked_by_host.toString())
+                    }
+                    pendingKickUserId = null
+                    pendingKickUsername = null
+                }) {
+                    Text(text = stringResource(R.string.permanently_kick_user))
+                }
             },
         )
     }
@@ -260,7 +393,7 @@ fun ListenTogetherScreen(
             ConnectionStatusCard(
                 connectionState = connectionState,
                 onConnect = { listenTogetherManager.connect() },
-                onDisconnect = { listenTogetherManager.disconnect() },
+                onDisconnect = { showDisconnectConfirm = true },
                 onReconnect = { listenTogetherManager.forceReconnect() },
             )
         }
@@ -329,7 +462,7 @@ fun ListenTogetherScreen(
 
                 // Leave room button
                 item {
-                    AuraPrimaryButton(onClick = { listenTogetherManager.leaveRoom() },
+                    AuraPrimaryButton(onClick = { showLeaveRoomConfirm = true },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp)) {
                         Icon(

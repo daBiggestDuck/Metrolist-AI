@@ -508,6 +508,9 @@ fun BottomSheetPlayer(
     var showSleepTimerDialog by remember {
         mutableStateOf(false)
     }
+    var showDismissClearQueueConfirm by remember {
+        mutableStateOf(false)
+    }
 
     val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
     var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
@@ -518,6 +521,41 @@ fun BottomSheetPlayer(
     val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
     val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
 
+
+
+    if (showDismissClearQueueConfirm) {
+        AlertDialog(
+            onDismissRequest = {
+                showDismissClearQueueConfirm = false
+                state.collapseSoft()
+            },
+            title = { Text(stringResource(R.string.player_dismiss_clear_queue_title)) },
+            text = {
+                Text(stringResource(R.string.player_dismiss_clear_queue_message))
+            },
+            confirmButton = {
+                AuraSecondaryAction(onClick = {
+                    showDismissClearQueueConfirm = false
+                    playerConnection.service.clearAutomix()
+                    playerConnection.player.stop()
+                    playerConnection.player.clearMediaItems()
+                }) {
+                    Text(
+                        stringResource(R.string.player_dismiss_clear_queue_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                AuraSecondaryAction(onClick = {
+                    showDismissClearQueueConfirm = false
+                    state.collapseSoft()
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
 
     if (showSleepTimerDialog) {
         AlertDialog(
@@ -785,9 +823,7 @@ fun BottomSheetPlayer(
         onDismiss =
             if (!isListenTogetherGuest) {
                 {
-                    playerConnection.service.clearAutomix()
-                    playerConnection.player.stop()
-                    playerConnection.player.clearMediaItems()
+                    showDismissClearQueueConfirm = true
                 }
             } else {
                 null

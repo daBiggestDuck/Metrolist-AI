@@ -108,6 +108,9 @@ fun BackupAndRestore(
     var showCsvImportComplete by rememberSaveable { mutableStateOf(false) }
     var csvTasteTrackCount by rememberSaveable { mutableIntStateOf(0) }
     var csvTasteArtistCount by rememberSaveable { mutableIntStateOf(0) }
+    var csvTasteSummary by rememberSaveable { mutableStateOf("") }
+    var showCsvTasteOverwriteConfirm by rememberSaveable { mutableStateOf(false) }
+    var pendingCsvTasteImport by remember { mutableStateOf<Pair<Uri, CsvImportState>?>(null) }
 
     // Restore confirmation dialog state
     var showRestoreConfirmDialog by rememberSaveable { mutableStateOf(false) }
@@ -118,6 +121,11 @@ fun BackupAndRestore(
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    fun requestCsvTasteImport(uri: Uri, mappingState: CsvImportState) {
+        pendingCsvTasteImport = uri to mappingState
+        showCsvTasteOverwriteConfirm = true
+    }
 
     fun startCsvImport(uri: Uri, mappingState: CsvImportState) {
         showCsvImportProgress = true
@@ -162,15 +170,15 @@ fun BackupAndRestore(
                     if (taste != null) {
                         csvTasteTrackCount = taste.trackCount
                         csvTasteArtistCount = taste.artistCount
+                        csvTasteSummary = taste.summary.take(280)
                         importedSongs.clear()
                         importedSongs.addAll(result.songs)
                         showCsvImportComplete = true
                         Toast.makeText(
                             context,
                             context.getString(
-                                R.string.csv_import_taste_success,
+                                R.string.taste_updated_snackbar,
                                 taste.trackCount,
-                                taste.artistCount,
                             ),
                             Toast.LENGTH_LONG,
                         ).show()
@@ -263,7 +271,7 @@ fun BackupAndRestore(
                     previewState.titleColumnIndex,
                     previewState.artistColumnIndex,
                 )
-                startCsvImport(uri, previewState)
+                requestCsvTasteImport(uri, previewState)
             } else {
                 showCsvColumnMapping = true
             }
@@ -404,7 +412,44 @@ fun BackupAndRestore(
                 showCsvColumnMapping = false
                 csvImportState = mappingState
                 pendingCsvUri?.let { uri ->
-                    startCsvImport(uri, mappingState)
+                    requestCsvTasteImport(uri, mappingState)
+                }
+            },
+        )
+    }
+
+    if (showCsvTasteOverwriteConfirm) {
+        DefaultDialog(
+            onDismiss = {
+                showCsvTasteOverwriteConfirm = false
+                pendingCsvTasteImport = null
+            },
+            title = { Text(stringResource(R.string.taste_overwrite_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.taste_overwrite_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(
+                    onClick = {
+                        showCsvTasteOverwriteConfirm = false
+                        pendingCsvTasteImport = null
+                    },
+                ) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(
+                    onClick = {
+                        showCsvTasteOverwriteConfirm = false
+                        val pending = pendingCsvTasteImport
+                        pendingCsvTasteImport = null
+                        pending?.let { (uri, mapping) -> startCsvImport(uri, mapping) }
+                    },
+                ) {
+                    Text(text = stringResource(R.string.taste_overwrite_confirm))
                 }
             },
         )
@@ -429,7 +474,7 @@ fun BackupAndRestore(
                     contentDescription = null,
                 )
             },
-            title = { Text(stringResource(R.string.csv_import_complete_title)) },
+            title = { Text(stringResource(R.string.taste_updated_title)) },
             buttons = {
                 AuraSecondaryAction(onClick = { showCsvImportComplete = false }) {
                     Text(stringResource(R.string.close))
@@ -445,9 +490,15 @@ fun BackupAndRestore(
             Text(
                 text =
                     stringResource(
-                        R.string.csv_import_taste_success,
+                        R.string.taste_updated_message,
                         csvTasteTrackCount,
-                        csvTasteArtistCount,
+                        csvTasteSummary.ifBlank {
+                            stringResource(
+                                R.string.csv_import_taste_success,
+                                csvTasteTrackCount,
+                                csvTasteArtistCount,
+                            )
+                        },
                     ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,

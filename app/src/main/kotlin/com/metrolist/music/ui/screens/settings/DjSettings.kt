@@ -5,7 +5,10 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -22,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -44,12 +48,14 @@ import com.metrolist.music.constants.DjAiProviderKey
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.NanoDjSpeakKey
 import com.metrolist.music.constants.OpenRouterApiKey
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
@@ -76,6 +82,9 @@ fun DjSettings(navController: NavController) {
     var showDjApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDjModelDialog by rememberSaveable { mutableStateOf(false) }
     var showDjBaseUrlDialog by rememberSaveable { mutableStateOf(false) }
+    var showDjProviderSwitchConfirm by rememberSaveable { mutableStateOf(false) }
+    var pendingDjProvider by remember { mutableStateOf<DjAiProvider?>(null) }
+    var showClearDjApiKeyConfirm by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(
         enableGeminiNano,
@@ -102,19 +111,86 @@ fun DjSettings(navController: NavController) {
 
     val djDefaultModel = GeminiNanoClient.defaultModelFor(djAiProvider)
 
+
+    if (showDjProviderSwitchConfirm) {
+        val pending = pendingDjProvider
+        DefaultDialog(
+            onDismiss = {
+                showDjProviderSwitchConfirm = false
+                pendingDjProvider = null
+            },
+            title = { Text(stringResource(R.string.dj_ai_provider_switch_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(
+                        R.string.dj_ai_provider_switch_confirm_message,
+                        pending?.displayName.orEmpty(),
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    showDjProviderSwitchConfirm = false
+                    pendingDjProvider = null
+                }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showDjProviderSwitchConfirm = false
+                    pending?.let {
+                        djAiProviderId = it.id
+                        if (djAiModel.isBlank() || DjAiProvider.entries.any { p ->
+                                GeminiNanoClient.defaultModelFor(p) == djAiModel
+                            }
+                        ) {
+                            djAiModel = GeminiNanoClient.defaultModelFor(it)
+                        }
+                        GeminiNanoClient.invalidate()
+                    }
+                    pendingDjProvider = null
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    if (showClearDjApiKeyConfirm) {
+        DefaultDialog(
+            onDismiss = { showClearDjApiKeyConfirm = false },
+            title = { Text(stringResource(R.string.ai_clear_api_key_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.ai_clear_api_key_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showClearDjApiKeyConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showClearDjApiKeyConfirm = false
+                    djAiApiKey = ""
+                    GeminiNanoClient.invalidate()
+                }) {
+                    Text(text = stringResource(R.string.ai_clear_api_key))
+                }
+            },
+        )
+    }
+
     if (showDjProviderDialog) {
         EnumDialog(
             onDismiss = { showDjProviderDialog = false },
             onSelect = {
-                djAiProviderId = it.id
-                if (djAiModel.isBlank() || DjAiProvider.entries.any { p ->
-                        GeminiNanoClient.defaultModelFor(p) == djAiModel
-                    }
-                ) {
-                    djAiModel = GeminiNanoClient.defaultModelFor(it)
-                }
-                GeminiNanoClient.invalidate()
                 showDjProviderDialog = false
+                if (it == djAiProvider) return@EnumDialog
+                pendingDjProvider = it
+                showDjProviderSwitchConfirm = true
             },
             title = stringResource(R.string.dj_ai_provider),
             current = djAiProvider,
@@ -134,6 +210,24 @@ fun DjSettings(navController: NavController) {
                 showDjApiKeyDialog = false
             },
             onDismiss = { showDjApiKeyDialog = false },
+            extraContent = {
+                if (djAiApiKey.isNotEmpty()) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        AuraSecondaryAction(onClick = {
+                            showDjApiKeyDialog = false
+                            showClearDjApiKeyConfirm = true
+                        }) {
+                            Text(stringResource(R.string.ai_clear_api_key))
+                        }
+                    }
+                }
+            },
         )
     }
 

@@ -69,6 +69,7 @@ import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.spotify.SpotifyFileTasteImporter
 import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.spotify.SpotifyImportProgress
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraArtistAvatar
@@ -216,6 +217,15 @@ fun SpotifyTasteScreen(
     var showFilePlaylistNameDialog by remember { mutableStateOf(false) }
     var pendingFilePlaylistName by remember { mutableStateOf(SpotifyImportManager.TASTE_PLAYLIST_NAME) }
     var showLocalPlaylistPicker by remember { mutableStateOf(false) }
+    var showTasteOverwriteConfirm by remember { mutableStateOf(false) }
+    var pendingTasteOverwrite by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showClearExclusionsConfirm by remember { mutableStateOf(false) }
+    var showResetListeningTasteConfirm by remember { mutableStateOf(false) }
+
+    fun requestTasteOverwrite(action: () -> Unit) {
+        pendingTasteOverwrite = action
+        showTasteOverwriteConfirm = true
+    }
 
     val localPlaylists by remember {
         database.playlists(PlaylistSortType.NAME, false).map { list ->
@@ -290,7 +300,14 @@ fun SpotifyTasteScreen(
                                 result.topArtists.size,
                             )
                         }
-                    Toast.makeText(context, statusMessage, Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(
+                            R.string.taste_updated_snackbar,
+                            result.topTracks.size.coerceAtLeast(fileTracks.size),
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             } catch (e: Exception) {
                 statusMessage = e.message
@@ -331,10 +348,18 @@ fun SpotifyTasteScreen(
                 )
                 statusMessage =
                     context.getString(
-                        R.string.spotify_playlist_taste_result,
-                        playlist.title,
+                        R.string.taste_updated_message,
                         profile.topTracks.size,
+                        summary.take(160),
                     )
+                Toast.makeText(
+                    context,
+                    context.getString(
+                        R.string.taste_updated_snackbar,
+                        profile.topTracks.size,
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
             } catch (e: Exception) {
                 statusMessage = e.message
                 reportException(e)
@@ -383,6 +408,94 @@ fun SpotifyTasteScreen(
             }
         }
 
+    if (showTasteOverwriteConfirm) {
+        DefaultDialog(
+            onDismiss = {
+                showTasteOverwriteConfirm = false
+                pendingTasteOverwrite = null
+            },
+            title = { Text(stringResource(R.string.taste_overwrite_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.taste_overwrite_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    showTasteOverwriteConfirm = false
+                    pendingTasteOverwrite = null
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showTasteOverwriteConfirm = false
+                    pendingTasteOverwrite?.invoke()
+                    pendingTasteOverwrite = null
+                }) {
+                    Text(stringResource(R.string.taste_overwrite_confirm))
+                }
+            },
+        )
+    }
+
+    if (showClearExclusionsConfirm) {
+        DefaultDialog(
+            onDismiss = { showClearExclusionsConfirm = false },
+            title = { Text(stringResource(R.string.listening_taste_clear_exclusions_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.listening_taste_clear_exclusions_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showClearExclusionsConfirm = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showClearExclusionsConfirm = false
+                    scope.launch {
+                        context.safeDataStoreEdit {
+                            it[ListeningTasteExcludedSongIdsKey] = emptySet()
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.listening_taste_clear_exclusions))
+                }
+            },
+        )
+    }
+
+    if (showResetListeningTasteConfirm) {
+        DefaultDialog(
+            onDismiss = { showResetListeningTasteConfirm = false },
+            title = { Text(stringResource(R.string.listening_taste_reset_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.listening_taste_reset_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showResetListeningTasteConfirm = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showResetListeningTasteConfirm = false
+                    scope.launch {
+                        ListeningTasteTracker.reset(context)
+                    }
+                }) {
+                    Text(stringResource(R.string.listening_taste_reset))
+                }
+            },
+        )
+    }
+
     if (showFilePlaylistNameDialog) {
         TextFieldDialog(
             title = { Text(stringResource(R.string.spotify_file_import_playlist_name_title)) },
@@ -392,10 +505,12 @@ fun SpotifyTasteScreen(
                 showFilePlaylistNameDialog = false
                 val fileTracks = pendingFileTracks
                 if (fileTracks != null) {
-                    runFileTasteImport(
-                        fileTracks = fileTracks,
-                        playlistName = name.trim().ifBlank { SpotifyImportManager.TASTE_PLAYLIST_NAME },
-                    )
+                    requestTasteOverwrite {
+                        runFileTasteImport(
+                            fileTracks = fileTracks,
+                            playlistName = name.trim().ifBlank { SpotifyImportManager.TASTE_PLAYLIST_NAME },
+                        )
+                    }
                 }
             },
             onDismiss = {
@@ -438,7 +553,7 @@ fun SpotifyTasteScreen(
                         modifier =
                             Modifier.clickable {
                                 showLocalPlaylistPicker = false
-                                runLocalPlaylistTaste(playlist)
+                                requestTasteOverwrite { runLocalPlaylistTaste(playlist) }
                             },
                     )
                 }
@@ -569,13 +684,20 @@ fun SpotifyTasteScreen(
                 AuraSecondaryAction(
                     text = stringResource(R.string.listening_taste_clear_exclusions),
                     enabled = !isBusy,
-                    onClick = {
-                        scope.launch {
-                            context.safeDataStoreEdit {
-                                it[ListeningTasteExcludedSongIdsKey] = emptySet()
-                            }
-                        }
-                    },
+                    onClick = { showClearExclusionsConfirm = true },
+                )
+            }
+            val hasListeningTaste =
+                listeningArtists.isNotEmpty() ||
+                    listeningTracks.isNotEmpty() ||
+                    listeningSummary.isNotBlank() ||
+                    listeningCategories.isNotEmpty()
+            if (hasListeningTaste) {
+                Spacer(Modifier.height(8.dp))
+                AuraSecondaryAction(
+                    text = stringResource(R.string.listening_taste_reset),
+                    enabled = !isBusy,
+                    onClick = { showResetListeningTasteConfirm = true },
                 )
             }
         }

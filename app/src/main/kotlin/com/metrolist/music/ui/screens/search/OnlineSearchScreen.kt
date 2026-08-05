@@ -77,6 +77,7 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.LocalNavController
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AutoRadioQueueKey
@@ -92,6 +93,7 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.aura.AuraHairline
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -155,6 +157,7 @@ fun OnlineSearchScreen(
     val lazyListState = rememberLazyListState()
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
     var itemCategory by remember { mutableStateOf(SuggestionCategory.ALL) }
+    var showClearRecentSearchesConfirm by remember { mutableStateOf(false) }
 
     val canvasColor = if (pureBlack) Color.Black else Color(0xFF121212)
     val filteredItems =
@@ -366,6 +369,34 @@ fun OnlineSearchScreen(
         }
     }
 
+
+    if (showClearRecentSearchesConfirm) {
+        DefaultDialog(
+            onDismiss = { showClearRecentSearchesConfirm = false },
+            title = { Text(stringResource(R.string.clear_recent_searches_confirm_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.clear_recent_searches_confirm_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showClearRecentSearchesConfirm = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(
+                    onClick = {
+                        showClearRecentSearchesConfirm = false
+                        viewModel.clearRecents()
+                    },
+                ) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
     LazyColumn(
         state = lazyListState,
         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
@@ -392,7 +423,7 @@ fun OnlineSearchScreen(
                             color = Color.White,
                             modifier = Modifier.weight(1f),
                         )
-                        TextButton(onClick = { viewModel.clearRecents() }) {
+                        TextButton(onClick = { showClearRecentSearchesConfirm = true }) {
                             Text(
                                 text = stringResource(R.string.clear_recent_searches),
                                 color = AuraSpotifyGreen,
