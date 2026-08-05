@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -145,6 +146,11 @@ fun BackupAndRestore(
             if (uri == null) return@rememberLauncherForActivityResult
             pendingCsvUri = uri
             val previewState = viewModel.previewCsvFile(context, uri)
+            if (previewState.previewRows.isEmpty()) {
+                Toast.makeText(context, R.string.csv_import_no_tracks, Toast.LENGTH_LONG).show()
+                pendingCsvUri = null
+                return@rememberLauncherForActivityResult
+            }
             csvImportState = previewState
             showCsvColumnMapping = true
         }
@@ -242,6 +248,18 @@ fun BackupAndRestore(
         onProgressStart = { newVal -> isProgressStarted = newVal },
         onPercentageChange = { newPercentage -> progressPercentage = newPercentage },
         onSongChange = { currentImportSong = it },
+        onImportComplete = { matched, total ->
+            val message =
+                when {
+                    matched == 0 ->
+                        context.getString(R.string.csv_import_no_matches, total)
+                    matched < total ->
+                        context.getString(R.string.csv_import_partial, matched, total)
+                    else ->
+                        context.getString(R.string.csv_import_success, matched)
+                }
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        },
     )
 
     LoadingScreen(
@@ -278,12 +296,26 @@ fun BackupAndRestore(
                                     csvRecentLogs.addAll(logs)
                                 },
                             )
-                        importedSongs.clear()
-                        importedSongs.addAll(result)
-                        if (result.isNotEmpty()) {
-                            showCsvImportProgress = false
-                            csvImportProgress = 0
-                            csvRecentLogs.clear()
+                        showCsvImportProgress = false
+                        csvImportProgress = 0
+                        csvRecentLogs.clear()
+                        pendingCsvUri = null
+                        csvImportState = null
+
+                        if (result.songs.isEmpty()) {
+                            Toast.makeText(
+                                context,
+                                R.string.csv_import_no_tracks,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        } else {
+                            importedSongs.clear()
+                            importedSongs.addAll(result.songs)
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.csv_import_found_tracks, result.parsedCount),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                             showChoosePlaylistDialogOnline = true
                         }
                     }

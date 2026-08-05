@@ -810,12 +810,12 @@
     <string name="listen_on_metrolist">Listen on Metrolist</string>
 
     <!-- CSV Import Strings -->
-    <string name="import_csv_desc">Import playlists from CSV exports. Works with Exportify (Spotify), two-column title/artist files, and exports with Track Name + Artist Name columns. Songs are matched on YouTube Music.</string>
-    <string name="csv_import_help">Supported: Exportify CSV (Track Name, Artist Name(s), Album, …), two-column title/artist CSV, or optional YouTube URL column. Map columns below if auto-detect missed.</string>
+    <string name="import_csv_desc">Import playlists from Spotify via Exportify. Go to exportify.net → log in with Spotify → export playlist → download CSV → import here. Songs are matched on YouTube Music.</string>
+    <string name="csv_import_help">Exportify CSV (recommended): Track URI, Track Name, Album Name, Artist Name(s), Release Date, Duration (ms), and more. Two-column title/artist CSV also works. Map columns below if auto-detect missed.</string>
     <string name="csv_import_exportify_url">https://exportify.net</string>
-    <string name="csv_import_exportify_link">Exportify</string>
-    <string name="csv_import_exportify_prefix">Tip: export Spotify playlists with </string>
-    <string name="csv_import_exportify_suffix"> (free) — then pick the CSV here.</string>
+    <string name="csv_import_exportify_link">exportify.net</string>
+    <string name="csv_import_exportify_prefix">Recommended: </string>
+    <string name="csv_import_exportify_suffix"> — log in with Spotify, export your playlist, download the CSV, then import it here.</string>
     <string name="map_csv_columns">Map CSV columns</string>
     <string name="first_row_is_header">First row is header</string>
     <string name="artist_name_column">Artist name column</string>
@@ -824,6 +824,12 @@
     <string name="continue_action">Continue</string>
     <string name="importing_csv">Importing CSV…</string>
     <string name="importing_playlist">Importing playlist…</string>
+    <string name="csv_import_preview_failed">Could not read CSV file</string>
+    <string name="csv_import_no_tracks">No tracks found in CSV — check the format or column mapping. Export from exportify.net with Track Name and Artist Name(s) columns.</string>
+    <string name="csv_import_found_tracks">Found %1$d tracks — choose a playlist</string>
+    <string name="csv_import_success">Imported %1$d tracks</string>
+    <string name="csv_import_partial">Imported %1$d of %2$d tracks</string>
+    <string name="csv_import_no_matches">No tracks matched on YouTube Music (%1$d in file)</string>
 
     <string name="recently_converted">Recently converted</string>
     <string name="column_label">Column %d</string>
@@ -1102,12 +1108,12 @@
     <string name="spotify_not_connected">Not connected</string>
     <string name="spotify_easy_import_section">Get taste into Nano DJ</string>
     <string name="spotify_export_guide_title">How to get a Spotify playlist file</string>
-    <string name="spotify_export_guide_steps">1. On Spotify (app or web), open a playlist that matches your taste.\n2. Export tracks with a free playlist export tool (CSV with Track Name + Artist Name), or request your Spotify Privacy data download and use a StreamingHistory JSON file.\n3. Tap Import playlist file below and pick that file.\n\nOr skip Spotify entirely: choose a Metrolist playlist you already like.</string>
+    <string name="spotify_export_guide_steps">1. On Spotify (app or web), open a playlist that matches your taste.\n2. Go to exportify.net, log in with Spotify, export the playlist, and download the CSV (Track Name + Artist Name(s) columns).\n3. In Metrolist: Settings → Backup &amp; restore → Import a CSV playlist, or tap Import playlist file below.\n\nOr skip Spotify entirely: choose a Metrolist playlist you already like.</string>
     <string name="spotify_import_file_cta">Import playlist file</string>
     <string name="spotify_file_import_section">Import from file (no Premium)</string>
     <string name="spotify_file_import_choose">Choose file</string>
     <string name="spotify_choose_file">@string/spotify_file_import_choose</string>
-    <string name="spotify_file_import_desc">Simple CSV (track,artist), Spotify playlist CSV (Track Name / Artist Name), plain “Title - Artist” lines, or StreamingHistory JSON. Builds your Nano DJ taste and a matched local playlist — no Premium required.</string>
+    <string name="spotify_file_import_desc">Exportify CSV from exportify.net (Track Name / Artist Name(s)), simple two-column CSV, plain “Title - Artist” lines, or StreamingHistory JSON. Builds your Nano DJ taste and a matched local playlist — no Premium required.</string>
     <string name="spotify_choose_file_desc">@string/spotify_file_import_desc</string>
     <string name="spotify_file_import_result">File import finished: %1$d matched, %2$d missed. Taste profile saved for Nano DJ.</string>
     <string name="spotify_file_import_empty">No tracks found in that file.</string>

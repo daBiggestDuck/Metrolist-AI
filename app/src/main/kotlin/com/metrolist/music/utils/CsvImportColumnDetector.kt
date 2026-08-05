@@ -9,7 +9,7 @@ import com.metrolist.music.viewmodels.CsvImportState
 
 /**
  * Auto-detects track/artist/url columns from CSV header rows, including Exportify
- * (Track Name, Artist Name(s), Album, …) and other common playlist export formats.
+ * (Track Name, Artist Name(s), Album Name, …) and other common playlist export formats.
  */
 object CsvImportColumnDetector {
     private val trackHeaders =
@@ -31,6 +31,8 @@ object CsvImportColumnDetector {
             "artist",
             "artists",
             "artist names",
+            "album artist name(s)",
+            "album artist name",
         )
 
     private val urlHeaders =
@@ -40,9 +42,6 @@ object CsvImportColumnDetector {
             "video url",
             "url",
             "link",
-            "track uri",
-            "spotify uri",
-            "uri",
         )
 
     fun detect(
@@ -53,7 +52,7 @@ object CsvImportColumnDetector {
             return CsvImportState()
         }
 
-        val headerCols = previewRows.first().map { it.trim().lowercase() }
+        val headerCols = previewRows.first().map { CsvParser.normalizeHeader(it) }
         val trackIdx = headerCols.indexOfFirst { it in trackHeaders }
         val artistIdx = headerCols.indexOfFirst { it in artistHeaders }
         val urlIdx = headerCols.indexOfFirst { it in urlHeaders }
@@ -78,7 +77,7 @@ object CsvImportColumnDetector {
     }
 
     fun looksLikeHeaderRow(row: List<String>): Boolean {
-        val normalized = row.map { it.trim().lowercase() }
+        val normalized = row.map { CsvParser.normalizeHeader(it) }
         val hasTrack = normalized.any { it in trackHeaders }
         val hasArtist = normalized.any { it in artistHeaders }
         if (hasTrack && hasArtist) return true

@@ -97,6 +97,7 @@ fun AddToPlaylistDialogOnline(
     onProgressStart: (Boolean) -> Unit,
     onPercentageChange: (Int) -> Unit,
     onSongChange: (String) -> Unit = {},
+    onImportComplete: ((matched: Int, total: Int) -> Unit)? = null,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
     val database = LocalDatabase.current
@@ -290,6 +291,7 @@ fun AddToPlaylistDialogOnline(
                             if (songsTot == 0) return@launch
                             
                             val songsIdx = AtomicInteger(0)
+                            val matchedIdx = AtomicInteger(0)
                             val semaphore = kotlinx.coroutines.sync.Semaphore(15)
                             onProgressStart(true)
                             try {
@@ -309,6 +311,7 @@ fun AddToPlaylistDialogOnline(
                                                         if (items.isNotEmpty()) {
                                                             val firstSong = items.firstOrNull() as? SongItem
                                                             if (firstSong != null) {
+                                                                matchedIdx.incrementAndGet()
                                                                 val firstSongMedia = firstSong.toMediaMetadata()
                                                                 val ids = listOf(firstSong.id)
                                                                 withContext(Dispatchers.IO) {
@@ -337,6 +340,7 @@ fun AddToPlaylistDialogOnline(
                             } finally {
                                 withContext(Dispatchers.Main) {
                                     onProgressStart(false)
+                                    onImportComplete?.invoke(matchedIdx.get(), songsTot)
                                 }
                             }
                         }

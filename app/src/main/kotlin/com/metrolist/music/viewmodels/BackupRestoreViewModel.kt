@@ -41,6 +41,7 @@ import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_AUTOMIX_FI
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_PLAYER_STATE_FILE
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
 import com.metrolist.music.utils.CsvImportColumnDetector
+import com.metrolist.music.utils.CsvParser
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,12 @@ data class CsvImportState(
     val titleColumnIndex: Int = 1,
     val urlColumnIndex: Int = -1,
     val hasHeader: Boolean = true,
+)
+
+data class CsvImportResult(
+    val songs: List<Song>,
+    val parsedCount: Int,
+    val totalRows: Int,
 )
 
 data class ConvertedSongLog(
@@ -501,17 +508,18 @@ class BackupRestoreViewModel @Inject constructor(
 
     fun previewCsvFile(context: Context, uri: Uri): CsvImportState {
         runCatching {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val lines = stream.bufferedReader().readLines()
-                val previewRows = lines.take(6).map { parseCsvLine(it) }
-                val hasHeader =
-                    previewRows.isNotEmpty() &&
-                        CsvImportColumnDetector.looksLikeHeaderRow(previewRows.first())
-                return CsvImportColumnDetector.detect(previewRows, hasHeader)
+            val lines = readCsvLines(context, uri)
+            if (lines.isEmpty()) {
+                return CsvImportState()
             }
+            val previewRows = lines.take(6).map { CsvParser.parseLine(it) }
+            val hasHeader =
+                previewRows.isNotEmpty() &&
+                    CsvImportColumnDetector.looksLikeHeaderRow(previewRows.first())
+            return CsvImportColumnDetector.detect(previewRows, hasHeader)
         }.onFailure {
             reportException(it)
-            Toast.makeText(context, "Failed to preview CSV file", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.csv_import_preview_failed, Toast.LENGTH_SHORT).show()
         }
         return CsvImportState()
     }
@@ -522,83 +530,81 @@ class BackupRestoreViewModel @Inject constructor(
         columnMapping: CsvImportState,
         onProgress: (Int) -> Unit = {},
         onLogUpdate: (List<ConvertedSongLog>) -> Unit = {},
-    ): ArrayList<Song> = kotlinx.coroutines.withContext(Dispatchers.IO) {
+    ): CsvImportResult = kotlinx.coroutines.withContext(Dispatchers.IO) {
         val songs = arrayListOf<Song>()
         val recentLogs = mutableListOf<ConvertedSongLog>()
+        var totalRows = 0
 
         runCatching {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val lines = stream.bufferedReader().readLines()
-                val startIndex = if (columnMapping.hasHeader) 1 else 0
-                val totalLines = lines.size - startIndex
+            val lines = readCsvLines(context, uri)
+            val startIndex = if (columnMapping.hasHeader) 1 else 0
+            val dataLines = lines.drop(startIndex).filter { it.isNotBlank() }
+            totalRows = dataLines.size
+            val totalLines = totalRows.coerceAtLeast(1)
 
-                lines.drop(startIndex).forEachIndexed { index, line ->
-                    val parts = parseCsvLine(line)
+            dataLines.forEachIndexed { index, line ->
+                val parts = CsvParser.parseLine(line)
 
-                    if (parts.isNotEmpty()) {
-                        if (columnMapping.artistColumnIndex < parts.size && columnMapping.titleColumnIndex < parts.size) {
-                            val title = parts[columnMapping.titleColumnIndex].trim()
-                            val artistStr = parts[columnMapping.artistColumnIndex].trim()
+                if (parts.isNotEmpty() &&
+                    columnMapping.artistColumnIndex < parts.size &&
+                    columnMapping.titleColumnIndex < parts.size
+                ) {
+                    val title = parts[columnMapping.titleColumnIndex].trim()
+                    val artistStr = parts[columnMapping.artistColumnIndex].trim()
 
-                            if (title.isNotEmpty() && artistStr.isNotEmpty()) {
-                                val artists = artistStr.split(";", ",").map { it.trim() }
-                                    .filter { it.isNotEmpty() }
-                                    .map { ArtistEntity(id = "", name = it) }
+                    if (title.isNotEmpty() && artistStr.isNotEmpty()) {
+                        val artists =
+                            CsvParser.splitArtistNames(artistStr)
+                                .map { ArtistEntity(id = "", name = it) }
 
-                                val mockSong = Song(
-                                    song = SongEntity(
+                        val mockSong =
+                            Song(
+                                song =
+                                    SongEntity(
                                         id = "",
                                         title = title,
                                     ),
-                                    artists = artists,
-                                )
-                                songs.add(mockSong)
+                                artists = artists,
+                            )
+                        songs.add(mockSong)
 
-                                val logEntry = ConvertedSongLog(
-                                    title = title,
-                                    artists = artists.joinToString(", ") { it.name },
-                                )
-                                recentLogs.add(0, logEntry)
-                                if (recentLogs.size > 3) {
-                                    recentLogs.removeAt(recentLogs.size - 1)
-                                }
-                                onLogUpdate(recentLogs.toList())
-                            }
+                        val logEntry =
+                            ConvertedSongLog(
+                                title = title,
+                                artists = artists.joinToString(", ") { it.name },
+                            )
+                        recentLogs.add(0, logEntry)
+                        if (recentLogs.size > 3) {
+                            recentLogs.removeAt(recentLogs.size - 1)
                         }
+                        onLogUpdate(recentLogs.toList())
                     }
-
-                    val progress = ((index + 1) * 100) / totalLines
-                    onProgress(progress)
                 }
+
+                val progress = ((index + 1) * 100) / totalLines
+                onProgress(progress)
             }
         }.onFailure {
             reportException(it)
         }
 
-        songs
+        CsvImportResult(
+            songs = songs,
+            parsedCount = songs.size,
+            totalRows = totalRows,
+        )
     }
 
-    suspend fun importPlaylistFromCsv(context: Context, uri: Uri): ArrayList<Song> {
+    suspend fun importPlaylistFromCsv(context: Context, uri: Uri): CsvImportResult {
         return importPlaylistFromCsv(context, uri, CsvImportState())
     }
 
-    private fun parseCsvLine(line: String): List<String> {
-        val result = mutableListOf<String>()
-        var current = StringBuilder()
-        var inQuotes = false
-
-        for (char in line) {
-            when {
-                char == '"' -> inQuotes = !inQuotes
-                char == ',' && !inQuotes -> {
-                    result.add(current.toString())
-                    current = StringBuilder()
-                }
-                else -> current.append(char)
-            }
-        }
-        result.add(current.toString())
-        return result.map { it.trim().trim('"') }
+    private fun readCsvLines(context: Context, uri: Uri): List<String> {
+        val text =
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                CsvParser.stripBom(stream.bufferedReader().readText())
+            } ?: return emptyList()
+        return text.lines().filter { it.isNotBlank() }
     }
 
     fun loadM3UOnline(
