@@ -742,6 +742,7 @@ class MainActivity : ComponentActivity() {
                     remember {
                         listOf(
                             Screens.Home.route,
+                            Screens.Search.route,
                             Screens.Library.route,
                             Screens.ListenTogether.route,
                             "settings",
@@ -931,14 +932,23 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
+                val searchActiveFlow =
+                    remember(navBackStackEntry?.id) {
+                        navBackStackEntry?.savedStateHandle?.getStateFlow("searchActive", false)
+                            ?: kotlinx.coroutines.flow.MutableStateFlow(false)
+                    }
+                val searchActive by searchActiveFlow.collectAsStateWithLifecycle()
 
-                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar) {
+                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar, searchActive) {
                     val currentRoute = navBackStackEntry?.destination?.route
                     val isListenTogetherScreen =
                         currentRoute == Screens.ListenTogether.route ||
                             currentRoute == "listen_together_from_topbar"
+                    val isSearchTyping =
+                        currentRoute == Screens.Search.route && searchActive
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
+                        !isSearchTyping &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
@@ -995,6 +1005,8 @@ class MainActivity : ComponentActivity() {
                 val headerTitle =
                     when (navBackStackEntry?.destination?.route) {
                         Screens.Home.route -> stringResource(greetingRes)
+                        // Browse hub owns the large Search title; shell keeps profile only.
+                        Screens.Search.route -> ""
                         else -> currentTitleRes?.let { stringResource(it) } ?: ""
                     }
 

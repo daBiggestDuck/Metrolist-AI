@@ -156,6 +156,16 @@ fun SearchScreen(
         mutableStateOf(TextFieldValue())
     }
 
+    // Keep shell profile chrome on the browse hub; hide it while typing.
+    LaunchedEffect(isSearchActive) {
+        savedStateHandle["searchActive"] = isSearchActive
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            savedStateHandle["searchActive"] = false
+        }
+    }
+
     fun exitSearchMode() {
         isSearchActive = false
         focusManager.clearFocus(force = true)
