@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -132,6 +133,25 @@ fun SpotifySettings(
     var showTasteOverwriteConfirm by remember { mutableStateOf(false) }
     var pendingTasteOverwrite by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showImportAllConfirm by remember { mutableStateOf(false) }
+    var showTasteSuccessDialog by remember { mutableStateOf(false) }
+    var tasteSuccessSummary by remember { mutableStateOf("") }
+    var tasteSuccessTrackCount by remember { mutableIntStateOf(0) }
+    var tasteSuccessUsedAi by remember { mutableStateOf(true) }
+    var showTasteErrorDialog by remember { mutableStateOf(false) }
+    var tasteErrorMessage by remember { mutableStateOf("") }
+
+    fun showTasteSuccess(summary: String, trackCount: Int, usedAi: Boolean) {
+        tasteSuccessSummary = summary.take(280)
+        tasteSuccessTrackCount = trackCount
+        tasteSuccessUsedAi = usedAi
+        showTasteSuccessDialog = true
+    }
+
+    fun showTasteError(message: String?) {
+        tasteErrorMessage = message ?: context.getString(R.string.ai_error_unknown)
+        showTasteErrorDialog = true
+        statusMessage = tasteErrorMessage
+    }
 
     fun requestTasteOverwrite(action: () -> Unit) {
         pendingTasteOverwrite = action
@@ -197,6 +217,11 @@ fun SpotifySettings(
                         analysis.summary,
                         analysis.searchHints,
                     )
+                    showTasteSuccess(
+                        analysis.summary,
+                        result.topTracks.size.coerceAtLeast(tracks.size),
+                        analysis.usedAi,
+                    )
                 } ?: persistTasteProfile(result.topArtists, result.topTracks)
                 statusMessage =
                     if (result.matched > 0) {
@@ -212,9 +237,8 @@ fun SpotifySettings(
                             result.topArtists.size,
                         )
                     }
-                Toast.makeText(context, statusMessage, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                statusMessage = e.message
+                showTasteError(e.message)
                 reportException(e)
             } finally {
                 manager.close()
@@ -245,6 +269,11 @@ fun SpotifySettings(
                     profile.analysis.summary,
                     profile.analysis.searchHints,
                 )
+                showTasteSuccess(
+                    profile.analysis.summary,
+                    profile.topTracks.size,
+                    profile.analysis.usedAi,
+                )
                 statusMessage =
                     context.getString(
                         R.string.spotify_playlist_taste_result,
@@ -252,7 +281,7 @@ fun SpotifySettings(
                         profile.topTracks.size,
                     )
             } catch (e: Exception) {
-                statusMessage = e.message
+                showTasteError(e.message)
                 reportException(e)
             } finally {
                 manager.close()
@@ -283,6 +312,11 @@ fun SpotifySettings(
                     profile.analysis.summary,
                     profile.analysis.searchHints,
                 )
+                showTasteSuccess(
+                    profile.analysis.summary,
+                    profile.topTracks.size,
+                    profile.analysis.usedAi,
+                )
                 statusMessage =
                     context.getString(
                         R.string.spotify_playlist_taste_result,
@@ -290,7 +324,7 @@ fun SpotifySettings(
                         profile.topTracks.size,
                     )
             } catch (e: Exception) {
-                statusMessage = e.message
+                showTasteError(e.message)
                 reportException(e)
             } finally {
                 manager.close()
@@ -520,6 +554,63 @@ fun SpotifySettings(
                 }
             },
         )
+    }
+
+    if (showTasteSuccessDialog) {
+        DefaultDialog(
+            onDismiss = { showTasteSuccessDialog = false },
+            title = {
+                Text(
+                    stringResource(
+                        if (tasteSuccessUsedAi) {
+                            R.string.taste_updated_title
+                        } else {
+                            R.string.taste_updated_without_ai_title
+                        },
+                    ),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showTasteSuccessDialog = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.taste_updated_message,
+                        tasteSuccessTrackCount,
+                        tasteSuccessSummary,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        }
+    }
+
+    if (showTasteErrorDialog) {
+        DefaultDialog(
+            onDismiss = { showTasteErrorDialog = false },
+            title = { Text(stringResource(R.string.taste_import_failed_title)) },
+            buttons = {
+                AuraSecondaryAction(onClick = { showTasteErrorDialog = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.taste_import_failed_message,
+                        tasteErrorMessage,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        }
     }
 
     if (showClientIdDialog) {
@@ -914,6 +1005,11 @@ fun SpotifySettings(
                                 result.tasteAnalysis?.let { analysis ->
                                     tasteSummary = analysis.summary
                                     tasteHints = analysis.searchHints.joinToString("\n")
+                                    showTasteSuccess(
+                                        analysis.summary,
+                                        result.topTracks.size,
+                                        analysis.usedAi,
+                                    )
                                 }
                                 persistTasteProfile(result.topArtists, result.topTracks)
                                 statusMessage =
@@ -923,7 +1019,7 @@ fun SpotifySettings(
                                         result.failed,
                                     )
                             } catch (e: Exception) {
-                                statusMessage = e.message
+                                showTasteError(e.message)
                                 reportException(e)
                             } finally {
                                 manager.close()

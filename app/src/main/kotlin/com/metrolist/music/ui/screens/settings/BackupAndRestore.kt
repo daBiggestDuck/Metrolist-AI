@@ -109,6 +109,9 @@ fun BackupAndRestore(
     var csvTasteTrackCount by rememberSaveable { mutableIntStateOf(0) }
     var csvTasteArtistCount by rememberSaveable { mutableIntStateOf(0) }
     var csvTasteSummary by rememberSaveable { mutableStateOf("") }
+    var csvTasteUsedAi by rememberSaveable { mutableStateOf(true) }
+    var showCsvTasteError by rememberSaveable { mutableStateOf(false) }
+    var csvTasteErrorMessage by rememberSaveable { mutableStateOf("") }
     var showCsvTasteOverwriteConfirm by rememberSaveable { mutableStateOf(false) }
     var pendingCsvTasteImport by remember { mutableStateOf<Pair<Uri, CsvImportState>?>(null) }
 
@@ -159,7 +162,7 @@ fun BackupAndRestore(
                 pendingCsvUri = null
                 csvImportState = null
 
-                if (result.songs.isEmpty()) {
+                if (result.songs.isEmpty() && result.tracks.isEmpty()) {
                     Toast.makeText(
                         context,
                         R.string.csv_import_no_tracks,
@@ -171,15 +174,14 @@ fun BackupAndRestore(
                         csvTasteTrackCount = taste.trackCount
                         csvTasteArtistCount = taste.artistCount
                         csvTasteSummary = taste.summary.take(280)
+                        csvTasteUsedAi = taste.usedAi
                         importedSongs.clear()
                         importedSongs.addAll(result.songs)
                         showCsvImportComplete = true
+                    } else if (result.songs.isEmpty()) {
                         Toast.makeText(
                             context,
-                            context.getString(
-                                R.string.taste_updated_snackbar,
-                                taste.trackCount,
-                            ),
+                            R.string.csv_import_no_tracks,
                             Toast.LENGTH_LONG,
                         ).show()
                     } else {
@@ -203,14 +205,9 @@ fun BackupAndRestore(
                 csvRecentLogs.clear()
                 pendingCsvUri = null
                 csvImportState = null
-                Toast.makeText(
-                    context,
-                    context.getString(
-                        R.string.csv_import_taste_failed,
-                        e.message ?: context.getString(R.string.ai_error_unknown),
-                    ),
-                    Toast.LENGTH_LONG,
-                ).show()
+                csvTasteErrorMessage =
+                    e.message ?: context.getString(R.string.ai_error_unknown)
+                showCsvTasteError = true
             }
         }
     }
@@ -474,7 +471,17 @@ fun BackupAndRestore(
                     contentDescription = null,
                 )
             },
-            title = { Text(stringResource(R.string.taste_updated_title)) },
+            title = {
+                Text(
+                    stringResource(
+                        if (csvTasteUsedAi) {
+                            R.string.taste_updated_title
+                        } else {
+                            R.string.taste_updated_without_ai_title
+                        },
+                    ),
+                )
+            },
             buttons = {
                 AuraSecondaryAction(onClick = { showCsvImportComplete = false }) {
                     Text(stringResource(R.string.close))
@@ -512,6 +519,34 @@ fun BackupAndRestore(
                     ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+
+    if (showCsvTasteError) {
+        DefaultDialog(
+            onDismiss = { showCsvTasteError = false },
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.info),
+                    contentDescription = null,
+                )
+            },
+            title = { Text(stringResource(R.string.taste_import_failed_title)) },
+            buttons = {
+                AuraSecondaryAction(onClick = { showCsvTasteError = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.taste_import_failed_message,
+                        csvTasteErrorMessage,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
     }

@@ -122,19 +122,25 @@ object NanoDjLauncher {
                 .filter { it.isNotBlank() }
 
         if (tasteSummary.isBlank() && (artists.isNotEmpty() || tracks.isNotEmpty())) {
+            val trackPairs =
+                tracks.map { line ->
+                    when {
+                        " - " in line -> line.substringBefore(" - ").trim() to line.substringAfter(" - ").trim()
+                        else -> line to ""
+                    }
+                }
             val analysis =
-                analyzeSpotifyTaste(
-                    topArtists = artists,
-                    topTracks =
-                        tracks.map { line ->
-                            when {
-                                " - " in line -> line.substringBefore(" - ").trim() to line.substringAfter(" - ").trim()
-                                else -> line to ""
-                            }
-                        },
-                    enableNano = enableNano,
-                    client = client,
-                )
+                runCatching {
+                    analyzeSpotifyTaste(
+                        context = this,
+                        topArtists = artists,
+                        topTracks = trackPairs,
+                        enableNano = enableNano,
+                        client = client,
+                    )
+                }.getOrElse {
+                    heuristicTasteAnalysis(artists, trackPairs)
+                }
             tasteSummary = analysis.summary
             if (hints.isEmpty()) hints = analysis.searchHints
         }

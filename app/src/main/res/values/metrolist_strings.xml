@@ -849,8 +849,11 @@
     <string name="csv_import_taste_failed">CSV import failed: %1$s</string>
     <string name="csv_import_complete_title">Taste updated</string>
     <string name="taste_updated_title">Your music taste has been updated</string>
+    <string name="taste_updated_without_ai_title">Your music taste has been updated (without AI)</string>
     <string name="taste_updated_message">%1$d tracks analyzed.\n\n%2$s</string>
     <string name="taste_updated_snackbar">Your music taste has been updated · %1$d tracks</string>
+    <string name="taste_import_failed_title">Taste import failed</string>
+    <string name="taste_import_failed_message">%1$s</string>
     <string name="csv_import_add_to_playlist">Add to playlist</string>
     <string name="csv_import_add_playlist_prompt">Optionally match these %1$d tracks on YouTube Music and add them to a playlist.</string>
 

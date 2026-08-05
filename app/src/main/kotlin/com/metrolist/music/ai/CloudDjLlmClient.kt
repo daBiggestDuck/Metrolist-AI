@@ -37,7 +37,7 @@ class CloudDjLlmClient(
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
     override suspend fun checkStatus(): GeminiNanoStatus =
-        if (apiKey.isBlank()) {
+        if (apiKey.isBlank() && provider.requiresApiKey()) {
             GeminiNanoStatus.Unavailable
         } else {
             GeminiNanoStatus.Available
@@ -49,15 +49,28 @@ class CloudDjLlmClient(
 
     override suspend fun generateContent(prompt: String): String? =
         withContext(Dispatchers.IO) {
-            if (apiKey.isBlank() || prompt.isBlank()) return@withContext null
-            runCatching {
+            if (prompt.isBlank()) return@withContext null
+            if (apiKey.isBlank() && provider.requiresApiKey()) {
+                throw DjAiException(
+                    DjAiException.Kind.NO_API_KEY,
+                    "No API key for ${provider.displayName}. Set it in Settings → Playback → Nano DJ.",
+                )
+            }
+            try {
                 when (provider) {
                     DjAiProvider.ANTHROPIC -> anthropicMessages(prompt)
                     else -> openAiCompatibleChat(prompt)
                 }
-            }.onFailure {
-                Timber.tag(TAG).w(it, "Cloud DJ generate failed (%s)", provider.id)
-            }.getOrNull()
+            } catch (e: DjAiException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Cloud DJ generate failed (%s)", provider.id)
+                throw DjAiException(
+                    DjAiException.Kind.NETWORK,
+                    "DJ AI network error (${provider.displayName}): ${e.message ?: e.javaClass.simpleName}",
+                    e,
+                )
+            }
         }
 
     private fun openAiCompatibleChat(prompt: String): String? {
@@ -87,9 +100,11 @@ class CloudDjLlmClient(
             Request
                 .Builder()
                 .url(url)
-                .header("Authorization", "Bearer $apiKey")
                 .header("Content-Type", "application/json")
                 .apply {
+                    if (apiKey.isNotBlank()) {
+                        header("Authorization", "Bearer $apiKey")
+                    }
                     if (provider == DjAiProvider.OPENROUTER) {
                         header("HTTP-Referer", "https://github.com/daBiggestDuck/Metrolist-AI")
                         header("X-Title", "Metrolist AI Nano DJ")
@@ -101,11 +116,26 @@ class CloudDjLlmClient(
             val raw = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 Timber.tag(TAG).w("Cloud DJ HTTP %s: %s", response.code, raw.take(300))
-                return null
+                throw DjAiException(
+                    DjAiException.Kind.HTTP,
+                    "DJ AI HTTP ${response.code} (${provider.displayName}): ${raw.take(160).ifBlank { "no body" }}",
+                )
             }
-            val choices = JSONObject(raw).optJSONArray("choices") ?: return null
-            val message = choices.optJSONObject(0)?.optJSONObject("message") ?: return null
+            val choices = JSONObject(raw).optJSONArray("choices")
+                ?: throw DjAiException(
+                    DjAiException.Kind.EMPTY,
+                    "DJ AI returned no choices (${provider.displayName})",
+                )
+            val message = choices.optJSONObject(0)?.optJSONObject("message")
+                ?: throw DjAiException(
+                    DjAiException.Kind.EMPTY,
+                    "DJ AI returned empty message (${provider.displayName})",
+                )
             return message.optString("content").trim().takeIf { it.isNotBlank() }
+                ?: throw DjAiException(
+                    DjAiException.Kind.EMPTY,
+                    "DJ AI returned empty content (${provider.displayName})",
+                )
         }
     }
 
@@ -141,16 +171,30 @@ class CloudDjLlmClient(
             val raw = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 Timber.tag(TAG).w("Anthropic DJ HTTP %s: %s", response.code, raw.take(300))
-                return null
+                throw DjAiException(
+                    DjAiException.Kind.HTTP,
+                    "DJ AI HTTP ${response.code} (Anthropic): ${raw.take(160).ifBlank { "no body" }}",
+                )
             }
-            val content = JSONObject(raw).optJSONArray("content") ?: return null
+            val content = JSONObject(raw).optJSONArray("content")
+                ?: throw DjAiException(
+                    DjAiException.Kind.EMPTY,
+                    "DJ AI returned no content blocks (Anthropic)",
+                )
             for (i in 0 until content.length()) {
                 val block = content.optJSONObject(i) ?: continue
                 if (block.optString("type") == "text") {
                     return block.optString("text").trim().takeIf { it.isNotBlank() }
+                        ?: throw DjAiException(
+                            DjAiException.Kind.EMPTY,
+                            "DJ AI returned empty text (Anthropic)",
+                        )
                 }
             }
-            return null
+            throw DjAiException(
+                DjAiException.Kind.EMPTY,
+                "DJ AI returned no text blocks (Anthropic)",
+            )
         }
     }
 

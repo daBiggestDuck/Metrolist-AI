@@ -100,12 +100,27 @@ class SpotifyImportManager(
             val tracks = api.getTopTracks(token, timeRange = "medium_term", limit = 50)
 
             onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = tracks.size))
-            val analysis =
-                analyzeSpotifyTaste(
-                    topArtists = artists.map { it.name },
-                    topTracks = tracks.map { it.name to it.artistsJoined },
+            val trackPairs = tracks.map { it.name to it.artistsJoined }
+            val artistNames = artists.map { it.name }
+            // Persist listening + Spotify taste prefs via the same AI path as CSV imports.
+            val taste =
+                CsvTasteImportHelper.importTaste(
+                    context = appContext,
+                    database = database,
+                    tracks = trackPairs,
                     enableNano = enableGeminiNano,
-                    client = djClient(),
+                )
+            val analysis =
+                TasteAnalysisResult(
+                    summary = taste.summary,
+                    searchHints =
+                        appContext.dataStore.data.first()[SpotifyTasteHintsKey]
+                            ?.lines()
+                            ?.map { it.trim() }
+                            ?.filter { it.isNotBlank() }
+                            .orEmpty()
+                            .ifEmpty { heuristicTasteAnalysis(artistNames, trackPairs).searchHints },
+                    usedAi = taste.usedAi,
                 )
 
             val matchResult =
@@ -127,8 +142,8 @@ class SpotifyImportManager(
 
             matchResult.copy(
                 tasteAnalysis = analysis,
-                topArtists = artists.map { it.name },
-                topTracks = tracks.map { it.name to it.artistsJoined },
+                topArtists = artistNames,
+                topTracks = trackPairs,
             )
         }
 
@@ -146,16 +161,22 @@ class SpotifyImportManager(
             if (cleaned.isEmpty()) {
                 throw IllegalArgumentException("No tracks to analyze")
             }
+            onProgress(SpotifyImportProgress(phase = "Analyzing taste with DJ AI", total = cleaned.size))
+            val taste =
+                CsvTasteImportHelper.importTaste(
+                    context = appContext,
+                    database = database,
+                    tracks = cleaned,
+                    enableNano = enableNano,
+                )
             val topArtists = deriveTopArtists(cleaned)
             val topTracks = cleaned.take(50)
-            onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = cleaned.size))
-            val analysis =
-                analyzeSpotifyTaste(
-                    topArtists = topArtists,
-                    topTracks = topTracks,
-                    enableNano = enableNano,
-                    client = djClient(),
-                )
+            val hints =
+                appContext.dataStore.data.first()[SpotifyTasteHintsKey]
+                    ?.lines()
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    .orEmpty()
             onProgress(
                 SpotifyImportProgress(
                     phase = "Done",
@@ -166,7 +187,12 @@ class SpotifyImportManager(
             SpotifyTasteProfile(
                 topArtists = topArtists,
                 topTracks = topTracks,
-                analysis = analysis,
+                analysis =
+                    TasteAnalysisResult(
+                        summary = taste.summary,
+                        searchHints = hints,
+                        usedAi = taste.usedAi,
+                    ),
             )
         }
 
@@ -254,7 +280,7 @@ class SpotifyImportManager(
                 TasteAnalysisResult(
                     summary = taste.summary,
                     searchHints = hints,
-                    usedAi = TasteSummary.isUsable(taste.summary),
+                    usedAi = taste.usedAi,
                 )
 
             val spotifyTracks =
@@ -333,6 +359,7 @@ class SpotifyImportManager(
             onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = tracks.size))
             val analysis =
                 analyzeSpotifyTaste(
+                    context = appContext,
                     topArtists = artists.map { it.name },
                     topTracks = tracks.map { it.name to it.artistsJoined },
                     enableNano = enableGeminiNano,
@@ -446,12 +473,18 @@ class SpotifyImportManager(
                         usedAi = false,
                     )
                 } else {
-                    analyzeSpotifyTaste(
-                        topArtists = artists,
-                        topTracks = tracks,
-                        enableNano = enableGeminiNano,
-                        client = djClient(),
-                    ).let { base ->
+                    runCatching {
+                        analyzeSpotifyTaste(
+                            context = appContext,
+                            topArtists = artists,
+                            topTracks = tracks,
+                            enableNano = enableGeminiNano,
+                            client = djClient(),
+                        )
+                    }.getOrElse {
+                        Timber.tag(TAG).w(it, "Recommendation taste AI failed; using heuristic")
+                        heuristicTasteAnalysis(artists, tracks)
+                    }.let { base ->
                         val summary =
                             TasteSummary.coalesce(base.summary, usableCached ?: usableMerged)
                                 ?: TasteSummary.fromArtistsAndTracks(artists, tracks)

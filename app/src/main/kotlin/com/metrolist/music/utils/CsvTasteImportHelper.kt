@@ -6,21 +6,19 @@
 package com.metrolist.music.utils
 
 import android.content.Context
-import com.metrolist.music.ai.DjAiProvider
 import com.metrolist.music.ai.ListeningTasteTracker
+import com.metrolist.music.ai.SpotifyImportArtistDerive
+import com.metrolist.music.ai.TasteImportAi
+import com.metrolist.music.ai.TasteImportException
+import com.metrolist.music.ai.TasteImportFailReason
 import com.metrolist.music.ai.TasteSummary
 import com.metrolist.music.ai.heuristicTasteAnalysis
-import com.metrolist.music.constants.DjAiProviderKey
-import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
 import com.metrolist.music.constants.SpotifyTopArtistsKey
 import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.db.MusicDatabase
-import com.metrolist.music.spotify.SpotifyImportManager
-import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -28,20 +26,24 @@ data class CsvTasteImportResult(
     val trackCount: Int,
     val artistCount: Int,
     val summary: String,
+    val usedAi: Boolean,
 )
 
 /**
- * Applies parsed CSV tracks to Nano DJ taste (listening tracker + Spotify taste prefs).
- * Guarantees a non-empty, non-"undefined" summary and weighted artists/tracks.
+ * Applies parsed CSV / playlist tracks to Nano DJ taste (listening tracker + Spotify taste prefs).
+ *
+ * Flow: paste songs into a DJ AI prompt → generateContent → persist.
+ * When DJ AI is enabled, failures throw [TasteImportException] (never silent "updated").
+ * When DJ AI is disabled, persists a heuristic summary and sets [CsvTasteImportResult.usedAi] = false.
  */
 object CsvTasteImportHelper {
     private const val TAG = "CsvTasteImport"
 
     suspend fun importTaste(
         context: Context,
-        database: MusicDatabase,
+        @Suppress("UNUSED_PARAMETER") database: MusicDatabase,
         tracks: List<Pair<String, String>>,
-        enableNano: Boolean? = null,
+        @Suppress("UNUSED_PARAMETER") enableNano: Boolean? = null,
     ): CsvTasteImportResult =
         withContext(Dispatchers.IO) {
             val cleaned =
@@ -52,82 +54,52 @@ object CsvTasteImportHelper {
 
             if (cleaned.isEmpty()) {
                 Timber.tag(TAG).w("importTaste called with no valid tracks")
-                throw IllegalArgumentException("No tracks to import")
+                throw TasteImportException(TasteImportFailReason.NO_TRACKS, "No tracks to import")
             }
 
-            // Prefer caller flag; otherwise use DJ prefs — cloud providers always try AI;
-            // on-device Nano follows EnableGeminiNanoKey. Heuristic coalesce still guarantees a summary.
-            val nanoEnabled =
-                enableNano
-                    ?: run {
-                        val prefs = context.dataStore.data.first()
-                        val provider = DjAiProvider.fromId(prefs[DjAiProviderKey])
-                        if (provider != DjAiProvider.NANO) {
-                            true
-                        } else {
-                            prefs[EnableGeminiNanoKey] ?: true
-                        }
-                    }
+            Timber.tag(TAG).i("Taste import starting for %d tracks", cleaned.size)
 
-            Timber.tag(TAG).i("Updating taste from %d CSV tracks (ai=%s)", cleaned.size, nanoEnabled)
-
+            // Seed weighted listening taste first (no nested AI — TasteImportAi owns generateContent).
             val seeded =
                 ListeningTasteTracker.importFromTracks(
                     context,
                     cleaned,
-                    enableNano = nanoEnabled,
+                    enableNano = false,
                 )
             if (seeded <= 0) {
                 throw IllegalStateException("Failed to seed listening taste from CSV tracks")
             }
 
-            val manager = SpotifyImportManager(database, context)
-            val profile =
-                try {
-                    manager.buildTasteFromTracks(cleaned, enableNano = nanoEnabled)
-                } finally {
-                    manager.close()
-                }
+            val analysis = TasteImportAi.analyzeTracks(context, cleaned)
 
-            val topArtists =
-                profile.topArtists.ifEmpty {
-                    SpotifyImportManager.deriveTopArtists(cleaned)
-                }
-            val topTracks = profile.topTracks.ifEmpty { cleaned.take(50) }
-
-            val guaranteedSummary =
-                TasteSummary.coalesce(
-                    profile.analysis.summary,
-                    TasteSummary.fromArtistsAndTracks(
-                        artists = topArtists,
-                        tracks = topTracks,
-                        sourceLabel = "Exportify CSV",
-                    ),
-                ) ?: TasteSummary.fromArtistsAndTracks(
-                    artists = topArtists,
-                    tracks = topTracks,
-                    sourceLabel = "Exportify CSV",
-                )
-
+            val topArtists = SpotifyImportArtistDerive.derive(cleaned)
+            val topTracks = cleaned.take(50)
+            val summary =
+                TasteSummary.sanitizeOrNull(analysis.summary)
+                    ?: throw TasteImportException(
+                        TasteImportFailReason.PARSE_FAILED,
+                        "Taste summary was blank after analysis",
+                    )
             val hints =
-                profile.analysis.searchHints
+                analysis.searchHints
                     .map { it.trim() }
                     .filter { it.isNotBlank() && TasteSummary.isUsable(it) }
                     .ifEmpty {
-                        heuristicTasteAnalysis(topArtists, topTracks).searchHints
+                        if (!analysis.usedAi) {
+                            heuristicTasteAnalysis(topArtists, topTracks).searchHints
+                        } else {
+                            emptyList()
+                        }
                     }
 
             if (topArtists.isEmpty() && topTracks.isEmpty()) {
                 throw IllegalStateException("Taste import produced no artists or tracks")
             }
-            if (!TasteSummary.isUsable(guaranteedSummary)) {
-                throw IllegalStateException("Taste import failed to write a usable summary")
-            }
 
-            ListeningTasteTracker.forceSummary(context, guaranteedSummary)
+            ListeningTasteTracker.forceSummary(context, summary)
 
             context.safeDataStoreEdit { prefs ->
-                prefs[SpotifyTasteSummaryKey] = guaranteedSummary
+                prefs[SpotifyTasteSummaryKey] = summary
                 if (hints.isNotEmpty()) {
                     prefs[SpotifyTasteHintsKey] = hints.joinToString("\n")
                 }
@@ -143,17 +115,18 @@ object CsvTasteImportHelper {
             }
 
             Timber.tag(TAG).i(
-                "Taste updated: tracks=%d artists=%d listeningSeeded=%d summaryLen=%d",
+                "Taste updated: tracks=%d artists=%d usedAi=%s summaryLen=%d",
                 cleaned.size,
                 topArtists.size,
-                seeded,
-                guaranteedSummary.length,
+                analysis.usedAi,
+                summary.length,
             )
 
             CsvTasteImportResult(
                 trackCount = cleaned.size,
                 artistCount = topArtists.size,
-                summary = guaranteedSummary,
+                summary = summary,
+                usedAi = analysis.usedAi,
             )
         }
 }

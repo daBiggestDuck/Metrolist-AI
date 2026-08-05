@@ -6,7 +6,6 @@
 package com.metrolist.music.ui.screens.settings.integrations
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -31,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -221,6 +221,25 @@ fun SpotifyTasteScreen(
     var pendingTasteOverwrite by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showClearExclusionsConfirm by remember { mutableStateOf(false) }
     var showResetListeningTasteConfirm by remember { mutableStateOf(false) }
+    var showTasteSuccessDialog by remember { mutableStateOf(false) }
+    var tasteSuccessSummary by remember { mutableStateOf("") }
+    var tasteSuccessTrackCount by remember { mutableIntStateOf(0) }
+    var tasteSuccessUsedAi by remember { mutableStateOf(true) }
+    var showTasteErrorDialog by remember { mutableStateOf(false) }
+    var tasteErrorMessage by remember { mutableStateOf("") }
+
+    fun showTasteSuccess(summary: String, trackCount: Int, usedAi: Boolean) {
+        tasteSuccessSummary = summary.take(280)
+        tasteSuccessTrackCount = trackCount
+        tasteSuccessUsedAi = usedAi
+        showTasteSuccessDialog = true
+    }
+
+    fun showTasteError(message: String?) {
+        tasteErrorMessage = message ?: context.getString(R.string.ai_error_unknown)
+        showTasteErrorDialog = true
+        statusMessage = tasteErrorMessage
+    }
 
     fun requestTasteOverwrite(action: () -> Unit) {
         pendingTasteOverwrite = action
@@ -272,19 +291,14 @@ fun SpotifyTasteScreen(
                         },
                     )
                 val analysis = result.tasteAnalysis
-                val summary =
-                    TasteSummary.coalesce(
-                        analysis?.summary,
-                        TasteSummary.fromArtistsAndTracks(result.topArtists, result.topTracks),
-                    )
-                if (summary == null) {
-                    statusMessage = context.getString(R.string.spotify_taste_import_failed_summary)
+                if (analysis == null || !TasteSummary.isUsable(analysis.summary)) {
+                    showTasteError(context.getString(R.string.spotify_taste_import_failed_summary))
                 } else {
                     applyTasteProfile(
                         result.topArtists,
                         result.topTracks,
-                        summary,
-                        analysis?.searchHints.orEmpty(),
+                        analysis.summary,
+                        analysis.searchHints,
                     )
                     statusMessage =
                         if (result.matched > 0) {
@@ -300,17 +314,14 @@ fun SpotifyTasteScreen(
                                 result.topArtists.size,
                             )
                         }
-                    Toast.makeText(
-                        context,
-                        context.getString(
-                            R.string.taste_updated_snackbar,
-                            result.topTracks.size.coerceAtLeast(fileTracks.size),
-                        ),
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    showTasteSuccess(
+                        analysis.summary,
+                        result.topTracks.size.coerceAtLeast(fileTracks.size),
+                        analysis.usedAi,
+                    )
                 }
             } catch (e: Exception) {
-                statusMessage = e.message
+                showTasteError(e.message)
                 reportException(e)
             } finally {
                 manager.close()
@@ -335,33 +346,29 @@ fun SpotifyTasteScreen(
                             scope.launch(Dispatchers.Main) { progress = p }
                         },
                     )
-                val summary =
-                    TasteSummary.coalesce(
+                if (!TasteSummary.isUsable(profile.analysis.summary)) {
+                    showTasteError(context.getString(R.string.spotify_taste_import_failed_summary))
+                } else {
+                    applyTasteProfile(
+                        profile.topArtists,
+                        profile.topTracks,
                         profile.analysis.summary,
-                        TasteSummary.fromArtistsAndTracks(profile.topArtists, profile.topTracks),
-                    ) ?: TasteSummary.fromArtistsAndTracks(profile.topArtists, profile.topTracks)
-                applyTasteProfile(
-                    profile.topArtists,
-                    profile.topTracks,
-                    summary,
-                    profile.analysis.searchHints,
-                )
-                statusMessage =
-                    context.getString(
-                        R.string.taste_updated_message,
-                        profile.topTracks.size,
-                        summary.take(160),
+                        profile.analysis.searchHints,
                     )
-                Toast.makeText(
-                    context,
-                    context.getString(
-                        R.string.taste_updated_snackbar,
+                    statusMessage =
+                        context.getString(
+                            R.string.taste_updated_message,
+                            profile.topTracks.size,
+                            profile.analysis.summary.take(160),
+                        )
+                    showTasteSuccess(
+                        profile.analysis.summary,
                         profile.topTracks.size,
-                    ),
-                    Toast.LENGTH_LONG,
-                ).show()
+                        profile.analysis.usedAi,
+                    )
+                }
             } catch (e: Exception) {
-                statusMessage = e.message
+                showTasteError(e.message)
                 reportException(e)
             } finally {
                 manager.close()
@@ -438,6 +445,63 @@ fun SpotifyTasteScreen(
                 }
             },
         )
+    }
+
+    if (showTasteSuccessDialog) {
+        DefaultDialog(
+            onDismiss = { showTasteSuccessDialog = false },
+            title = {
+                Text(
+                    stringResource(
+                        if (tasteSuccessUsedAi) {
+                            R.string.taste_updated_title
+                        } else {
+                            R.string.taste_updated_without_ai_title
+                        },
+                    ),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showTasteSuccessDialog = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.taste_updated_message,
+                        tasteSuccessTrackCount,
+                        tasteSuccessSummary,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        }
+    }
+
+    if (showTasteErrorDialog) {
+        DefaultDialog(
+            onDismiss = { showTasteErrorDialog = false },
+            title = { Text(stringResource(R.string.taste_import_failed_title)) },
+            buttons = {
+                AuraSecondaryAction(onClick = { showTasteErrorDialog = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.taste_import_failed_message,
+                        tasteErrorMessage,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        }
     }
 
     if (showClearExclusionsConfirm) {

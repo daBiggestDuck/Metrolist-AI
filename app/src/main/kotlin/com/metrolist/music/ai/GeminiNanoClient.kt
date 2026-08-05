@@ -139,58 +139,26 @@ data class TasteAnalysisResult(
 
 /**
  * Builds a taste summary (and optional YTM search hints) from Spotify top artists/tracks.
- * Uses the configured DJ AI backend when enabled and available; otherwise a simple heuristic.
+ *
+ * When [enableNano] is false, returns a heuristic profile ([TasteAnalysisResult.usedAi] = false).
+ * When true, requires a real DJ AI response via [TasteImportAi] — throws [TasteImportException]
+ * instead of silently falling back (silent fallback was the user-facing bug).
  */
 suspend fun analyzeSpotifyTaste(
+    context: android.content.Context,
     topArtists: List<String>,
     topTracks: List<Pair<String, String>>,
     enableNano: Boolean,
-    client: GeminiNanoClient,
+    client: GeminiNanoClient = GeminiNanoClient.get(context),
 ): TasteAnalysisResult {
-    val heuristic = heuristicTasteAnalysis(topArtists, topTracks)
-    if (!enableNano) return heuristic
-
-    val status = runCatching { client.checkStatus() }.getOrDefault(GeminiNanoStatus.Unavailable)
-    if (status != GeminiNanoStatus.Available) return heuristic
-
-    val artistLine = topArtists.take(15).joinToString(", ").ifBlank { "(none)" }
-    val trackLine =
-        topTracks.take(20).joinToString("; ") { (title, artists) -> "$title by $artists" }
-            .ifBlank { "(none)" }
-
-    val prompt =
-        """
-        You are a music-taste analyst for a personalized radio DJ (Metrolist Nano DJ).
-        Given this listener's imported track and artist history, write a real taste profile
-        the DJ can use — never reply with blank text, "undefined", or placeholders.
-
-        Reply with EXACTLY this format (no markdown, no extra commentary):
-        SUMMARY: <2-3 vivid sentences describing genres, moods, eras, and artists>
-        HINTS:
-        - <Song Title> - <Artist>
-        - <Song Title> - <Artist>
-        (up to 8 HINTS lines of real playable songs matching this taste)
-
-        Top artists: $artistLine
-        Top tracks: $trackLine
-        """.trimIndent()
-
-    val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
-    if (raw.isBlank()) return heuristic
-
-    val parsed = parseTasteAnalysis(raw, usedAi = true)
-    val usable = TasteSummary.sanitizeOrNull(parsed?.summary)
-    return when {
-        parsed != null && usable != null ->
-            parsed.copy(summary = usable)
-        usable == null && parsed != null && parsed.searchHints.isNotEmpty() ->
-            heuristic.copy(searchHints = parsed.searchHints, usedAi = true)
-        else ->
-            heuristic.copy(
-                summary = TasteSummary.sanitizeOrNull(raw.take(500)) ?: heuristic.summary,
-                usedAi = TasteSummary.isUsable(raw.take(500)),
-            )
+    if (!enableNano) {
+        return heuristicTasteAnalysis(topArtists, topTracks)
     }
+    val tracksForPrompt =
+        topTracks.ifEmpty {
+            topArtists.map { "songs" to it }
+        }
+    return TasteImportAi.analyzeTracks(context, tracksForPrompt, client)
 }
 
 internal fun heuristicTasteAnalysis(
