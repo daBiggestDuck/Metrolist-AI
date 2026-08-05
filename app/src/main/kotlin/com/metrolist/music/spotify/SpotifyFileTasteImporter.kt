@@ -304,6 +304,8 @@ object SpotifyFileTasteImporter {
         if (trimmed.startsWith("#") || trimmed.startsWith("//")) return null
         // Skip obvious CSV header leftovers
         if (trimmed.equals("Track Name,Artist Name", ignoreCase = true)) return null
+        // Never treat Exportify Track URI rows as "Title - Artist" when headers were missed.
+        if (CsvParser.isSpotifyTrackUri(trimmed.substringBefore(','))) return null
 
         val dashSep =
             when {
@@ -312,11 +314,11 @@ object SpotifyFileTasteImporter {
                 " - " in trimmed -> " - "
                 else -> null
             }
-        if (dashSep != null) {
+        if (dashSep != null && !trimmed.contains(',')) {
             val idx = trimmed.indexOf(dashSep)
             val title = trimmed.substring(0, idx).trim()
             val artist = trimmed.substring(idx + dashSep.length).trim()
-            if (title.isNotBlank()) return title to artist
+            if (title.isNotBlank() && !CsvParser.isSpotifyTrackUri(title)) return title to artist
         }
 
         if (',' in trimmed) {
@@ -324,11 +326,12 @@ object SpotifyFileTasteImporter {
             if (cols.size >= 2) {
                 val title = cols[0].trim()
                 val artist = cols.drop(1).joinToString(", ").trim()
-                if (title.isNotBlank()) return title to artist
+                if (title.isNotBlank() && !CsvParser.isSpotifyTrackUri(title)) return title to artist
             }
         }
 
         // Title only
+        if (CsvParser.isSpotifyTrackUri(trimmed)) return null
         return trimmed to ""
     }
 

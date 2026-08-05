@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -33,12 +34,15 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
+import com.metrolist.music.ui.component.aura.auraHairlineBorder
 
-private val AuraDividerColor = Color(0xFF282828)
+private val AuraDividerColor = AuraHairline
 
 /**
- * Aura-styled settings group — flat rows with section label, no M3 Card stacks.
+ * Spotify-style settings group — elevated #181818 island, uppercase section label, hairline rows.
  */
 @Composable
 fun Material3SettingsGroup(
@@ -58,8 +62,8 @@ fun Material3SettingsGroup(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 4.dp, top = 8.dp),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp, top = 4.dp, start = 4.dp),
             )
         }
 
@@ -67,7 +71,11 @@ fun Material3SettingsGroup(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .animateContentSize(),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AuraElevated)
+                    .auraHairlineBorder(RoundedCornerShape(12.dp))
+                    .animateContentSize()
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
         ) {
             items.forEachIndexed { index, item ->
                 Material3SettingsItemRow(item = item)

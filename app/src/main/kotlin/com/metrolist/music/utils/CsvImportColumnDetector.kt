@@ -86,4 +86,22 @@ object CsvImportColumnDetector {
             header.contains("name") || header.contains("artist") || header.contains("title")
         }
     }
+
+    /**
+     * True when headers clearly match Exportify.net (Track Name + Artist Name(s)),
+     * so Backup & restore can skip the column-mapping dialog.
+     */
+    fun isConfidentExportify(state: CsvImportState): Boolean {
+        if (!state.hasHeader || state.previewRows.isEmpty()) return false
+        if (state.titleColumnIndex < 0 || state.artistColumnIndex < 0) return false
+        val headers = state.previewRows.first().map { CsvParser.normalizeHeader(it) }
+        val titleHeader = headers.getOrNull(state.titleColumnIndex).orEmpty()
+        val artistHeader = headers.getOrNull(state.artistColumnIndex).orEmpty()
+        val titleOk = titleHeader in trackHeaders && titleHeader != "name"
+        val artistOk = artistHeader in artistHeaders
+        val looksExportify =
+            headers.any { it == "track uri" || it == "track name" } &&
+                headers.any { it == "artist name(s)" || it == "artist name" }
+        return titleOk && artistOk && looksExportify
+    }
 }

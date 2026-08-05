@@ -48,14 +48,19 @@ class CsvImportColumnDetectorTest {
     }
 
     @Test
-    fun `falls back to two column mapping without headers`() {
+    fun `isConfidentExportify recognizes Track URI exports`() {
         val preview =
             listOf(
-                listOf("Song One", "Artist One"),
-                listOf("Song Two", "Artist Two"),
+                listOf(
+                    "Track URI",
+                    "Track Name",
+                    "Album Name",
+                    "Artist Name(s)",
+                    "Release Date",
+                ),
+                listOf("spotify:track:1", "Song", "Album", "Artist", "2024"),
             )
-        val state = CsvImportColumnDetector.detect(preview, hasHeader = false)
-        assertEquals(0, state.artistColumnIndex)
-        assertEquals(1, state.titleColumnIndex)
+        val state = CsvImportColumnDetector.detect(preview, hasHeader = true)
+        assertTrue(CsvImportColumnDetector.isConfidentExportify(state))
     }
 }

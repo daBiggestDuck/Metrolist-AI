@@ -74,6 +74,8 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.utils.CsvImportColumnDetector
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +118,94 @@ fun BackupAndRestore(
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    fun startCsvImport(uri: Uri, mappingState: CsvImportState) {
+        showCsvImportProgress = true
+        csvImportProgress = 0
+        coroutineScope.launch {
+            try {
+                val result =
+                    withContext(Dispatchers.IO) {
+                        viewModel.importPlaylistFromCsv(
+                            context,
+                            uri,
+                            mappingState,
+                            updateTaste = true,
+                            onProgress = { progress ->
+                                coroutineScope.launch(Dispatchers.Main) {
+                                    csvImportProgress = progress
+                                }
+                            },
+                            onLogUpdate = { logs ->
+                                coroutineScope.launch(Dispatchers.Main) {
+                                    csvRecentLogs.clear()
+                                    csvRecentLogs.addAll(logs)
+                                }
+                            },
+                        )
+                    }
+
+                showCsvImportProgress = false
+                csvImportProgress = 0
+                csvRecentLogs.clear()
+                pendingCsvUri = null
+                csvImportState = null
+
+                if (result.songs.isEmpty()) {
+                    Toast.makeText(
+                        context,
+                        R.string.csv_import_no_tracks,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                } else {
+                    val taste = result.tasteResult
+                    if (taste != null) {
+                        csvTasteTrackCount = taste.trackCount
+                        csvTasteArtistCount = taste.artistCount
+                        importedSongs.clear()
+                        importedSongs.addAll(result.songs)
+                        showCsvImportComplete = true
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.csv_import_taste_success,
+                                taste.trackCount,
+                                taste.artistCount,
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.csv_import_found_tracks,
+                                result.parsedCount,
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                        importedSongs.clear()
+                        importedSongs.addAll(result.songs)
+                        showChoosePlaylistDialogOnline = true
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("CsvImport").e(e, "CSV import failed in UI")
+                showCsvImportProgress = false
+                csvImportProgress = 0
+                csvRecentLogs.clear()
+                pendingCsvUri = null
+                csvImportState = null
+                Toast.makeText(
+                    context,
+                    context.getString(
+                        R.string.csv_import_taste_failed,
+                        e.message ?: context.getString(R.string.ai_error_unknown),
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
 
     val backupLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -166,7 +256,17 @@ fun BackupAndRestore(
                 return@rememberLauncherForActivityResult
             }
             csvImportState = previewState
-            showCsvColumnMapping = true
+            // Exportify.net CSVs are unambiguous — import immediately without the mapping dialog.
+            if (CsvImportColumnDetector.isConfidentExportify(previewState)) {
+                Timber.tag("CsvImport").i(
+                    "Auto-import Exportify CSV (titleCol=%d artistCol=%d)",
+                    previewState.titleColumnIndex,
+                    previewState.artistColumnIndex,
+                )
+                startCsvImport(uri, previewState)
+            } else {
+                showCsvColumnMapping = true
+            }
         }
     val importM3uLauncherOnline =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -230,7 +330,16 @@ fun BackupAndRestore(
                         icon = painterResource(R.drawable.playlist_add),
                         onClick = {
                             importPlaylistFromCsv.launch(
-                                arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
+                                arrayOf(
+                                    "text/*",
+                                    "text/csv",
+                                    "text/comma-separated-values",
+                                    "application/csv",
+                                    "application/vnd.ms-excel",
+                                    "application/octet-stream",
+                                    "text/plain",
+                                    "*/*",
+                                ),
                             )
                         },
                     ),
@@ -295,91 +404,7 @@ fun BackupAndRestore(
                 showCsvColumnMapping = false
                 csvImportState = mappingState
                 pendingCsvUri?.let { uri ->
-                    showCsvImportProgress = true
-                    csvImportProgress = 0
-                    coroutineScope.launch {
-                        try {
-                            val result =
-                                withContext(Dispatchers.IO) {
-                                    viewModel.importPlaylistFromCsv(
-                                        context,
-                                        uri,
-                                        mappingState,
-                                        updateTaste = true,
-                                        onProgress = { progress ->
-                                            coroutineScope.launch(Dispatchers.Main) {
-                                                csvImportProgress = progress
-                                            }
-                                        },
-                                        onLogUpdate = { logs ->
-                                            coroutineScope.launch(Dispatchers.Main) {
-                                                csvRecentLogs.clear()
-                                                csvRecentLogs.addAll(logs)
-                                            }
-                                        },
-                                    )
-                                }
-
-                            showCsvImportProgress = false
-                            csvImportProgress = 0
-                            csvRecentLogs.clear()
-                            pendingCsvUri = null
-                            csvImportState = null
-
-                            if (result.songs.isEmpty()) {
-                                Toast.makeText(
-                                    context,
-                                    R.string.csv_import_no_tracks,
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            } else {
-                                val taste = result.tasteResult
-                                if (taste != null) {
-                                    csvTasteTrackCount = taste.trackCount
-                                    csvTasteArtistCount = taste.artistCount
-                                    importedSongs.clear()
-                                    importedSongs.addAll(result.songs)
-                                    showCsvImportComplete = true
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(
-                                            R.string.csv_import_taste_success,
-                                            taste.trackCount,
-                                            taste.artistCount,
-                                        ),
-                                        Toast.LENGTH_LONG,
-                                    ).show()
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(
-                                            R.string.csv_import_found_tracks,
-                                            result.parsedCount,
-                                        ),
-                                        Toast.LENGTH_LONG,
-                                    ).show()
-                                    importedSongs.clear()
-                                    importedSongs.addAll(result.songs)
-                                    showChoosePlaylistDialogOnline = true
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Timber.tag("CsvImport").e(e, "CSV import failed in UI")
-                            showCsvImportProgress = false
-                            csvImportProgress = 0
-                            csvRecentLogs.clear()
-                            pendingCsvUri = null
-                            csvImportState = null
-                            Toast.makeText(
-                                context,
-                                context.getString(
-                                    R.string.csv_import_taste_failed,
-                                    e.message ?: context.getString(R.string.ai_error_unknown),
-                                ),
-                                Toast.LENGTH_LONG,
-                            ).show()
-                        }
-                    }
+                    startCsvImport(uri, mappingState)
                 }
             },
         )

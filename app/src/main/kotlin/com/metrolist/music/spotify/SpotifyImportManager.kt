@@ -13,6 +13,7 @@ import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.TasteAnalysisResult
 import com.metrolist.music.ai.TasteSummary
 import com.metrolist.music.ai.analyzeSpotifyTaste
+import com.metrolist.music.ai.heuristicTasteAnalysis
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTopArtistsKey
 import com.metrolist.music.constants.SpotifyTopTracksKey
@@ -20,6 +21,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.utils.CsvTasteImportHelper
 import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -219,7 +221,7 @@ class SpotifyImportManager(
     suspend fun importTasteFromTracks(
         tracks: List<Pair<String, String>>,
         playlistName: String = TASTE_PLAYLIST_NAME,
-        enableNano: Boolean,
+        @Suppress("UNUSED_PARAMETER") enableNano: Boolean,
         onProgress: (SpotifyImportProgress) -> Unit = {},
     ): SpotifyImportResult =
         withContext(Dispatchers.IO) {
@@ -228,18 +230,26 @@ class SpotifyImportManager(
                 throw IllegalArgumentException("No tracks to import")
             }
 
-            ListeningTasteTracker.importFromTracks(appContext, cleaned, enableNano = enableNano)
+            // Persist listening + Spotify taste prefs FIRST so Exportify imports succeed even
+            // when YouTube matching later fails or times out.
+            onProgress(SpotifyImportProgress(phase = "Saving taste", total = cleaned.size))
+            val taste =
+                CsvTasteImportHelper.importTaste(
+                    context = appContext,
+                    database = database,
+                    tracks = cleaned,
+                    // Bulk CSV: heuristic summary is reliable; Nano can refine later from listens.
+                    enableNano = false,
+                )
 
             val topArtists = deriveTopArtists(cleaned)
             val topTracks = cleaned.take(50)
-
-            onProgress(SpotifyImportProgress(phase = "Analyzing taste", total = cleaned.size))
             val analysis =
-                analyzeSpotifyTaste(
-                    topArtists = topArtists,
-                    topTracks = topTracks,
-                    enableNano = enableNano,
-                    client = djClient(),
+                TasteAnalysisResult(
+                    summary = taste.summary,
+                    searchHints =
+                        heuristicTasteAnalysis(topArtists, topTracks).searchHints,
+                    usedAi = false,
                 )
 
             val spotifyTracks =
@@ -253,20 +263,38 @@ class SpotifyImportManager(
 
             val name = playlistName.trim().ifBlank { TASTE_PLAYLIST_NAME }
             val matchResult =
-                matchAndCreatePlaylist(
-                    playlistName = name,
-                    tracks = spotifyTracks,
-                    onProgress = onProgress,
-                )
+                runCatching {
+                    matchAndCreatePlaylist(
+                        playlistName = name,
+                        tracks = spotifyTracks,
+                        onProgress = onProgress,
+                    )
+                }.onFailure { e ->
+                    Timber.tag(TAG).w(e, "YTM match failed after taste save; taste still imported")
+                }.getOrElse {
+                    SpotifyImportResult(
+                        playlistId = "",
+                        playlistName = name,
+                        matched = 0,
+                        failed = cleaned.size,
+                        tasteAnalysis = analysis,
+                        topArtists = topArtists,
+                        topTracks = topTracks,
+                    )
+                }
 
-            val hintQueries = analysis.searchHints.take(10)
-            if (hintQueries.isNotEmpty()) {
-                matchQueriesIntoPlaylist(
-                    playlistId = matchResult.playlistId,
-                    startingSongCount = matchResult.matched,
-                    queries = hintQueries,
-                    onProgress = onProgress,
-                )
+            if (matchResult.playlistId.isNotBlank()) {
+                val hintQueries = analysis.searchHints.take(10)
+                if (hintQueries.isNotEmpty()) {
+                    runCatching {
+                        matchQueriesIntoPlaylist(
+                            playlistId = matchResult.playlistId,
+                            startingSongCount = matchResult.matched,
+                            queries = hintQueries,
+                            onProgress = onProgress,
+                        )
+                    }
+                }
             }
 
             matchResult.copy(

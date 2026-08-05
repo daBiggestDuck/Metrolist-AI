@@ -56,6 +56,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -237,7 +239,7 @@ fun ListenTogetherScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(AuraPlayerCanvas)
                 .imePadding(),
         contentPadding =
             PaddingValues(
@@ -633,7 +635,7 @@ private fun RoomStatusCard(
         shape = RoundedCornerShape(24.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                containerColor = AuraElevated,
             ),
     ) {
         Column(
@@ -731,7 +733,7 @@ private fun ConnectedUsersSection(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = AuraElevated,
             ),
     ) {
         Column(
@@ -877,7 +879,7 @@ private fun PendingJoinRequestsSection(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                containerColor = AuraElevated,
             ),
     ) {
         Column(
@@ -956,7 +958,7 @@ private fun PendingSuggestionsSection(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = AuraElevated,
             ),
     ) {
         Column(
@@ -1043,7 +1045,7 @@ private fun JoinCreateRoomSection(
         shape = RoundedCornerShape(24.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                containerColor = AuraElevated,
             ),
     ) {
         Column(
@@ -1247,7 +1249,7 @@ private fun SettingsLinkCard(onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = AuraElevated,
             ),
     ) {
         Row(

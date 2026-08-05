@@ -29,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,6 +52,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -72,9 +72,11 @@ import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import com.metrolist.music.ui.component.aura.AuraSectionLabel
+import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.menu.SelectionMediaMetadataMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -83,6 +85,7 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.DateAgo
 import com.metrolist.music.viewmodels.HistoryViewModel
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.layout.padding
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -208,7 +211,7 @@ fun HistoryScreen(
 
     val lazyListState = rememberLazyListState()
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(AuraPlayerCanvas)) {
         LazyColumn(
             state = lazyListState,
             contentPadding =
@@ -246,12 +249,13 @@ fun HistoryScreen(
             if (historySource == HistorySource.REMOTE && isLoggedIn) {
                 filteredRemoteContent?.forEach { section ->
                     stickyHeader {
-                        NavigationTitle(
-                            title = section.title,
+                        AuraSectionLabel(
+                            text = section.title,
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.background),
+                                    .background(AuraPlayerCanvas)
+                                    .padding(horizontal = 12.dp),
                         )
                     }
 
@@ -314,12 +318,13 @@ fun HistoryScreen(
             } else {
                 filteredEvents.forEach { (dateAgo, dateEvents) ->
                     stickyHeader {
-                        NavigationTitle(
-                            title = dateAgoToString(dateAgo),
+                        AuraSectionLabel(
+                            text = dateAgoToString(dateAgo),
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface),
+                                    .background(AuraPlayerCanvas)
+                                    .padding(horizontal = 12.dp),
                         )
                     }
 

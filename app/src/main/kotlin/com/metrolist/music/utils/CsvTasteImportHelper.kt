@@ -9,7 +9,6 @@ import android.content.Context
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.TasteSummary
 import com.metrolist.music.ai.heuristicTasteAnalysis
-import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
 import com.metrolist.music.constants.SpotifyTopArtistsKey
@@ -17,7 +16,6 @@ import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.spotify.SpotifyImportManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -52,14 +50,20 @@ object CsvTasteImportHelper {
                 throw IllegalArgumentException("No tracks to import")
             }
 
+            // Prefer the caller's flag; for bulk CSV, default Nano off during seed so import
+            // cannot hang/blank on on-device AI. Heuristic + coalesce still produce a real summary.
             val nanoEnabled =
                 enableNano
-                    ?: context.dataStore.data.first()[EnableGeminiNanoKey]
-                    ?: true
+                    ?: false
 
             Timber.tag(TAG).i("Updating taste from %d CSV tracks (nano=%s)", cleaned.size, nanoEnabled)
 
-            val seeded = ListeningTasteTracker.importFromTracks(context, cleaned, enableNano = nanoEnabled)
+            val seeded =
+                ListeningTasteTracker.importFromTracks(
+                    context,
+                    cleaned,
+                    enableNano = nanoEnabled,
+                )
             if (seeded <= 0) {
                 throw IllegalStateException("Failed to seed listening taste from CSV tracks")
             }

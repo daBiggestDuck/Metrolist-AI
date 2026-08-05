@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.settings.integrations
 
 import android.app.Activity
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -187,11 +188,20 @@ fun SpotifySettings(
                     )
                 } ?: persistTasteProfile(result.topArtists, result.topTracks)
                 statusMessage =
-                    context.getString(
-                        R.string.spotify_file_import_result,
-                        result.matched,
-                        result.failed,
-                    )
+                    if (result.matched > 0) {
+                        context.getString(
+                            R.string.spotify_file_import_result,
+                            result.matched,
+                            result.failed,
+                        )
+                    } else {
+                        context.getString(
+                            R.string.csv_import_taste_success,
+                            result.topTracks.size,
+                            result.topArtists.size,
+                        )
+                    }
+                Toast.makeText(context, statusMessage, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 statusMessage = e.message
                 reportException(e)

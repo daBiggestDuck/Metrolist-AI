@@ -10,10 +10,13 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -58,6 +61,7 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.ReleaseNotesCard
 import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
@@ -436,6 +440,11 @@ fun SettingsScreen(
             )
         }
 
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(AuraPlayerCanvas),
+    ) {
     Column(
         Modifier
             .windowInsetsPadding(
@@ -555,6 +564,7 @@ fun SettingsScreen(
             latestVersionName = latestVersionName,
         )
     }
+    } // Box
 }
 
 @Composable

@@ -13,18 +13,28 @@ object CsvParser {
 
     fun normalizeHeader(header: String): String = stripBom(header).trim().lowercase()
 
+    /** Exportify / Spotify URI column values — never treat as a song title. */
+    fun isSpotifyTrackUri(value: String): Boolean {
+        val t = stripBom(value).trim()
+        return t.startsWith("spotify:track:", ignoreCase = true) ||
+            t.startsWith("https://open.spotify.com/track/", ignoreCase = true) ||
+            t.startsWith("http://open.spotify.com/track/", ignoreCase = true)
+    }
+
     /**
      * Splits a CSV line, respecting double-quoted fields and escaped quotes (`""`).
+     * Strips a leading UTF-8 BOM from the first cell when present on the line.
      */
     fun parseLine(line: String): List<String> {
+        val normalizedLine = stripBom(line)
         val result = mutableListOf<String>()
         val current = StringBuilder()
         var inQuotes = false
         var i = 0
-        while (i < line.length) {
-            when (val c = line[i]) {
+        while (i < normalizedLine.length) {
+            when (val c = normalizedLine[i]) {
                 '"' -> {
-                    if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
+                    if (inQuotes && i + 1 < normalizedLine.length && normalizedLine[i + 1] == '"') {
                         current.append('"')
                         i++
                     } else {

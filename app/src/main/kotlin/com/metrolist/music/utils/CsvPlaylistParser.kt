@@ -40,9 +40,11 @@ object CsvPlaylistParser {
                 return@forEach
             }
 
-            val title = parts[columnMapping.titleColumnIndex].trim()
-            val artistStr = parts[columnMapping.artistColumnIndex].trim()
+            val title = CsvParser.stripBom(parts[columnMapping.titleColumnIndex]).trim()
+            val artistStr = CsvParser.stripBom(parts[columnMapping.artistColumnIndex]).trim()
             if (title.isEmpty()) return@forEach
+            // Guard against mis-mapped Track URI columns from Exportify exports.
+            if (CsvParser.isSpotifyTrackUri(title)) return@forEach
 
             val artistNames = CsvParser.splitArtistNames(artistStr)
             tracks += title to artistStr
