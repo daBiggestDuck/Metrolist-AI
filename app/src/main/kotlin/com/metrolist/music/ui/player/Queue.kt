@@ -229,14 +229,6 @@ fun Queue(
 
     val coroutineScope = rememberCoroutineScope()
     var showSleepTimerDialog by remember { mutableStateOf(false) }
-    val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
-    var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
-    val isAtDefault by remember {
-        derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() }
-    }
-    LaunchedEffect(sleepTimerDefault) { sleepTimerValue = sleepTimerDefault }
-    val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
-    val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
     val sleepTimerEnabled = remember(
         playerConnection.service.sleepTimer?.triggerTime,
         playerConnection.service.sleepTimer?.pauseWhenSongEnd
@@ -502,111 +494,10 @@ fun Queue(
             }
 
             if (showSleepTimerDialog) {
-                ActionPromptDialog(
-                    titleBar = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.sleep_timer),
-                                overflow = TextOverflow.Ellipsis,
-                                maxLines = 1,
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                        }
-                    },
+                QueueSleepTimerDialog(
+                    defaultSetTemplate = sleepTimerDefaultSetTemplate,
+                    playerConnection = playerConnection,
                     onDismiss = { showSleepTimerDialog = false },
-                    onConfirm = {
-                        showSleepTimerDialog = false
-                        playerConnection.service.sleepTimer?.start(
-                            minute = sleepTimerValue.roundToInt(),
-                            stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
-                            fadeOut = sleepTimerFadeOut,
-                        )
-                    },
-                    onCancel = {
-                        showSleepTimerDialog = false
-                    },
-                    onReset = {
-                        sleepTimerValue = sleepTimerDefault
-                    },
-                    content = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text =
-                                    pluralStringResource(
-                                        R.plurals.minute,
-                                        sleepTimerValue.roundToInt(),
-                                        sleepTimerValue.roundToInt(),
-                                    ),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-
-                            Spacer(Modifier.height(16.dp))
-
-                            Slider(
-                                value = sleepTimerValue,
-                                onValueChange = { sleepTimerValue = it },
-                                valueRange = 5f..120f,
-                                steps = (120 - 5) / 5 - 1,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = AuraSpotifyGreen,
-                                    activeTrackColor = AuraSpotifyGreen,
-                                    inactiveTrackColor = AuraSpotifyDark,
-                                ),
-                            )
-
-                            Spacer(Modifier.height(8.dp))
-
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                if (isAtDefault) {
-                                    AuraPrimaryButton(onClick = {
-                                            coroutineScope.launch {
-                                                context.safeDataStoreEdit { settings ->
-                                                    settings[SleepTimerDefaultKey] = sleepTimerValue
-                                                }
-                                            }
-                                            Toast.makeText(
-                                                context,
-                                                String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                        }) {
-                                        Text(stringResource(R.string.set_as_default))
-                                    }
-                                } else {
-                                    AuraOutlinedButton(onClick = {
-                                            coroutineScope.launch {
-                                                context.safeDataStoreEdit { settings ->
-                                                    settings[SleepTimerDefaultKey] = sleepTimerValue
-                                                }
-                                            }
-                                            Toast.makeText(
-                                                context,
-                                                String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                        }) {
-                                        Text(stringResource(R.string.set_as_default))
-                                    }
-                                }
-
-                                AuraOutlinedButton(onClick = {
-                                        showSleepTimerDialog = false
-                                        playerConnection.service.sleepTimer?.start(
-                                            minute = -1,
-                                        )
-                                    }) {
-                                    Text(stringResource(R.string.end_of_song))
-                                }
-                            }
-                        }
-                    },
                 )
             }
         },
@@ -1230,6 +1121,130 @@ fun Queue(
                     ).align(Alignment.BottomCenter),
         )
     }
+}
+
+
+@Composable
+private fun QueueSleepTimerDialog(
+    defaultSetTemplate: String,
+    playerConnection: com.metrolist.music.playback.PlayerConnection,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
+    var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
+    val isAtDefault by remember {
+        derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() }
+    }
+    LaunchedEffect(sleepTimerDefault) { sleepTimerValue = sleepTimerDefault }
+    val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
+    val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
+
+    ActionPromptDialog(
+        titleBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.sleep_timer),
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+            }
+        },
+        onDismiss = onDismiss,
+        onConfirm = {
+            onDismiss()
+            playerConnection.service.sleepTimer?.start(
+                minute = sleepTimerValue.roundToInt(),
+                stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
+                fadeOut = sleepTimerFadeOut,
+            )
+        },
+        onCancel = onDismiss,
+        onReset = {
+            sleepTimerValue = sleepTimerDefault
+        },
+        content = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text =
+                        pluralStringResource(
+                            R.plurals.minute,
+                            sleepTimerValue.roundToInt(),
+                            sleepTimerValue.roundToInt(),
+                        ),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Slider(
+                    value = sleepTimerValue,
+                    onValueChange = { sleepTimerValue = it },
+                    valueRange = 5f..120f,
+                    steps = (120 - 5) / 5 - 1,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = AuraSpotifyGreen,
+                        activeTrackColor = AuraSpotifyGreen,
+                        inactiveTrackColor = AuraSpotifyDark,
+                    ),
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (isAtDefault) {
+                        AuraPrimaryButton(onClick = {
+                            coroutineScope.launch {
+                                context.safeDataStoreEdit { settings ->
+                                    settings[SleepTimerDefaultKey] = sleepTimerValue
+                                }
+                            }
+                            Toast.makeText(
+                                context,
+                                String.format(defaultSetTemplate, sleepTimerValue.roundToInt()),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }) {
+                            Text(stringResource(R.string.set_as_default))
+                        }
+                    } else {
+                        AuraOutlinedButton(onClick = {
+                            coroutineScope.launch {
+                                context.safeDataStoreEdit { settings ->
+                                    settings[SleepTimerDefaultKey] = sleepTimerValue
+                                }
+                            }
+                            Toast.makeText(
+                                context,
+                                String.format(defaultSetTemplate, sleepTimerValue.roundToInt()),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }) {
+                            Text(stringResource(R.string.set_as_default))
+                        }
+                    }
+
+                    AuraOutlinedButton(onClick = {
+                        onDismiss()
+                        playerConnection.service.sleepTimer?.start(
+                            minute = -1,
+                        )
+                    }) {
+                        Text(stringResource(R.string.end_of_song))
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable

@@ -66,6 +66,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableLongState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -376,10 +377,8 @@ fun BottomSheetPlayer(
         )
     }
 
-    var sliderPosition by remember {
-        mutableStateOf<Long?>(null)
-    }
-    val sliderPositionRef = rememberUpdatedState(sliderPosition)
+    // Hold seek-drag state without reading it here — parent must not recompose on every drag tick.
+    val sliderPositionState = remember { mutableStateOf<Long?>(null) }
     // Track when we last manually set position to avoid Cast overwriting it
     var lastManualSeekTime by remember { mutableLongStateOf(0L) }
     val lastManualSeekTimeRef = rememberUpdatedState(lastManualSeekTime)
@@ -388,6 +387,10 @@ fun BottomSheetPlayer(
     val playbackPositionProvider =
         remember(positionState) {
             { positionState.longValue }
+        }
+    val sliderPositionProvider =
+        remember(sliderPositionState) {
+            { sliderPositionState.value }
         }
 
     var gradientColors by remember {
@@ -630,7 +633,7 @@ fun BottomSheetPlayer(
         if (!isCasting && isPlaying) {
             while (isActive) {
                 delay(250)
-                if (sliderPositionRef.value == null) { // Only update if user isn't dragging
+                if (sliderPositionState.value == null) { // Only update if user isn't dragging
                     positionState.longValue = playerConnection.player.currentPosition
                     // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
                     playerConnection.player.duration.takeIf { it > 0 }?.let { durationState.longValue = it }
@@ -677,7 +680,7 @@ fun BottomSheetPlayer(
         val handler = castHandler ?: return@LaunchedEffect
         if (!isCasting) return@LaunchedEffect
         handler.castPosition.collect { pos ->
-            if (sliderPositionRef.value == null) {
+            if (sliderPositionState.value == null) {
                 val timeSinceManualSeek = System.currentTimeMillis() - lastManualSeekTimeRef.value
                 if (timeSinceManualSeek > 1500) {
                     positionState.longValue = pos
@@ -1202,8 +1205,7 @@ fun BottomSheetPlayer(
             PlayerSeekBar(
                 positionState = positionState,
                 durationState = durationState,
-                sliderPosition = sliderPosition,
-                onSliderPositionChange = { sliderPosition = it },
+                sliderPositionState = sliderPositionState,
                 onSeekFinished = { pos ->
                     if (isCasting) {
                         castHandler?.seekTo(pos)
@@ -1538,8 +1540,7 @@ Spacer(Modifier.width(8.dp))
 private fun PlayerSeekBar(
     positionState: MutableLongState,
     durationState: MutableLongState,
-    sliderPosition: Long?,
-    onSliderPositionChange: (Long?) -> Unit,
+    sliderPositionState: MutableState<Long?>,
     onSeekFinished: (Long) -> Unit,
     enabled: Boolean,
     sliderStyle: SliderStyle,
@@ -1552,6 +1553,7 @@ private fun PlayerSeekBar(
 ) {
     val position by positionState
     val duration by durationState
+    var sliderPosition by sliderPositionState
     val effectivePosition = position
     val sliderColors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme)
     val value = (sliderPosition ?: effectivePosition).toFloat()
@@ -1563,12 +1565,12 @@ private fun PlayerSeekBar(
                 value = value,
                 valueRange = valueRange,
                 onValueChange = {
-                    if (enabled) onSliderPositionChange(it.toLong())
+                    if (enabled) sliderPosition = it.toLong()
                 },
                 onValueChangeFinished = {
                     if (enabled) {
                         sliderPosition?.let(onSeekFinished)
-                        onSliderPositionChange(null)
+                        sliderPosition = null
                     }
                 },
                 enabled = enabled,
@@ -1582,10 +1584,10 @@ private fun PlayerSeekBar(
                 SquigglySlider(
                     value = value,
                     valueRange = valueRange,
-                    onValueChange = { onSliderPositionChange(it.toLong()) },
+                    onValueChange = { sliderPosition = it.toLong() },
                     onValueChangeFinished = {
                         sliderPosition?.let(onSeekFinished)
-                        onSliderPositionChange(null)
+                        sliderPosition = null
                     },
                     modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     colors = sliderColors,
@@ -1595,10 +1597,10 @@ private fun PlayerSeekBar(
                 WavySlider(
                     value = value,
                     valueRange = valueRange,
-                    onValueChange = { onSliderPositionChange(it.toLong()) },
+                    onValueChange = { sliderPosition = it.toLong() },
                     onValueChangeFinished = {
                         sliderPosition?.let(onSeekFinished)
-                        onSliderPositionChange(null)
+                        sliderPosition = null
                     },
                     colors = sliderColors,
                     modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
@@ -1612,12 +1614,12 @@ private fun PlayerSeekBar(
                 value = value,
                 valueRange = valueRange,
                 onValueChange = {
-                    if (enabled) onSliderPositionChange(it.toLong())
+                    if (enabled) sliderPosition = it.toLong()
                 },
                 onValueChangeFinished = {
                     if (enabled) {
                         sliderPosition?.let(onSeekFinished)
-                        onSliderPositionChange(null)
+                        sliderPosition = null
                     }
                 },
                 enabled = enabled,

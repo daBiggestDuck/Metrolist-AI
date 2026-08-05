@@ -1133,10 +1133,12 @@ class MusicService :
             .distinctUntilChanged()
             .collect(scope) { enabled ->
                 if (enabled && scrobbleManager == null) {
-                    val delayPercent = dataStore.get(ScrobbleDelayPercentKey, LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT)
+                    // Suspend snapshot — avoid nested runBlocking via dataStore.get().
+                    val prefs = dataStore.data.first()
+                    val delayPercent = prefs[ScrobbleDelayPercentKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT
                     val minSongDuration =
-                        dataStore.get(ScrobbleMinSongDurationKey, LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION)
-                    val delaySeconds = dataStore.get(ScrobbleDelaySecondsKey, LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS)
+                        prefs[ScrobbleMinSongDurationKey] ?: LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION
+                    val delaySeconds = prefs[ScrobbleDelaySecondsKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS
                     scrobbleManager =
                         ScrobbleManager(
                             scope,
@@ -1144,7 +1146,7 @@ class MusicService :
                             scrobbleDelayPercent = delayPercent,
                             scrobbleDelaySeconds = delaySeconds,
                         )
-                    scrobbleManager?.useNowPlaying = dataStore.get(LastFMUseNowPlaying, false)
+                    scrobbleManager?.useNowPlaying = prefs[LastFMUseNowPlaying] ?: false
                 } else if (!enabled && scrobbleManager != null) {
                     scrobbleManager?.destroy()
                     scrobbleManager = null
@@ -2311,7 +2313,9 @@ class MusicService :
     fun addToTargetPlaylist() {
         scope.launch {
             val currentSong = currentSong.first() ?: return@launch
-            val targetPlaylistId = dataStore.get(AndroidAutoTargetPlaylistKey, MediaSessionConstants.TARGET_PLAYLIST_AUTO)
+            val targetPlaylistId =
+                dataStore.data.first()[AndroidAutoTargetPlaylistKey]
+                    ?: MediaSessionConstants.TARGET_PLAYLIST_AUTO
 
             if (targetPlaylistId == MediaSessionConstants.TARGET_PLAYLIST_AUTO) {
                 Handler(Looper.getMainLooper()).post {
@@ -3611,17 +3615,21 @@ class MusicService :
         }
         val artistThumbnail = song.artists.firstOrNull()?.thumbnailUrl
 
-        val advancedMode = dataStore.get(DiscordAdvancedModeKey, false)
-        val activityType = dataStore.get(DiscordActivityTypeKey, DiscordDefaults.ACTIVITY_TYPE).toIntOrNull() ?: DiscordActivity.TYPE_LISTENING
-        val activityName = dataStore.get(DiscordActivityNameKey, DiscordDefaults.ACTIVITY_NAME)
-        val stateTemplate = dataStore.get(DiscordStateTemplateKey, DiscordDefaults.STATE_TEMPLATE)
-        val detailsTemplate = dataStore.get(DiscordDetailsTemplateKey, DiscordDefaults.DETAILS_TEMPLATE)
-        val btn1Enabled = dataStore.get(DiscordButton1EnabledKey, true)
-        val btn1Label = dataStore.get(DiscordButton1LabelKey, DiscordDefaults.BUTTON1_LABEL)
-        val btn1Url = dataStore.get(DiscordButton1UrlKey, DiscordDefaults.BUTTON1_URL_TEMPLATE)
-        val btn2Enabled = dataStore.get(DiscordButton2EnabledKey, true)
-        val btn2Label = dataStore.get(DiscordButton2LabelKey, DiscordDefaults.BUTTON2_LABEL)
-        val btn2Url = dataStore.get(DiscordButton2UrlKey, DiscordDefaults.BUTTON2_URL)
+        // One suspend snapshot instead of a dozen nested runBlocking dataStore.get() calls.
+        val discordPrefs = dataStore.data.first()
+        val advancedMode = discordPrefs[DiscordAdvancedModeKey] ?: false
+        val activityType = discordPrefs[DiscordActivityTypeKey]?.toIntOrNull()
+            ?: DiscordDefaults.ACTIVITY_TYPE.toIntOrNull()
+            ?: DiscordActivity.TYPE_LISTENING
+        val activityName = discordPrefs[DiscordActivityNameKey] ?: DiscordDefaults.ACTIVITY_NAME
+        val stateTemplate = discordPrefs[DiscordStateTemplateKey] ?: DiscordDefaults.STATE_TEMPLATE
+        val detailsTemplate = discordPrefs[DiscordDetailsTemplateKey] ?: DiscordDefaults.DETAILS_TEMPLATE
+        val btn1Enabled = discordPrefs[DiscordButton1EnabledKey] ?: true
+        val btn1Label = discordPrefs[DiscordButton1LabelKey] ?: DiscordDefaults.BUTTON1_LABEL
+        val btn1Url = discordPrefs[DiscordButton1UrlKey] ?: DiscordDefaults.BUTTON1_URL_TEMPLATE
+        val btn2Enabled = discordPrefs[DiscordButton2EnabledKey] ?: true
+        val btn2Label = discordPrefs[DiscordButton2LabelKey] ?: DiscordDefaults.BUTTON2_LABEL
+        val btn2Url = discordPrefs[DiscordButton2UrlKey] ?: DiscordDefaults.BUTTON2_URL
 
         Timber.tag("DiscordSvc").d(
             "updateDiscordRPC: prefs — advancedMode=%s, activityType=%d, activityName=%s, stateTemplate=%s, detailsTemplate=%s",
@@ -3652,7 +3660,7 @@ class MusicService :
         Timber.tag("DiscordSvc").i("updateDiscordRPC: type=%d name=%s state=%s details=%s start=%d end=%d isPlaying=%s",
             activity.activityType, activity.name, activity.state, activity.details, startTime, endTime ?: 0L, isPlaying)
 
-        val statusStr = dataStore.get(DiscordUserStatusKey, DiscordDefaults.USER_STATUS)
+        val statusStr = discordPrefs[DiscordUserStatusKey] ?: DiscordDefaults.USER_STATUS
         val presenceStatus = when (statusStr) {
             DiscordDefaults.STATUS_IDLE -> if (advancedMode) PresenceStatus.Idle else PresenceStatus.Online
             DiscordDefaults.STATUS_DND -> if (advancedMode) PresenceStatus.Dnd else PresenceStatus.Online
