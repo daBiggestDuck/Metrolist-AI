@@ -51,7 +51,7 @@ class SearchHubViewModel
                                 sections
                                     .flatMap { it.items }
                                     .distinctBy { "${it.title}_${it.endpoint.browseId}_${it.endpoint.params}" }
-                        }.onFailure(reportException)
+                        }.onFailure { reportException(it) }
                 }
             _loading.value = false
         }
