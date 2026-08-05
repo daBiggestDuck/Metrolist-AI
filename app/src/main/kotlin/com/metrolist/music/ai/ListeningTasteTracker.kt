@@ -177,10 +177,9 @@ object ListeningTasteTracker {
                 }
 
                 val lane = pickLane(categoriesNext, artistsNext, recentTitle = recentTitle)
+                // Always rebuild from imported seeds — never keep a stale/blank/"undefined" summary.
                 val summary =
-                    profile.summary.ifBlank {
-                        heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
-                    }
+                    heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
 
                 Profile(
                     artists = artistsNext,
@@ -188,7 +187,8 @@ object ListeningTasteTracker {
                     categories = categoriesNext,
                     summary = summary,
                     lastUpdatedMs = System.currentTimeMillis(),
-                    listenCount = profile.listenCount,
+                    // Treat import as signal so merged taste uses the imported lane immediately.
+                    listenCount = (profile.listenCount + cleaned.size).coerceAtLeast(1),
                     activeLane = lane,
                     excludedSongIds = profile.excludedSongIds,
                 ).also { memoryProfile = it }
@@ -197,11 +197,12 @@ object ListeningTasteTracker {
         persistProfile(context, updated)
 
         Timber.tag(TAG).i(
-            "importFromTracks applied %d tracks → %d artists, %d weighted tracks, lane=%s",
+            "importFromTracks applied %d tracks → %d artists, %d weighted tracks, lane=%s, summaryLen=%d",
             cleaned.size,
             updated.artists.size,
             updated.tracks.size,
             updated.activeLane.id,
+            updated.summary.length,
         )
 
         if (enableNano) {
@@ -217,7 +218,8 @@ object ListeningTasteTracker {
                     lane = updated.activeLane,
                     client = client,
                 )
-            if (refresh != null && generation == nanoGeneration.get()) {
+            val usableNanoSummary = TasteSummary.sanitizeOrNull(refresh?.summary)
+            if (refresh != null && usableNanoSummary != null && generation == nanoGeneration.get()) {
                 mutex.withLock {
                     if (generation != nanoGeneration.get()) return@withLock
                     val base = memoryProfile ?: updated
@@ -229,7 +231,7 @@ object ListeningTasteTracker {
                         }
                     val refreshed =
                         base.copy(
-                            summary = refresh.summary,
+                            summary = usableNanoSummary,
                             categories = categoriesForStore,
                             lastUpdatedMs = System.currentTimeMillis(),
                         )
@@ -237,6 +239,23 @@ object ListeningTasteTracker {
                     persistProfile(context, refreshed)
                 }
             }
+        }
+
+        // Guarantee a usable summary landed in prefs (AI may have been skipped/rejected).
+        val finalProfile = memoryProfile ?: updated
+        if (!TasteSummary.isUsable(finalProfile.summary)) {
+            val repaired =
+                finalProfile.copy(
+                    summary =
+                        TasteSummary.fromArtistsAndTracks(
+                            artists = finalProfile.topArtists(5),
+                            tracks = finalProfile.topTracks(5),
+                            sourceLabel = "imported playlist",
+                        ),
+                    lastUpdatedMs = System.currentTimeMillis(),
+                )
+            memoryProfile = repaired
+            persistProfile(context, repaired)
         }
 
         return cleaned.size
@@ -337,14 +356,14 @@ object ListeningTasteTracker {
                 val listenCount = profile.listenCount + 1
                 val lane = pickLane(categoriesNext, artistsNext, recentTitle = title)
 
-                var summary = profile.summary
-                if (summary.isBlank()) {
+                var summary = TasteSummary.sanitizeOrNull(profile.summary).orEmpty()
+                if (!TasteSummary.isUsable(summary)) {
                     summary = heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
                 }
 
                 val shouldRefreshNano =
                     enableNano &&
-                        (profile.summary.isBlank() || listenCount % NANO_REFRESH_EVERY == 0)
+                        (!TasteSummary.isUsable(profile.summary) || listenCount % NANO_REFRESH_EVERY == 0)
 
                 val now = System.currentTimeMillis()
                 val updated =
@@ -425,9 +444,18 @@ object ListeningTasteTracker {
                 } else {
                     base.categories
                 }
+            val usableSummary =
+                TasteSummary.sanitizeOrNull(refresh.summary)
+                    ?: TasteSummary.sanitizeOrNull(base.summary)
+                    ?: heuristicListeningSummary(
+                        base.artists,
+                        base.tracks,
+                        categoriesForStore,
+                        base.activeLane,
+                    )
             refreshed =
                 base.copy(
-                    summary = refresh.summary,
+                    summary = usableSummary,
                     categories = categoriesForStore,
                     lastUpdatedMs = System.currentTimeMillis(),
                 )
@@ -437,11 +465,19 @@ object ListeningTasteTracker {
     }
 
     private suspend fun persistProfile(context: Context, profile: Profile) {
+        val summary =
+            TasteSummary.sanitizeOrNull(profile.summary)
+                ?: TasteSummary.fromArtistsAndTracks(
+                    artists = profile.topArtists(5),
+                    tracks = profile.topTracks(5),
+                    sourceLabel = "listening",
+                ).takeIf { profile.artists.isNotEmpty() || profile.tracks.isNotEmpty() }
+                ?: ""
         context.safeDataStoreEdit { prefs ->
             prefs[ListeningTasteArtistsKey] = encodeWeights(profile.artists)
             prefs[ListeningTasteTracksKey] = encodeWeights(profile.tracks)
             prefs[ListeningTasteCategoriesKey] = encodeWeights(profile.categories)
-            prefs[ListeningTasteSummaryKey] = profile.summary
+            prefs[ListeningTasteSummaryKey] = summary
             prefs[ListeningTasteLastUpdatedKey] = profile.lastUpdatedMs
             prefs[ListeningTasteListenCountKey] = profile.listenCount
             prefs[ListeningTasteActiveLaneKey] = profile.activeLane.id
@@ -510,30 +546,47 @@ object ListeningTasteTracker {
         val seedArtists = (listeningArtists + spotifyArtists).distinct().take(20)
         val seedTracks = (listeningTracks + spotifyTracks).distinct().take(25)
         val categories = profile.topCategories(6)
+        val hasTasteSignal =
+            seedArtists.isNotEmpty() ||
+                seedTracks.isNotEmpty() ||
+                profile.artists.isNotEmpty() ||
+                profile.tracks.isNotEmpty()
         val lane =
-            if (profile.listenCount > 0) {
-                pickLane(profile.categories, profile.artists)
-            } else {
-                DjLane.ARTIST_RADIO
+            when {
+                hasTasteSignal &&
+                    (profile.listenCount > 0 || profile.artists.isNotEmpty() || profile.categories.isNotEmpty()) ->
+                    profile.activeLane.takeIf { profile.listenCount > 0 || profile.categories.isNotEmpty() }
+                        ?: pickLane(profile.categories, profile.artists)
+                else -> DjLane.ARTIST_RADIO
             }
 
+        val live = TasteSummary.sanitizeOrNull(profile.summary)
+        val spotify = TasteSummary.sanitizeOrNull(spotifySummary)
         val summary =
-            buildString {
-                val live = profile.summary.trim()
-                val spotify = spotifySummary.trim()
-                when {
-                    live.isNotBlank() && spotify.isNotBlank() && live != spotify -> {
-                        append(live)
-                        append(" Also informed by Spotify: ")
-                        append(spotify.take(220))
-                    }
-                    live.isNotBlank() -> append(live)
-                    spotify.isNotBlank() -> append(spotify)
-                    seedArtists.isNotEmpty() ->
-                        append("Your recent listening leans toward ${seedArtists.take(4).joinToString(", ")}.")
-                    else -> append("")
-                }
-            }.trim()
+            when {
+                live != null && spotify != null && live != spotify ->
+                    "$live Also informed by import: ${spotify.take(220)}"
+                live != null -> live
+                spotify != null -> spotify
+                seedArtists.isNotEmpty() ->
+                    TasteSummary.fromArtistsAndTracks(
+                        artists = seedArtists,
+                        tracks =
+                            seedTracks.map { line ->
+                                when {
+                                    " — " in line ->
+                                        line.substringBefore(" — ").trim() to
+                                            line.substringAfter(" — ").trim()
+                                    " - " in line ->
+                                        line.substringBefore(" - ").trim() to
+                                            line.substringAfter(" - ").trim()
+                                    else -> line to ""
+                                }
+                            },
+                        sourceLabel = "listening",
+                    )
+                else -> ""
+            }
 
         val laneHints =
             when (lane) {
@@ -544,6 +597,8 @@ object ListeningTasteTracker {
 
         val hints =
             (categories.map { "$it mix" } + laneHints + spotifyHints + listeningTracks.take(5))
+                .map { it.trim() }
+                .filter { it.isNotBlank() && TasteSummary.isUsable(it) }
                 .distinct()
                 .take(12)
 
@@ -710,9 +765,10 @@ object ListeningTasteTracker {
         val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
         if (raw.isBlank()) return null
 
-        val summary =
+        val summaryRaw =
             Regex("""(?im)^SUMMARY:\s*(.+)$""").find(raw)?.groupValues?.getOrNull(1)?.trim()
                 ?: raw.lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+        val summary = TasteSummary.sanitizeOrNull(summaryRaw)?.take(500) ?: return null
         val cats =
             Regex("""(?im)^[-*]\s*(.+)$""")
                 .findAll(raw)
@@ -723,7 +779,32 @@ object ListeningTasteTracker {
                 .take(5)
                 .toList()
 
-        if (summary.isBlank()) return null
-        return NanoRefresh(summary = summary.take(500), categories = cats)
+        return NanoRefresh(summary = summary, categories = cats)
+    }
+
+    /** Overwrite the live listening summary (e.g. after CSV import guaranteed a blurb). */
+    suspend fun forceSummary(context: Context, summary: String) {
+        val usable =
+            TasteSummary.sanitizeOrNull(summary)
+                ?: return
+        if (memoryProfile == null) loadProfile(context)
+        mutex.withLock {
+            val base = memoryProfile ?: Profile()
+            val next =
+                base.copy(
+                    summary = usable,
+                    lastUpdatedMs = System.currentTimeMillis(),
+                )
+            memoryProfile = next
+            // Persist outside lock below
+        }
+        val toPersist = memoryProfile ?: return
+        persistProfile(context, toPersist.copy(summary = usable))
+    }
+
+    /** Test helper: drop in-memory cache so the next load reads DataStore. */
+    fun clearMemoryCacheForTests() {
+        memoryProfile = null
+        nanoGeneration.set(0)
     }
 }

@@ -7,6 +7,8 @@ package com.metrolist.music.utils
 
 import android.content.Context
 import com.metrolist.music.ai.ListeningTasteTracker
+import com.metrolist.music.ai.TasteSummary
+import com.metrolist.music.ai.heuristicTasteAnalysis
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
 import com.metrolist.music.constants.SpotifyTasteSummaryKey
@@ -14,8 +16,6 @@ import com.metrolist.music.constants.SpotifyTopArtistsKey
 import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.spotify.SpotifyImportManager
-import com.metrolist.music.utils.dataStore
-import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -29,6 +29,7 @@ data class CsvTasteImportResult(
 
 /**
  * Applies parsed CSV tracks to Nano DJ taste (listening tracker + Spotify taste prefs).
+ * Guarantees a non-empty, non-"undefined" summary and weighted artists/tracks.
  */
 object CsvTasteImportHelper {
     private const val TAG = "CsvTasteImport"
@@ -59,6 +60,9 @@ object CsvTasteImportHelper {
             Timber.tag(TAG).i("Updating taste from %d CSV tracks (nano=%s)", cleaned.size, nanoEnabled)
 
             val seeded = ListeningTasteTracker.importFromTracks(context, cleaned, enableNano = nanoEnabled)
+            if (seeded <= 0) {
+                throw IllegalStateException("Failed to seed listening taste from CSV tracks")
+            }
 
             val manager = SpotifyImportManager(database, context)
             val profile =
@@ -68,16 +72,47 @@ object CsvTasteImportHelper {
                     manager.close()
                 }
 
-            val topArtists = profile.topArtists
-            val topTracks = profile.topTracks
-            val analysis = profile.analysis
+            val topArtists =
+                profile.topArtists.ifEmpty {
+                    SpotifyImportManager.deriveTopArtists(cleaned)
+                }
+            val topTracks = profile.topTracks.ifEmpty { cleaned.take(50) }
+
+            val guaranteedSummary =
+                TasteSummary.coalesce(
+                    profile.analysis.summary,
+                    TasteSummary.fromArtistsAndTracks(
+                        artists = topArtists,
+                        tracks = topTracks,
+                        sourceLabel = "Exportify CSV",
+                    ),
+                ) ?: TasteSummary.fromArtistsAndTracks(
+                    artists = topArtists,
+                    tracks = topTracks,
+                    sourceLabel = "Exportify CSV",
+                )
+
+            val hints =
+                profile.analysis.searchHints
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && TasteSummary.isUsable(it) }
+                    .ifEmpty {
+                        heuristicTasteAnalysis(topArtists, topTracks).searchHints
+                    }
+
+            if (topArtists.isEmpty() && topTracks.isEmpty()) {
+                throw IllegalStateException("Taste import produced no artists or tracks")
+            }
+            if (!TasteSummary.isUsable(guaranteedSummary)) {
+                throw IllegalStateException("Taste import failed to write a usable summary")
+            }
+
+            ListeningTasteTracker.forceSummary(context, guaranteedSummary)
 
             context.safeDataStoreEdit { prefs ->
-                if (analysis.summary.isNotBlank()) {
-                    prefs[SpotifyTasteSummaryKey] = analysis.summary
-                }
-                if (analysis.searchHints.isNotEmpty()) {
-                    prefs[SpotifyTasteHintsKey] = analysis.searchHints.joinToString("\n")
+                prefs[SpotifyTasteSummaryKey] = guaranteedSummary
+                if (hints.isNotEmpty()) {
+                    prefs[SpotifyTasteHintsKey] = hints.joinToString("\n")
                 }
                 if (topArtists.isNotEmpty()) {
                     prefs[SpotifyTopArtistsKey] = topArtists.joinToString("\n")
@@ -91,16 +126,17 @@ object CsvTasteImportHelper {
             }
 
             Timber.tag(TAG).i(
-                "Taste updated: tracks=%d artists=%d listeningSeeded=%d",
+                "Taste updated: tracks=%d artists=%d listeningSeeded=%d summaryLen=%d",
                 cleaned.size,
                 topArtists.size,
                 seeded,
+                guaranteedSummary.length,
             )
 
             CsvTasteImportResult(
                 trackCount = cleaned.size,
                 artistCount = topArtists.size,
-                summary = analysis.summary,
+                summary = guaranteedSummary,
             )
         }
 }

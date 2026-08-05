@@ -1053,7 +1053,7 @@ class MainActivity : ComponentActivity() {
                                             text = headerTitle,
                                             style = MaterialTheme.typography.titleLarge,
                                             fontWeight = FontWeight.Bold,
-                                            maxLines = if (isHomeRoute) 2 else 1,
+                                            maxLines = 2,
                                             softWrap = true,
                                             overflow = TextOverflow.Ellipsis,
                                             color = Color.White,

@@ -1093,9 +1093,9 @@
     <string name="nano_dj_speak_desc">Speak Nano DJ commentary aloud with on-device text-to-speech</string>
     <string name="nano_dj_badge">Nano DJ</string>
     <string name="nano_dj_home_start">Nano DJ</string>
-    <string name="nano_recommendations_generate">Generate music recommendations</string>
-    <string name="nano_recommendations_generate_desc">Uses Gemini Nano (or heuristics) plus your Spotify taste to build a local “Nano Recommendations” playlist on YouTube Music matches</string>
-    <string name="nano_recommendations_result">Recommendations playlist: %1$d matched, %2$d missed</string>
+    <string name="nano_recommendations_generate">Update recommendations playlist</string>
+    <string name="nano_recommendations_generate_desc">Rebuilds the single “Nano Recommendations” playlist from your taste (imported CSV, listening, or Spotify). Does not create duplicates.</string>
+    <string name="nano_recommendations_result">Updated Nano Recommendations: %1$d matched, %2$d missed</string>
 
     <!-- Spotify integration -->
     <string name="spotify_integration">Spotify</string>
@@ -1144,7 +1144,7 @@
     <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
     <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Easiest path: use a Metrolist playlist for taste or Import a playlist file, enable Nano DJ in Settings → Nano DJ, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
     <string name="spotify_view_taste">Your music taste</string>
-    <string name="spotify_view_taste_desc">See what Nano DJ has learned from your listening, playlists, and file imports</string>
+    <string name="spotify_view_taste_desc">See your summary, top artists &amp; tracks, and import an Exportify CSV</string>
     <string name="spotify_import_all_playlists">Import all playlists</string>
     <string name="spotify_import_all_playlists_desc">Imports every Spotify playlist into Metrolist, one after another</string>
     <string name="spotify_import_all_playlists_progress">Playlist %1$d of %2$d — %3$s</string>
@@ -1152,6 +1152,15 @@
 
     <!-- Spotify taste profile screen -->
     <string name="spotify_taste_title">Your music taste</string>
+    <string name="spotify_taste_screen_subtitle">Summary and seeds Nano DJ uses — import here, generate recommendations on the previous screen</string>
+    <string name="spotify_taste_my_section">My taste</string>
+    <string name="spotify_taste_import_section">Import taste</string>
+    <string name="spotify_taste_seeds_section">DJ seeds &amp; hints</string>
+    <string name="spotify_taste_empty_friendly">No taste yet — import an Exportify CSV or play songs for a while</string>
+    <string name="spotify_taste_dj_from_here">Start Nano DJ using the taste shown above</string>
+    <string name="spotify_taste_go_recommendations">Recommendations playlist</string>
+    <string name="spotify_taste_go_recommendations_desc">Go back to update the single Nano Recommendations playlist</string>
+    <string name="spotify_taste_import_failed_summary">Import finished but taste summary could not be saved. Try again.</string>
     <string name="spotify_taste_top_artists">Top artists</string>
     <string name="spotify_taste_top_tracks">Top tracks</string>
     <string name="spotify_taste_hints">Nano DJ recommendation ideas</string>

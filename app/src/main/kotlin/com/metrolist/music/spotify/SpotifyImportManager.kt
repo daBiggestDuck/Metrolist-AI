@@ -11,12 +11,18 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.TasteAnalysisResult
+import com.metrolist.music.ai.TasteSummary
 import com.metrolist.music.ai.analyzeSpotifyTaste
+import com.metrolist.music.constants.SpotifyTasteHintsKey
+import com.metrolist.music.constants.SpotifyTopArtistsKey
+import com.metrolist.music.constants.SpotifyTopTracksKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -326,6 +332,8 @@ class SpotifyImportManager(
     ): SpotifyImportResult =
         withContext(Dispatchers.IO) {
             onProgress(SpotifyImportProgress(phase = "Loading taste for recommendations"))
+
+            // Prefer live Spotify tops when connected; otherwise use imported / listening taste.
             var artists = emptyList<String>()
             var tracks = emptyList<Pair<String, String>>()
             runCatching {
@@ -336,12 +344,72 @@ class SpotifyImportManager(
                         .map { it.name to it.artistsJoined }
             }
 
+            val merged = ListeningTasteTracker.loadMergedTaste(appContext)
+            val prefs = appContext.dataStore.data.first()
+            if (artists.isEmpty()) {
+                artists =
+                    merged.seedArtists.ifEmpty {
+                        prefs[SpotifyTopArtistsKey]
+                            ?.split('\n')
+                            ?.map { it.trim() }
+                            ?.filter { it.isNotBlank() }
+                            .orEmpty()
+                    }
+            }
+            if (tracks.isEmpty()) {
+                val fromMerged =
+                    merged.seedTracks.map { line ->
+                        when {
+                            " — " in line ->
+                                line.substringBefore(" — ").trim() to line.substringAfter(" — ").trim()
+                            " - " in line ->
+                                line.substringBefore(" - ").trim() to line.substringAfter(" - ").trim()
+                            else -> line to ""
+                        }
+                    }
+                tracks =
+                    fromMerged.ifEmpty {
+                        prefs[SpotifyTopTracksKey]
+                            ?.split('\n')
+                            ?.map { it.trim() }
+                            ?.filter { it.isNotBlank() }
+                            ?.map { line ->
+                                when {
+                                    " — " in line ->
+                                        line.substringBefore(" — ").trim() to
+                                            line.substringAfter(" — ").trim()
+                                    " - " in line ->
+                                        line.substringBefore(" - ").trim() to
+                                            line.substringAfter(" - ").trim()
+                                    else -> line to ""
+                                }
+                            }
+                            .orEmpty()
+                    }
+            }
+
+            val usableCached = TasteSummary.sanitizeOrNull(cachedSummary)
+            val usableMerged = TasteSummary.sanitizeOrNull(merged.summary)
+            val hintsFromCache =
+                cachedHints.map { it.trim() }.filter { it.isNotBlank() && TasteSummary.isUsable(it) }
+            val hintsFromPrefs =
+                prefs[SpotifyTasteHintsKey]
+                    ?.split('\n')
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() && TasteSummary.isUsable(it) }
+                    .orEmpty()
+            val seedHints = (hintsFromCache + merged.hints + hintsFromPrefs).distinct()
+
             onProgress(SpotifyImportProgress(phase = "Asking Nano DJ for recommendations"))
             val analysis =
-                if (cachedHints.isNotEmpty() && cachedSummary.isNotBlank() && artists.isEmpty()) {
+                if (seedHints.isNotEmpty() &&
+                    (usableCached != null || usableMerged != null) &&
+                    artists.isNotEmpty()
+                ) {
+                    // Reuse imported taste when we already have seeds — avoid random heuristic.
                     TasteAnalysisResult(
-                        summary = cachedSummary,
-                        searchHints = cachedHints,
+                        summary = usableCached ?: usableMerged ?: "",
+                        searchHints = seedHints,
                         usedAi = false,
                     )
                 } else {
@@ -351,22 +419,35 @@ class SpotifyImportManager(
                         enableNano = enableGeminiNano,
                         client = djClient(),
                     ).let { base ->
-                        if (base.searchHints.isEmpty() && cachedHints.isNotEmpty()) {
-                            base.copy(searchHints = cachedHints)
-                        } else {
-                            base
-                        }
+                        val summary =
+                            TasteSummary.coalesce(base.summary, usableCached ?: usableMerged)
+                                ?: TasteSummary.fromArtistsAndTracks(artists, tracks)
+                        val hints =
+                            (base.searchHints + seedHints)
+                                .map { it.trim() }
+                                .filter { it.isNotBlank() && TasteSummary.isUsable(it) }
+                                .distinct()
+                        base.copy(summary = summary, searchHints = hints)
                     }
                 }
+
+            val tasteSummary =
+                TasteSummary.coalesce(analysis.summary, usableCached ?: usableMerged)
+                    ?: TasteSummary.fromArtistsAndTracks(artists, tracks)
 
             val djPick =
                 com.metrolist.music.ai.NanoDjEngine.pickNext(
                     context =
                         com.metrolist.music.ai.NanoDjEngine.DjContext(
-                            tasteSummary = analysis.summary.ifBlank { cachedSummary },
+                            tasteSummary = tasteSummary,
                             recentTitles = emptyList(),
                             seedArtists = artists,
-                            seedTracks = tracks.map { "${it.first} - ${it.second}" },
+                            seedTracks =
+                                tracks.map { (t, a) ->
+                                    if (a.isNotBlank()) "$t - $a" else t
+                                }.ifEmpty { merged.seedTracks },
+                            categories = merged.categories,
+                            lane = merged.lane,
                         ),
                     batchSize = 12,
                     enableNano = enableGeminiNano,
@@ -374,14 +455,16 @@ class SpotifyImportManager(
                 )
 
             val queries =
-                (djPick.queries + analysis.searchHints)
+                (djPick.queries + analysis.searchHints + seedHints)
                     .map { it.trim() }
-                    .filter { it.isNotBlank() }
+                    .filter { it.isNotBlank() && TasteSummary.isUsable(it) }
                     .distinct()
                     .take(20)
 
             if (queries.isEmpty()) {
-                throw IllegalStateException("No recommendation queries available. Import Spotify taste first.")
+                throw IllegalStateException(
+                    "No recommendation queries available. Import an Exportify CSV or build taste first.",
+                )
             }
 
             val matchResult =
@@ -394,7 +477,7 @@ class SpotifyImportManager(
             matchResult.copy(
                 tasteAnalysis =
                     analysis.copy(
-                        // Keep the real taste summary; do not append one-shot DJ talk into prefs.
+                        summary = tasteSummary,
                         usedAi = analysis.usedAi || djPick.usedAi,
                     ),
                 topArtists = artists,
@@ -407,14 +490,24 @@ class SpotifyImportManager(
         queries: List<String>,
         onProgress: (SpotifyImportProgress) -> Unit,
     ): SpotifyImportResult {
+        // Reuse a single local recommendations playlist instead of spawning duplicates.
+        val existing =
+            database.playlistEntitiesByNameAsc().firstOrNull {
+                it.name.equals(playlistName, ignoreCase = true) && it.isEditable && it.isLocal
+            }
         val entity =
-            PlaylistEntity(
-                name = playlistName,
-                bookmarkedAt = LocalDateTime.now(),
-                isEditable = true,
-                isLocal = true,
-            )
-        database.insert(entity)
+            if (existing != null) {
+                database.clearPlaylist(existing.id)
+                database.updatePlaylistLastUpdated(existing.id)
+                existing
+            } else {
+                PlaylistEntity(
+                    name = playlistName,
+                    bookmarkedAt = LocalDateTime.now(),
+                    isEditable = true,
+                    isLocal = true,
+                ).also { database.insert(it) }
+            }
         var matched = 0
         var failed = 0
         queries.forEachIndexed { index, query ->

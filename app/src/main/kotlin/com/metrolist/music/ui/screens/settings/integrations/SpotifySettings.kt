@@ -45,7 +45,9 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.ai.NanoDjLauncher
+import com.metrolist.music.ai.TasteSummary
 import com.metrolist.music.constants.EnableGeminiNanoKey
+import com.metrolist.music.constants.ListeningTasteSummaryKey
 import com.metrolist.music.constants.NanoDjSpeakKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.SpotifyClientIdKey
@@ -101,8 +103,14 @@ fun SpotifySettings(
     var tasteHints by rememberPreference(SpotifyTasteHintsKey, "")
     var topArtistsPref by rememberPreference(SpotifyTopArtistsKey, "")
     var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
+    val listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
     val enableGeminiNano by rememberPreference(EnableGeminiNanoKey, true)
     val (nanoDjSpeak, _) = rememberPreference(NanoDjSpeakKey, true)
+
+    val displayTasteSummary =
+        remember(listeningSummary, tasteSummary) {
+            TasteSummary.coalesce(listeningSummary, tasteSummary)
+        }
 
     var isConnected by remember {
         mutableStateOf(!SpotifyTokenStore.retrieve().isNullOrBlank())
@@ -144,8 +152,10 @@ fun SpotifySettings(
         summary: String,
         hints: List<String>,
     ) {
-        if (summary.isNotBlank()) tasteSummary = summary
-        if (hints.isNotEmpty()) tasteHints = hints.joinToString("\n")
+        TasteSummary.sanitizeOrNull(summary)?.let { tasteSummary = it }
+        if (hints.isNotEmpty()) {
+            tasteHints = hints.filter { TasteSummary.isUsable(it) }.joinToString("\n")
+        }
         persistTasteProfile(artists, tracks)
     }
 
@@ -642,7 +652,9 @@ fun SpotifySettings(
         Spacer(Modifier.height(8.dp))
         AuraRow(
             title = stringResource(R.string.spotify_view_taste),
-            subtitle = stringResource(R.string.spotify_view_taste_desc),
+            subtitle =
+                displayTasteSummary?.take(120)
+                    ?: stringResource(R.string.spotify_view_taste_desc),
             showChevron = true,
             onClick = { navController.navigate("settings/integrations/spotify/taste") },
         )
@@ -656,19 +668,19 @@ fun SpotifySettings(
                 scope.launch {
                     isBusy = true
                     statusMessage = null
-                    progress = SpotifyImportProgress(phase = "Generating recommendations")
+                    progress = SpotifyImportProgress(phase = "Updating recommendations")
                     val manager = SpotifyImportManager(database, context)
                     try {
                         val result =
                             manager.generateRecommendations(
                                 clientId = clientId,
                                 enableGeminiNano = enableGeminiNano,
-                                cachedSummary = tasteSummary,
+                                cachedSummary = TasteSummary.sanitizeOrNull(tasteSummary).orEmpty(),
                                 cachedHints =
                                     tasteHints
                                         .split('\n')
                                         .map { it.trim() }
-                                        .filter { it.isNotBlank() },
+                                        .filter { it.isNotBlank() && TasteSummary.isUsable(it) },
                                 onProgress = { p ->
                                     scope.launch(Dispatchers.Main) {
                                         progress = p
@@ -676,8 +688,11 @@ fun SpotifySettings(
                                 },
                             )
                         result.tasteAnalysis?.let { analysis ->
-                            tasteSummary = analysis.summary
-                            tasteHints = analysis.searchHints.joinToString("\n")
+                            TasteSummary.sanitizeOrNull(analysis.summary)?.let { tasteSummary = it }
+                            tasteHints =
+                                analysis.searchHints
+                                    .filter { TasteSummary.isUsable(it) }
+                                    .joinToString("\n")
                         }
                         persistTasteProfile(result.topArtists, result.topTracks)
                         statusMessage =
@@ -750,20 +765,21 @@ fun SpotifySettings(
             )
             AuraDivider()
 
-            if (tasteSummary.isNotBlank()) {
+
+            displayTasteSummary?.let { summary ->
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.spotify_taste_summary),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = tasteSummary,
+                    text = summary,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 6,
+                    softWrap = true,
                 )
             }
 

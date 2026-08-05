@@ -177,10 +177,19 @@ suspend fun analyzeSpotifyTaste(
     val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
     if (raw.isBlank()) return heuristic
 
-    return parseTasteAnalysis(raw, usedAi = true) ?: heuristic.copy(
-        summary = raw.take(500),
-        usedAi = true,
-    )
+    val parsed = parseTasteAnalysis(raw, usedAi = true)
+    val usable = TasteSummary.sanitizeOrNull(parsed?.summary)
+    return when {
+        parsed != null && usable != null ->
+            parsed.copy(summary = usable)
+        usable == null && parsed != null && parsed.searchHints.isNotEmpty() ->
+            heuristic.copy(searchHints = parsed.searchHints, usedAi = true)
+        else ->
+            heuristic.copy(
+                summary = TasteSummary.sanitizeOrNull(raw.take(500)) ?: heuristic.summary,
+                usedAi = TasteSummary.isUsable(raw.take(500)),
+            )
+    }
 }
 
 internal fun heuristicTasteAnalysis(
@@ -218,11 +227,14 @@ internal fun parseTasteAnalysis(raw: String, usedAi: Boolean): TasteAnalysisResu
             .findAll(raw)
             .map { it.groupValues[1].trim() }
             .filter { it.isNotBlank() && !it.equals("HINTS:", ignoreCase = true) }
+            .filter { TasteSummary.isUsable(it) || it.length >= 3 }
             .toList()
             .take(10)
-    if (summaryMatch.isNullOrBlank() && hints.isEmpty()) return null
+    // Do not fall back to the raw "SUMMARY: …" line — that can keep "undefined" as text.
+    val summary = TasteSummary.sanitizeOrNull(summaryMatch).orEmpty()
+    if (!TasteSummary.isUsable(summary) && hints.isEmpty()) return null
     return TasteAnalysisResult(
-        summary = summaryMatch ?: raw.lines().firstOrNull { it.isNotBlank() }.orEmpty(),
+        summary = summary,
         searchHints = hints,
         usedAi = usedAi,
     )
