@@ -159,6 +159,8 @@ val EnableSongCacheKey = booleanPreferencesKey("enableSongCache")
 
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
+/** JSON list of rich recent search entities (songs/artists/…); DataStore only — no Room. */
+val RecentSearchEntitiesKey = stringPreferencesKey("recentSearchEntities")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
 // Stream sources â€” which innertube clients are used for stream resolution (Settings â†’ Stream sources).

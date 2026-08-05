@@ -20,16 +20,17 @@ import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.utils.YouTubeUrlParser
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
-import com.metrolist.music.db.MusicDatabase
-import com.metrolist.music.db.entities.SearchHistory
+import com.metrolist.music.utils.RecentSearchesStore
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,8 +40,7 @@ import javax.inject.Inject
 class OnlineSearchSuggestionViewModel
     @Inject
     constructor(
-        @ApplicationContext val context: Context,
-        database: MusicDatabase,
+        @ApplicationContext private val context: Context,
     ) : ViewModel() {
         val query = MutableStateFlow("")
         private val _viewState = MutableStateFlow(SearchSuggestionViewState())
@@ -49,69 +49,95 @@ class OnlineSearchSuggestionViewModel
         init {
             viewModelScope.launch {
                 query
-                    .flatMapLatest { query ->
-                        if (query.isEmpty()) {
-                            database.searchHistory().map { history ->
-                                SearchSuggestionViewState(
-                                    history = history,
-                                )
+                    .flatMapLatest { searchQuery ->
+                        if (searchQuery.isEmpty()) {
+                            RecentSearchesStore.flow(context).map { recents ->
+                                SearchSuggestionViewState(recents = recents)
                             }
                         } else {
-                            // Check if query is a YouTube URL
-                            val parsedUrl = YouTubeUrlParser.parse(query)
+                            val parsedUrl = YouTubeUrlParser.parse(searchQuery)
                             if (parsedUrl != null) {
-                                // Fetch content from YouTube URL
-                                val parsedItem = fetchParsedUrlItem(parsedUrl)
-                                database
-                                    .searchHistory(query)
-                                    .map { it.take(3) }
-                                    .map { history ->
+                                flow {
+                                    val parsedItem = fetchParsedUrlItem(parsedUrl)
+                                    emit(
                                         SearchSuggestionViewState(
-                                            history = history,
                                             suggestions = emptyList(),
                                             items = parsedItem?.let { listOf(it) } ?: emptyList(),
                                             parsedUrlItem = parsedItem,
                                             isUrlQuery = true,
-                                        )
-                                    }
+                                        ),
+                                    )
+                                }
                             } else {
-                                val result = YouTube.searchSuggestions(query).getOrNull()
-                                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                                flow {
+                                    val result = YouTube.searchSuggestions(searchQuery).getOrNull()
+                                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
 
-                                database
-                                    .searchHistory(query)
-                                    .map { it.take(3) }
-                                    .map { history ->
-                                        SearchSuggestionViewState(
-                                            history = history,
-                                            suggestions =
-                                                result
-                                                    ?.queries
-                                                    ?.filter { suggestionQuery ->
-                                                        history.none { it.query == suggestionQuery }
-                                                    }.orEmpty(),
-                                            items =
-                                                result
-                                                    ?.recommendedItems
-                                                    ?.distinctBy { it.id }
-                                                    ?.filterExplicit(hideExplicit)
-                                                    ?.filterVideoSongs(hideVideoSongs)
-                                                    .orEmpty(),
-                                        )
+                                    var items =
+                                        result
+                                            ?.recommendedItems
+                                            ?.distinctBy { it.id }
+                                            ?.filterExplicit(hideExplicit)
+                                            ?.filterVideoSongs(hideVideoSongs)
+                                            .orEmpty()
+
+                                    if (items.isEmpty()) {
+                                        items =
+                                            YouTube
+                                                .searchSummary(searchQuery)
+                                                .getOrNull()
+                                                ?.summaries
+                                                ?.flatMap { it.items }
+                                                ?.distinctBy { it.id }
+                                                ?.filterExplicit(hideExplicit)
+                                                ?.filterVideoSongs(hideVideoSongs)
+                                                ?.take(12)
+                                                .orEmpty()
                                     }
+
+                                    emit(
+                                        SearchSuggestionViewState(
+                                            suggestions = result?.queries.orEmpty(),
+                                            items = items,
+                                        ),
+                                    )
+                                }
                             }
                         }
-                    }.collect {
-                        _viewState.value = it
+                    }.collect { state ->
+                        _viewState.value = state
                     }
+            }
+        }
+
+        fun clearRecents() {
+            viewModelScope.launch(Dispatchers.IO) {
+                RecentSearchesStore.clear(context)
+            }
+        }
+
+        fun removeRecent(entry: RecentSearchesStore.Entry) {
+            viewModelScope.launch(Dispatchers.IO) {
+                RecentSearchesStore.remove(context, entry)
+            }
+        }
+
+        fun rememberItem(item: YTItem) {
+            viewModelScope.launch(Dispatchers.IO) {
+                RecentSearchesStore.addYtItem(context, item)
+            }
+        }
+
+        fun rememberQuery(queryText: String) {
+            viewModelScope.launch(Dispatchers.IO) {
+                RecentSearchesStore.addQuery(context, queryText)
             }
         }
 
         private suspend fun fetchParsedUrlItem(parsedUrl: YouTubeUrlParser.ParsedUrl): YTItem? =
             when (parsedUrl) {
                 is YouTubeUrlParser.ParsedUrl.Video -> {
-                    // Use next() to get the song details from a video ID
                     YouTube
                         .next(WatchEndpoint(videoId = parsedUrl.id))
                         .getOrNull()
@@ -120,7 +146,6 @@ class OnlineSearchSuggestionViewModel
                 }
 
                 is YouTubeUrlParser.ParsedUrl.Playlist -> {
-                    // Fetch playlist details
                     YouTube
                         .playlist(parsedUrl.id)
                         .getOrNull()
@@ -128,13 +153,10 @@ class OnlineSearchSuggestionViewModel
                 }
 
                 is YouTubeUrlParser.ParsedUrl.Album -> {
-                    // For albums, we need to get the browseId from the playlist
-                    // First, try to get the album page
                     val albumResult = YouTube.album("MPREb_${parsedUrl.id}")
                     if (albumResult.isSuccess) {
                         albumResult.getOrNull()?.album
                     } else {
-                        // If that fails, treat it as a playlist
                         YouTube
                             .playlist(parsedUrl.id)
                             .getOrNull()
@@ -143,27 +165,16 @@ class OnlineSearchSuggestionViewModel
                 }
 
                 is YouTubeUrlParser.ParsedUrl.Artist -> {
-                    // Fetch artist details
-                    if (parsedUrl.id.startsWith("MPRE")) {
-                        // It's a browse ID
-                        YouTube
-                            .artist(parsedUrl.id)
-                            .getOrNull()
-                            ?.artist
-                    } else {
-                        // It's a channel ID, we need to find the browse ID
-                        // For now, try using the channel ID as browse ID
-                        YouTube
-                            .artist(parsedUrl.id)
-                            .getOrNull()
-                            ?.artist
-                    }
+                    YouTube
+                        .artist(parsedUrl.id)
+                        .getOrNull()
+                        ?.artist
                 }
             }
     }
 
 data class SearchSuggestionViewState(
-    val history: List<SearchHistory> = emptyList(),
+    val recents: List<RecentSearchesStore.Entry> = emptyList(),
     val suggestions: List<String> = emptyList(),
     val items: List<YTItem> = emptyList(),
     val parsedUrlItem: YTItem? = null,

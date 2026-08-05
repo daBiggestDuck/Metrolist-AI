@@ -1142,4 +1142,17 @@
     <string name="aura_greeting_morning">Good morning</string>
     <string name="aura_greeting_afternoon">Good afternoon</string>
     <string name="aura_greeting_evening">Good evening</string>
+    <!-- Spotify-style Search hub -->
+    <string name="search_browse_all">Browse all</string>
+    <string name="search_what_do_you_want">What do you want to listen to?</string>
+    <string name="recent_searches">Recent searches</string>
+    <string name="clear_recent_searches">Clear recent searches</string>
+    <string name="search_entity_song">Song</string>
+    <string name="search_entity_artist">Artist</string>
+    <string name="search_entity_album">Album</string>
+    <string name="search_entity_playlist">Playlist</string>
+    <string name="search_entity_podcast">Podcast</string>
+    <string name="search_entity_episode">Episode</string>
+    <string name="search_entity_query">Search</string>
+
 </resources>
