@@ -1037,10 +1037,10 @@
     <string name="stream_source_android_creator">ANDROID_CREATOR</string>
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
 
-    <!-- Gemini Nano -->
-    <string name="gemini_nano_section">On-device (Gemini Nano)</string>
-    <string name="gemini_nano_enable">Enable Gemini Nano</string>
-    <string name="gemini_nano_enable_desc">Power Nano DJ (Spotify DJ replacement) and taste analysis on-device via AICore</string>
+    <!-- Nano DJ AI (multi-provider) -->
+    <string name="gemini_nano_section">Nano DJ AI</string>
+    <string name="gemini_nano_enable">Enable Nano DJ AI</string>
+    <string name="gemini_nano_enable_desc">Power Nano DJ commentary/picks and taste analysis with on-device Gemini Nano or a cloud provider</string>
     <string name="gemini_nano_status">Model status</string>
     <string name="gemini_nano_status_unavailable">Unavailable on this device</string>
     <string name="gemini_nano_status_downloadable">Downloadable</string>
@@ -1048,7 +1048,17 @@
     <string name="gemini_nano_status_available">Available</string>
     <string name="gemini_nano_status_error">Error checking status</string>
     <string name="gemini_nano_download">Download model</string>
-    <string name="gemini_nano_privacy">Runs on-device through Android AICore. Nano DJ commentary and picks stay on this device; nothing is sent to cloud AI for Nano features.</string>
+    <string name="gemini_nano_privacy">Gemini Nano runs on-device through Android AICore — commentary and picks stay on this device. Cloud providers send prompts to the selected API using your key.</string>
+    <string name="dj_ai_provider">DJ provider</string>
+    <string name="dj_ai_provider_desc">Backend for Nano DJ commentary, song picks, and taste analysis</string>
+    <string name="dj_ai_api_key">DJ API key</string>
+    <string name="dj_ai_api_key_desc">Stored on this device like lyrics AI keys. Cloud requests leave the device.</string>
+    <string name="dj_ai_model">DJ model</string>
+    <string name="dj_ai_base_url">DJ base URL (optional)</string>
+    <string name="dj_ai_base_url_desc">Override the provider endpoint if needed</string>
+    <string name="dj_ai_cloud_help">Cloud DJ keys are stored in app preferences on this device. Prompts and taste context are sent to the selected provider over the network.</string>
+    <string name="dj_ai_status_ready">Ready (cloud)</string>
+    <string name="dj_ai_status_needs_key">Add an API key to use this provider</string>
 
     <!-- Nano DJ (Spotify DJ replacement) -->
     <string name="nano_dj_section">Nano DJ</string>

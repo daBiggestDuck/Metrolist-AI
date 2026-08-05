@@ -5,8 +5,10 @@
 
 package com.metrolist.music.spotify
 
+import android.content.Context
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.TasteAnalysisResult
 import com.metrolist.music.ai.analyzeSpotifyTaste
 import com.metrolist.music.db.MusicDatabase
@@ -50,8 +52,10 @@ data class SpotifyTasteProfile(
 
 class SpotifyImportManager(
     private val database: MusicDatabase,
+    private val appContext: Context,
     private val api: SpotifyApi = SpotifyApi(),
 ) {
+    private fun djClient(): GeminiNanoClient = GeminiNanoClient.get(appContext)
     suspend fun ensureValidToken(clientId: String): String {
         val current = SpotifyTokenStore.retrieve()
         if (!current.isNullOrBlank() && !SpotifyTokenStore.isExpired()) {
@@ -92,6 +96,7 @@ class SpotifyImportManager(
                     topArtists = artists.map { it.name },
                     topTracks = tracks.map { it.name to it.artistsJoined },
                     enableNano = enableGeminiNano,
+                    client = djClient(),
                 )
 
             val matchResult =
@@ -140,6 +145,7 @@ class SpotifyImportManager(
                     topArtists = topArtists,
                     topTracks = topTracks,
                     enableNano = enableNano,
+                    client = djClient(),
                 )
             onProgress(
                 SpotifyImportProgress(
@@ -224,6 +230,7 @@ class SpotifyImportManager(
                     topArtists = topArtists,
                     topTracks = topTracks,
                     enableNano = enableNano,
+                    client = djClient(),
                 )
 
             val spotifyTracks =
@@ -287,6 +294,7 @@ class SpotifyImportManager(
                     topArtists = artists.map { it.name },
                     topTracks = tracks.map { it.name to it.artistsJoined },
                     enableNano = enableGeminiNano,
+                    client = djClient(),
                 )
             onProgress(
                 SpotifyImportProgress(
@@ -338,6 +346,7 @@ class SpotifyImportManager(
                         topArtists = artists,
                         topTracks = tracks,
                         enableNano = enableGeminiNano,
+                        client = djClient(),
                     ).let { base ->
                         if (base.searchHints.isEmpty() && cachedHints.isNotEmpty()) {
                             base.copy(searchHints = cachedHints)
@@ -358,6 +367,7 @@ class SpotifyImportManager(
                         ),
                     batchSize = 12,
                     enableNano = enableGeminiNano,
+                    client = djClient(),
                 )
 
             val queries =

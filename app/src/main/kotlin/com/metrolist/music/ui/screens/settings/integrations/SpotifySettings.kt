@@ -157,7 +157,7 @@ fun SpotifySettings(
             isBusy = true
             statusMessage = null
             progress = SpotifyImportProgress(phase = "Importing from file")
-            val manager = SpotifyImportManager(database)
+            val manager = SpotifyImportManager(database, context)
             try {
                 val result =
                     manager.importTasteFromTracks(
@@ -198,7 +198,7 @@ fun SpotifySettings(
             isBusy = true
             statusMessage = null
             progress = SpotifyImportProgress(phase = "Reading playlist")
-            val manager = SpotifyImportManager(database)
+            val manager = SpotifyImportManager(database, context)
             try {
                 val profile =
                     manager.buildTasteFromLocalPlaylist(
@@ -235,7 +235,7 @@ fun SpotifySettings(
             isBusy = true
             statusMessage = null
             progress = SpotifyImportProgress(phase = "Fetching playlist tracks")
-            val manager = SpotifyImportManager(database)
+            val manager = SpotifyImportManager(database, context)
             try {
                 val profile =
                     manager.buildTasteFromSpotifyPlaylist(
@@ -314,7 +314,7 @@ fun SpotifySettings(
                 isBusy = true
                 val api = SpotifyApi()
                 try {
-                    val manager = SpotifyImportManager(database, api)
+                    val manager = SpotifyImportManager(database, context, api)
                     val token = manager.ensureValidToken(id)
                     playlists = api.getPlaylists(token)
                 } finally {
@@ -454,7 +454,7 @@ fun SpotifySettings(
                                 isBusy = true
                                 statusMessage = null
                                 progress = SpotifyImportProgress(phase = "Starting")
-                                val manager = SpotifyImportManager(database)
+                                val manager = SpotifyImportManager(database, context)
                                 try {
                                     val result =
                                         manager.importPlaylist(
@@ -657,7 +657,7 @@ fun SpotifySettings(
                     isBusy = true
                     statusMessage = null
                     progress = SpotifyImportProgress(phase = "Generating recommendations")
-                    val manager = SpotifyImportManager(database)
+                    val manager = SpotifyImportManager(database, context)
                     try {
                         val result =
                             manager.generateRecommendations(
@@ -725,7 +725,7 @@ fun SpotifySettings(
                         isBusy = true
                         statusMessage = null
                         progress = SpotifyImportProgress(phase = "Starting")
-                        val manager = SpotifyImportManager(database)
+                        val manager = SpotifyImportManager(database, context)
                         try {
                             val result =
                                 manager.importTaste(
@@ -797,7 +797,7 @@ fun SpotifySettings(
                             val totalPlaylists = snapshot.size
                             var totalMatched = 0
                             var totalFailed = 0
-                            val manager = SpotifyImportManager(database)
+                            val manager = SpotifyImportManager(database, context)
                             try {
                                 snapshot.forEachIndexed { index, pl ->
                                     val label =

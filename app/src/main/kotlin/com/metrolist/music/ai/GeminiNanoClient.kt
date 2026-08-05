@@ -5,10 +5,24 @@
 
 package com.metrolist.music.ai
 
+import android.content.Context
+import com.metrolist.music.constants.DjAiApiKey
+import com.metrolist.music.constants.DjAiBaseUrlKey
+import com.metrolist.music.constants.DjAiModelKey
+import com.metrolist.music.constants.DjAiProviderKey
+import com.metrolist.music.constants.OpenRouterApiKey
+import com.metrolist.music.constants.OpenRouterBaseUrlKey
+import com.metrolist.music.constants.OpenRouterDefaultBaseUrl
+import com.metrolist.music.constants.OpenRouterDefaultModel
+import com.metrolist.music.constants.OpenRouterModelKey
+import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
+
 /**
- * On-device Gemini Nano (via ML Kit GenAI Prompt / AICore) abstraction.
- * FOSS builds never include the ML Kit dependency; the default client uses
- * reflection and reports [GeminiNanoStatus.Unavailable] when classes are absent.
+ * On-device Gemini Nano (via ML Kit GenAI Prompt / AICore) abstraction, also implemented by
+ * [CloudDjLlmClient] for cloud DJ backends.
+ * FOSS builds never include the ML Kit dependency; the Nano client uses reflection and reports
+ * [GeminiNanoStatus.Unavailable] when classes are absent.
  */
 interface GeminiNanoClient {
     suspend fun checkStatus(): GeminiNanoStatus
@@ -29,15 +43,81 @@ interface GeminiNanoClient {
         @Volatile
         private var instance: GeminiNanoClient? = null
 
-        fun get(): GeminiNanoClient =
-            instance ?: synchronized(this) {
-                instance ?: MlKitGeminiNanoClient().also { instance = it }
+        @Volatile
+        private var cachedFingerprint: String? = null
+
+        fun get(context: Context): GeminiNanoClient {
+            val app = context.applicationContext
+            val prefs = app.dataStore
+            val provider = DjAiProvider.fromId(prefs.get(DjAiProviderKey, DjAiProvider.NANO.id))
+            var apiKey = prefs.get(DjAiApiKey, "")
+            var model = prefs.get(DjAiModelKey, "")
+            var baseUrl = prefs.get(DjAiBaseUrlKey, "").ifBlank { null }
+
+            if (provider == DjAiProvider.OPENROUTER && apiKey.isBlank()) {
+                apiKey = prefs.get(OpenRouterApiKey, "")
+                if (model.isBlank()) {
+                    model = prefs.get(OpenRouterModelKey, OpenRouterDefaultModel)
+                }
+                if (baseUrl.isNullOrBlank()) {
+                    baseUrl = prefs.get(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
+                }
             }
+
+            if (model.isBlank()) {
+                model = defaultModelFor(provider)
+            }
+
+            val fingerprint = "${provider.id}|$apiKey|$model|${baseUrl.orEmpty()}"
+            instance?.let { cached ->
+                if (cachedFingerprint == fingerprint) return cached
+            }
+
+            return synchronized(this) {
+                instance?.let { cached ->
+                    if (cachedFingerprint == fingerprint) return@synchronized cached
+                }
+                val created =
+                    when (provider) {
+                        DjAiProvider.NANO -> MlKitGeminiNanoClient()
+                        else ->
+                            CloudDjLlmClient(
+                                provider = provider,
+                                apiKey = apiKey,
+                                model = model,
+                                baseUrl = baseUrl,
+                            )
+                    }
+                instance = created
+                cachedFingerprint = fingerprint
+                created
+            }
+        }
+
+        /** Clear cached client so the next [get] rebuilds from current prefs. */
+        fun invalidate() {
+            synchronized(this) {
+                instance = null
+                cachedFingerprint = null
+            }
+        }
 
         /** Test-only: replace the shared client. */
         fun setForTests(client: GeminiNanoClient?) {
-            instance = client
+            synchronized(this) {
+                instance = client
+                cachedFingerprint = if (client == null) null else "test"
+            }
         }
+
+        fun defaultModelFor(provider: DjAiProvider): String =
+            when (provider) {
+                DjAiProvider.NANO -> ""
+                DjAiProvider.OPENAI -> "gpt-4o-mini"
+                DjAiProvider.ANTHROPIC -> "claude-haiku-4-5-20251001"
+                DjAiProvider.HUGGINGFACE -> "meta-llama/Meta-Llama-3-8B-Instruct"
+                DjAiProvider.OPENROUTER -> OpenRouterDefaultModel
+            }
     }
 }
 
@@ -57,13 +137,13 @@ data class TasteAnalysisResult(
 
 /**
  * Builds a taste summary (and optional YTM search hints) from Spotify top artists/tracks.
- * Uses Gemini Nano when enabled and available; otherwise a simple heuristic.
+ * Uses the configured DJ AI backend when enabled and available; otherwise a simple heuristic.
  */
 suspend fun analyzeSpotifyTaste(
     topArtists: List<String>,
     topTracks: List<Pair<String, String>>,
     enableNano: Boolean,
-    client: GeminiNanoClient = GeminiNanoClient.get(),
+    client: GeminiNanoClient,
 ): TasteAnalysisResult {
     val heuristic = heuristicTasteAnalysis(topArtists, topTracks)
     if (!enableNano) return heuristic

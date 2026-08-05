@@ -45,6 +45,7 @@ object NanoDjLauncher {
 
             val prefs = context.dataStore
             val enableNano = prefs.get(EnableGeminiNanoKey, true)
+            val djClient = GeminiNanoClient.get(context)
 
             // Optionally refresh Spotify tops into prefs (still merged with live listening below).
             val clientId = prefs.get(SpotifyClientIdKey, "")
@@ -60,6 +61,7 @@ object NanoDjLauncher {
                                 artists = artists.map { it.name },
                                 tracks = tracks.map { "${it.name} - ${it.artistsJoined}" },
                                 enableNano = enableNano,
+                                client = djClient,
                             )
                         }
                     } catch (e: Exception) {
@@ -97,6 +99,7 @@ object NanoDjLauncher {
                     seedArtists = merged.seedArtists,
                     seedTracks = merged.seedTracks.ifEmpty { merged.hints },
                     enableNano = enableNano,
+                    client = djClient,
                     seedMediaItems = seedItems,
                     categories = merged.categories,
                     lane = merged.lane,
@@ -108,6 +111,7 @@ object NanoDjLauncher {
         artists: List<String>,
         tracks: List<String>,
         enableNano: Boolean,
+        client: GeminiNanoClient,
     ) {
         val prefs = dataStore
         var tasteSummary = prefs.get(SpotifyTasteSummaryKey, "")
@@ -129,6 +133,7 @@ object NanoDjLauncher {
                             }
                         },
                     enableNano = enableNano,
+                    client = client,
                 )
             tasteSummary = analysis.summary
             if (hints.isEmpty()) hints = analysis.searchHints

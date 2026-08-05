@@ -260,7 +260,7 @@ fun SpotifyTasteScreen(
             isBusy = true
             statusMessage = null
             progress = SpotifyImportProgress(phase = "Importing from file")
-            val manager = SpotifyImportManager(database)
+            val manager = SpotifyImportManager(database, context)
             try {
                 val result =
                     manager.importTasteFromTracks(
@@ -305,7 +305,7 @@ fun SpotifyTasteScreen(
             isBusy = true
             statusMessage = null
             progress = SpotifyImportProgress(phase = "Reading playlist")
-            val manager = SpotifyImportManager(database)
+            val manager = SpotifyImportManager(database, context)
             try {
                 val profile =
                     manager.buildTasteFromLocalPlaylist(
@@ -381,7 +381,7 @@ fun SpotifyTasteScreen(
             withContext(Dispatchers.Main) { isLoadingLive = true }
             val api = SpotifyApi()
             try {
-                val manager = SpotifyImportManager(database, api)
+                val manager = SpotifyImportManager(database, context, api)
                 val token = manager.ensureValidToken(clientId)
                 val liveArtists = api.getTopArtists(token, "medium_term", 20).map { it.name }
                 val liveTracks = api.getTopTracks(token, "medium_term", 30).map { it.name to it.artistsJoined }
@@ -790,7 +790,7 @@ fun SpotifyTasteScreen(
                     isBusy = true
                     statusMessage = null
                     progress = SpotifyImportProgress(phase = "Starting")
-                    val manager = SpotifyImportManager(database)
+                    val manager = SpotifyImportManager(database, context)
                     try {
                         val profile =
                             manager.refreshTasteProfile(
@@ -825,7 +825,7 @@ fun SpotifyTasteScreen(
                     isBusy = true
                     statusMessage = null
                     progress = SpotifyImportProgress(phase = "Generating recommendations")
-                    val manager = SpotifyImportManager(database)
+                    val manager = SpotifyImportManager(database, context)
                     try {
                         val result =
                             manager.generateRecommendations(

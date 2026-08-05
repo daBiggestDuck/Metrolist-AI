@@ -1,0 +1,178 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
+package com.metrolist.music.ai
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
+import java.util.concurrent.TimeUnit
+
+/**
+ * Cloud chat backends for Nano DJ (OpenAI-compatible, Anthropic Messages, Hugging Face router).
+ * Implements [GeminiNanoClient] so existing DJ / taste call sites stay unchanged.
+ */
+class CloudDjLlmClient(
+    private val provider: DjAiProvider,
+    private val apiKey: String,
+    private val model: String,
+    private val baseUrl: String? = null,
+) : GeminiNanoClient {
+    private val http =
+        OkHttpClient
+            .Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(90, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+    private val jsonMedia = "application/json; charset=utf-8".toMediaType()
+
+    override suspend fun checkStatus(): GeminiNanoStatus =
+        if (apiKey.isBlank()) {
+            GeminiNanoStatus.Unavailable
+        } else {
+            GeminiNanoStatus.Available
+        }
+
+    override suspend fun download(onProgress: (bytesDownloaded: Long) -> Unit) {
+        // Cloud models are not downloaded on-device.
+    }
+
+    override suspend fun generateContent(prompt: String): String? =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank() || prompt.isBlank()) return@withContext null
+            runCatching {
+                when (provider) {
+                    DjAiProvider.ANTHROPIC -> anthropicMessages(prompt)
+                    else -> openAiCompatibleChat(prompt)
+                }
+            }.onFailure {
+                Timber.tag(TAG).w(it, "Cloud DJ generate failed (%s)", provider.id)
+            }.getOrNull()
+        }
+
+    private fun openAiCompatibleChat(prompt: String): String? {
+        val url =
+            when {
+                !baseUrl.isNullOrBlank() -> baseUrl
+                provider == DjAiProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
+                provider == DjAiProvider.HUGGINGFACE ->
+                    "https://router.huggingface.co/v1/chat/completions"
+                provider == DjAiProvider.OPENROUTER ->
+                    "https://openrouter.ai/api/v1/chat/completions"
+                else -> "https://api.openai.com/v1/chat/completions"
+            }
+
+        val body =
+            JSONObject()
+                .put("model", model.ifBlank { defaultModel() })
+                .put(
+                    "messages",
+                    JSONArray()
+                        .put(
+                            JSONObject()
+                                .put("role", "system")
+                                .put(
+                                    "content",
+                                    "You are Nano DJ, a concise music radio host. Follow the user's format exactly.",
+                                ),
+                        ).put(
+                            JSONObject()
+                                .put("role", "user")
+                                .put("content", prompt),
+                        ),
+                ).put("temperature", 0.8)
+
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .header("Authorization", "Bearer $apiKey")
+                .header("Content-Type", "application/json")
+                .apply {
+                    if (provider == DjAiProvider.OPENROUTER) {
+                        header("HTTP-Referer", "https://github.com/daBiggestDuck/Metrolist-AI")
+                        header("X-Title", "Metrolist AI Nano DJ")
+                    }
+                }.post(body.toString().toRequestBody(jsonMedia))
+                .build()
+
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                Timber.tag(TAG).w("Cloud DJ HTTP %s: %s", response.code, raw.take(300))
+                return null
+            }
+            val choices = JSONObject(raw).optJSONArray("choices") ?: return null
+            val message = choices.optJSONObject(0)?.optJSONObject("message") ?: return null
+            return message.optString("content").trim().takeIf { it.isNotBlank() }
+        }
+    }
+
+    private fun anthropicMessages(prompt: String): String? {
+        val url = baseUrl?.takeIf { it.isNotBlank() } ?: "https://api.anthropic.com/v1/messages"
+        val body =
+            JSONObject()
+                .put("model", model.ifBlank { "claude-haiku-4-5-20251001" })
+                .put("max_tokens", 512)
+                .put(
+                    "system",
+                    "You are Nano DJ, a concise music radio host. Follow the user's format exactly.",
+                ).put(
+                    "messages",
+                    JSONArray().put(
+                        JSONObject()
+                            .put("role", "user")
+                            .put("content", prompt),
+                    ),
+                )
+
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .header("x-api-key", apiKey)
+                .header("anthropic-version", "2023-06-01")
+                .header("Content-Type", "application/json")
+                .post(body.toString().toRequestBody(jsonMedia))
+                .build()
+
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                Timber.tag(TAG).w("Anthropic DJ HTTP %s: %s", response.code, raw.take(300))
+                return null
+            }
+            val content = JSONObject(raw).optJSONArray("content") ?: return null
+            for (i in 0 until content.length()) {
+                val block = content.optJSONObject(i) ?: continue
+                if (block.optString("type") == "text") {
+                    return block.optString("text").trim().takeIf { it.isNotBlank() }
+                }
+            }
+            return null
+        }
+    }
+
+    private fun defaultModel(): String =
+        when (provider) {
+            DjAiProvider.OPENAI -> "gpt-4o-mini"
+            DjAiProvider.HUGGINGFACE -> "meta-llama/Meta-Llama-3-8B-Instruct"
+            DjAiProvider.OPENROUTER -> "google/gemini-2.5-flash-lite"
+            DjAiProvider.ANTHROPIC -> "claude-haiku-4-5-20251001"
+            DjAiProvider.NANO -> ""
+        }
+
+    companion object {
+        private const val TAG = "CloudDjLlm"
+    }
+}

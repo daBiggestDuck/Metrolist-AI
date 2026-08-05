@@ -37,7 +37,7 @@ object NanoDjEngine {
         context: DjContext,
         batchSize: Int = 4,
         enableNano: Boolean,
-        client: GeminiNanoClient = GeminiNanoClient.get(),
+        client: GeminiNanoClient,
     ): DjPick {
         val fallback = heuristicPick(context, batchSize)
         if (!enableNano) return fallback
@@ -98,7 +98,7 @@ object NanoDjEngine {
     suspend fun openingLine(
         context: DjContext,
         enableNano: Boolean,
-        client: GeminiNanoClient = GeminiNanoClient.get(),
+        client: GeminiNanoClient,
     ): String {
         val lane = context.lane
         val fallback =

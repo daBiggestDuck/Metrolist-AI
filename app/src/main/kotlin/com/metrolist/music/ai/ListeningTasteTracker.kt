@@ -174,7 +174,7 @@ object ListeningTasteTracker {
         title: String,
         artists: List<String>,
         enableNano: Boolean = true,
-        client: GeminiNanoClient = GeminiNanoClient.get(),
+        client: GeminiNanoClient = GeminiNanoClient.get(context),
     ) {
         if (songId.isBlank() || title.isBlank()) return
 

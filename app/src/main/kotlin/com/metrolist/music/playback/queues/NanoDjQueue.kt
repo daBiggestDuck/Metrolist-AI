@@ -8,6 +8,7 @@ package com.metrolist.music.playback.queues
 import androidx.media3.common.MediaItem
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjEngine
 import com.metrolist.music.ai.NanoDjSession
@@ -18,15 +19,16 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
- * Continuous radio queue curated by Gemini Nano (Spotify DJ replacement).
- * Each page asks Nano for the next batch of song queries in the active mood/category lane,
- * then resolves them on YouTube Music.
+ * Continuous radio queue curated by Nano DJ (Spotify DJ replacement).
+ * Each page asks the configured DJ AI backend for the next batch of song queries in the
+ * active mood/category lane, then resolves them on YouTube Music.
  */
 class NanoDjQueue(
     private val tasteSummary: String,
     private val seedArtists: List<String>,
     private val seedTracks: List<String>,
     private val enableNano: Boolean,
+    private val client: GeminiNanoClient,
     private val initialItems: List<MediaItem> = emptyList(),
     private val categories: List<String> = emptyList(),
     private val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
@@ -45,6 +47,7 @@ class NanoDjQueue(
                 NanoDjEngine.openingLine(
                     context = currentContext(),
                     enableNano = enableNano,
+                    client = client,
                 )
             NanoDjSession.start(opening, usedAi = enableNano)
 
@@ -91,6 +94,7 @@ class NanoDjQueue(
                 context = currentContext(),
                 batchSize = batchSize,
                 enableNano = enableNano,
+                client = client,
             )
         NanoDjSession.publish(pick.commentary, usedAi = pick.usedAi)
 
@@ -165,6 +169,7 @@ class NanoDjQueue(
             seedArtists: List<String>,
             seedTracks: List<String>,
             enableNano: Boolean,
+            client: GeminiNanoClient,
             seedMediaItems: List<MediaItem> = emptyList(),
             categories: List<String> = emptyList(),
             lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
@@ -174,6 +179,7 @@ class NanoDjQueue(
                 seedArtists = seedArtists,
                 seedTracks = seedTracks,
                 enableNano = enableNano,
+                client = client,
                 initialItems = seedMediaItems,
                 categories = categories,
                 lane = lane,
