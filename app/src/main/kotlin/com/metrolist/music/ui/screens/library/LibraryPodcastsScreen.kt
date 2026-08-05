@@ -79,12 +79,14 @@ import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeTimeString
@@ -637,7 +639,39 @@ private fun PodcastEpisodePlaylistMenu(
     val playlistId = podcast.id.removePrefix("MPSP")
     val shareUrl = "https://music.youtube.com/playlist?list=$playlistId"
 
-    Spacer(Modifier.height(12.dp))
+    var showRemoveFromLibraryDialog by remember { mutableStateOf(false) }
+
+    if (showRemoveFromLibraryDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveFromLibraryDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_podcast_from_library_confirm, podcast.title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showRemoveFromLibraryDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showRemoveFromLibraryDialog = false
+                    coroutineScope.launch(Dispatchers.IO) {
+                        database.query {
+                            update(podcast.copy(bookmarkedAt = null))
+                        }
+                        syncUtils.savePodcast(podcast.id, false)
+                    }
+                    onDismiss()
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
     Material3MenuGroup(
         items =
             listOf(
@@ -650,15 +684,7 @@ private fun PodcastEpisodePlaylistMenu(
                         )
                     },
                     onClick = {
-                        coroutineScope.launch(Dispatchers.IO) {
-                            // Update local database
-                            database.query {
-                                update(podcast.copy(bookmarkedAt = null))
-                            }
-                            // Sync with YouTube (unsave podcast only, don't unsubscribe channel)
-                            syncUtils.savePodcast(podcast.id, false)
-                        }
-                        onDismiss()
+                        showRemoveFromLibraryDialog = true
                     },
                 ),
                 Material3MenuItemData(
@@ -723,7 +749,7 @@ private fun PodcastEpisodePlaylistMenu(
                 ),
             ),
     )
-    Spacer(Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(12.dp))
 }
 
 /** Artist/channel page item shown in the Channels tab */

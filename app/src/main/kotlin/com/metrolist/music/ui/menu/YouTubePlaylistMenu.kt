@@ -159,9 +159,63 @@ fun YouTubePlaylistMenu(
         item = playlist,
         trailingContent = {
             if (playlist.id != "LM" && !playlist.isEditable) {
+                var showUnfollowDialog by remember { mutableStateOf(false) }
+
+                if (showUnfollowDialog) {
+                    DefaultDialog(
+                        onDismiss = { showUnfollowDialog = false },
+                        content = {
+                            Text(
+                                text = stringResource(
+                                    R.string.remove_playlist_from_library_confirm,
+                                    playlist.title,
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(horizontal = 18.dp),
+                            )
+                        },
+                        buttons = {
+                            AuraSecondaryAction(onClick = { showUnfollowDialog = false }) {
+                                Text(text = stringResource(android.R.string.cancel))
+                            }
+                            AuraSecondaryAction(onClick = {
+                                showUnfollowDialog = false
+                                database.transaction {
+                                    val currentPlaylist = dbPlaylist!!.playlist
+                                    update(currentPlaylist, playlist)
+                                    update(currentPlaylist.toggleLike())
+                                }
+                                if (playlist.isPodcast) {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        YouTube
+                                            .savePodcast(playlist.id, false)
+                                            .onFailure { e ->
+                                                timber.log.Timber.e(e, "[PODCAST_SAVE] savePodcast API failed for ${playlist.id}")
+                                                withContext(Dispatchers.Main) {
+                                                    android.widget.Toast
+                                                        .makeText(
+                                                            context,
+                                                            R.string.error_podcast_unsubscribe,
+                                                            android.widget.Toast.LENGTH_SHORT,
+                                                        ).show()
+                                                }
+                                            }
+                                    }
+                                }
+                            }) {
+                                Text(text = stringResource(android.R.string.ok))
+                            }
+                        },
+                    )
+                }
+
                 IconButton(
                     onClick = {
                         val isCurrentlySaved = dbPlaylist?.playlist?.bookmarkedAt != null
+                        if (isCurrentlySaved) {
+                            showUnfollowDialog = true
+                            return@IconButton
+                        }
                         if (dbPlaylist?.playlist == null) {
                             database.transaction {
                                 val playlistEntity =

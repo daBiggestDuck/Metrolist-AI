@@ -81,6 +81,7 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.AlbumListItem
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.ListItem
 import com.metrolist.music.ui.component.Material3MenuGroup
@@ -88,6 +89,7 @@ import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.menu.ExportDialog
 import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
@@ -125,6 +127,41 @@ fun AlbumMenu(
 
     var downloadState by remember {
         mutableIntStateOf(STATE_STOPPED)
+    }
+
+    var showRemoveDownloadDialog by remember {
+        mutableStateOf(false)
+    }
+
+    if (showRemoveDownloadDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveDownloadDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_download_album_confirm, album.album.title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showRemoveDownloadDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showRemoveDownloadDialog = false
+                    songs.forEach { song ->
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            song.id,
+                            false,
+                        )
+                    }
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
     }
 
     LaunchedEffect(songs) {
@@ -499,14 +536,7 @@ fun AlbumMenu(
                                         )
                                     },
                                     onClick = {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.id,
-                                                false,
-                                            )
-                                        }
+                                        showRemoveDownloadDialog = true
                                     },
                                 )
                             }
@@ -521,14 +551,7 @@ fun AlbumMenu(
                                         )
                                     },
                                     onClick = {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.id,
-                                                false,
-                                            )
-                                        }
+                                        showRemoveDownloadDialog = true
                                     },
                                 )
                             }

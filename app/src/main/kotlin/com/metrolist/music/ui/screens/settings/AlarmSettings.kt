@@ -86,6 +86,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
     var alarms by remember { mutableStateOf(emptyList<MusicAlarmEntry>()) }
     var showEditor by remember { mutableStateOf(false) }
     var editorTarget by remember { mutableStateOf<MusicAlarmEntry?>(null) }
+    var alarmPendingDelete by remember { mutableStateOf<MusicAlarmEntry?>(null) }
 
     val alarmManager = context.getSystemService(AlarmManager::class.java)
     val canScheduleExact =
@@ -149,6 +150,35 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
                 alarms = loadAlarms()
             }
         }
+    }
+
+    if (alarmPendingDelete != null) {
+        DefaultDialog(
+            onDismiss = { alarmPendingDelete = null },
+            content = {
+                Text(
+                    text = stringResource(R.string.delete_alarm_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { alarmPendingDelete = null }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    val alarm = alarmPendingDelete
+                    alarmPendingDelete = null
+                    if (alarm != null) {
+                        persistAndSchedule { current ->
+                            current.filterNot { it.id == alarm.id }
+                        }
+                    }
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
     }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -246,9 +276,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
                                     )
                                     IconButton(
                                         onClick = {
-                                            persistAndSchedule { current ->
-                                                current.filterNot { it.id == alarm.id }
-                                            }
+                                            alarmPendingDelete = alarm
                                         }
                                     ) {
                                         Icon(

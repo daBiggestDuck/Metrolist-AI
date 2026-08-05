@@ -111,6 +111,7 @@ import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.shimmer.ButtonPlaceholder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -131,6 +132,7 @@ import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.component.aura.AuraOutlinedButton
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -161,7 +163,32 @@ fun ArtistScreen(
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showLocal by rememberSaveable { mutableStateOf(false) }
+    var showUnsubscribeDialog by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
+
+    if (showUnsubscribeDialog) {
+        DefaultDialog(
+            onDismiss = { showUnsubscribeDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.unsubscribe_artist_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showUnsubscribeDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showUnsubscribeDialog = false
+                    viewModel.toggleChannelSubscription()
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
 
     // Calculate the offset value outside of the offset lambda
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
@@ -362,7 +389,11 @@ fun ArtistScreen(
                                 ) {
                                     // Subscribe Button
                                     AuraOutlinedButton(onClick = {
-                                            viewModel.toggleChannelSubscription()
+                                            if (isChannelSubscribed) {
+                                                showUnsubscribeDialog = true
+                                            } else {
+                                                viewModel.toggleChannelSubscription()
+                                            }
                                         },
                                         shape = RoundedCornerShape(50),
                                         modifier = Modifier.height(40.dp)) {

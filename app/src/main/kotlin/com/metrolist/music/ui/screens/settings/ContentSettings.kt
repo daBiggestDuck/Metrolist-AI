@@ -54,6 +54,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.constants.AppLanguageKey
 import com.metrolist.music.constants.ContentCountryKey
 import com.metrolist.music.constants.ContentLanguageKey
@@ -133,6 +134,40 @@ fun ContentSettings(
     val (showWrappedCard, onShowWrappedCardChange) = rememberPreference(key = ShowWrappedCardKey, defaultValue = false)
     val (showMostStatsPlaylists, onShowMostStatsPlaylistsChange) =
         rememberPreference(key = ShowMostStatsPlaylistsKey, defaultValue = true)
+    var showDisableMostStatsDialog by rememberSaveable { mutableStateOf(false) }
+
+    fun requestMostStatsPlaylistsChange(enabled: Boolean) {
+        if (!enabled && showMostStatsPlaylists) {
+            showDisableMostStatsDialog = true
+        } else {
+            onShowMostStatsPlaylistsChange(enabled)
+        }
+    }
+
+    if (showDisableMostStatsDialog) {
+        DefaultDialog(
+            onDismiss = { showDisableMostStatsDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.disable_most_stats_playlists_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showDisableMostStatsDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showDisableMostStatsDialog = false
+                    onShowMostStatsPlaylistsChange(false)
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
     val (randomizeHomeOrder, onRandomizeHomeOrderChange) = rememberPreference(
         RandomizeHomeOrderKey,
         defaultValue = true
@@ -929,7 +964,7 @@ fun ContentSettings(
                     trailingContent = {
                         Switch(
                             checked = showMostStatsPlaylists,
-                            onCheckedChange = onShowMostStatsPlaylistsChange,
+                            onCheckedChange = { requestMostStatsPlaylistsChange(it) },
                             thumbContent = {
                                 Icon(
                                     painter = painterResource(
@@ -941,7 +976,7 @@ fun ContentSettings(
                             }
                         )
                     },
-                    onClick = { onShowMostStatsPlaylistsChange(!showMostStatsPlaylists) }
+                    onClick = { requestMostStatsPlaylistsChange(!showMostStatsPlaylists) }
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.trending_up),

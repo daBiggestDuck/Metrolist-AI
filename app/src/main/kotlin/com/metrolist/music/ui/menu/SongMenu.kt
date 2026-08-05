@@ -292,6 +292,38 @@ fun SongMenu(
         mutableStateOf(false)
     }
     var isDeleting by remember { mutableStateOf(false) }
+    var showRemoveDownloadDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showRemoveDownloadDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveDownloadDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_download_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showRemoveDownloadDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showRemoveDownloadDialog = false
+                    DownloadService.sendRemoveDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        song.id,
+                        false,
+                    )
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
 
     if (showDeleteUploadedDialog) {
         DefaultDialog(
@@ -948,12 +980,7 @@ fun SongMenu(
                                         )
                                     },
                                     onClick = {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            song.id,
-                                            false,
-                                        )
+                                        showRemoveDownloadDialog = true
                                     },
                                 )
                             }
@@ -968,12 +995,7 @@ fun SongMenu(
                                         )
                                     },
                                     onClick = {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            song.id,
-                                            false,
-                                        )
+                                        showRemoveDownloadDialog = true
                                     },
                                 )
                             }

@@ -158,6 +158,14 @@ fun SelectionSongMenu(
         mutableStateOf(false)
     }
 
+    var showRemoveFromLibraryDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showRemoveFromPlaylistDialog by remember {
+        mutableStateOf(false)
+    }
+
     var showDeleteUploadedDialog by remember {
         mutableStateOf(false)
     }
@@ -193,6 +201,76 @@ fun SelectionSongMenu(
                             )
                         }
                     }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+
+    if (showRemoveFromLibraryDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveFromLibraryDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_from_library_confirm, songSelection.size),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showRemoveFromLibraryDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showRemoveFromLibraryDialog = false
+                    database.query {
+                        songSelection.forEach { song ->
+                            inLibrary(song.id, null)
+                        }
+                    }
+                    coroutineScope.launch {
+                        songSelection.forEach { song ->
+                            YouTube.toggleSongLibrary(song.id, false)
+                        }
+                    }
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    if (showRemoveFromPlaylistDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveFromPlaylistDialog = false },
+            content = {
+                Text(
+                    text = stringResource(
+                        R.string.remove_songs_from_playlist_confirm,
+                        songPosition?.size ?: songSelection.size,
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showRemoveFromPlaylistDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showRemoveFromPlaylistDialog = false
+                    onDismiss()
+                    var i = 0
+                    database.query {
+                        songPosition?.forEach { cur ->
+                            move(cur.playlistId, cur.position - i, Int.MAX_VALUE)
+                            delete(cur.copy(position = Int.MAX_VALUE))
+                            i++
+                        }
+                    }
+                    clearAction()
+                }) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -466,17 +544,7 @@ fun SelectionSongMenu(
                                 },
                                 onClick = {
                                     if (allInLibrary) {
-                                        database.query {
-                                            songSelection.forEach { song ->
-                                                inLibrary(song.id, null)
-                                            }
-                                        }
-                                        coroutineScope.launch {
-                                            // Use the new reliable method that fetches fresh tokens
-                                            songSelection.forEach { song ->
-                                                YouTube.toggleSongLibrary(song.id, false)
-                                            }
-                                        }
+                                        showRemoveFromLibraryDialog = true
                                     } else {
                                         database.transaction {
                                             songSelection.forEach { song ->
@@ -616,16 +684,7 @@ fun SelectionSongMenu(
                                         )
                                     },
                                     onClick = {
-                                        onDismiss()
-                                        var i = 0
-                                        database.query {
-                                            songPosition.forEach { cur ->
-                                                move(cur.playlistId, cur.position - i, Int.MAX_VALUE)
-                                                delete(cur.copy(position = Int.MAX_VALUE))
-                                                i++
-                                            }
-                                        }
-                                        clearAction()
+                                        showRemoveFromPlaylistDialog = true
                                     },
                                 ),
                             )

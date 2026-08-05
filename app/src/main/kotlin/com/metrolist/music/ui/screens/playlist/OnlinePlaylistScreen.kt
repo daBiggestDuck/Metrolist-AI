@@ -95,6 +95,7 @@ import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubePlaylistQueue
 import com.metrolist.music.ui.component.ExpandableText
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
@@ -501,6 +502,38 @@ private fun OnlinePlaylistHeader(
     val menuState = LocalMenuState.current
     val syncUtils = LocalSyncUtils.current
 
+    var showUnfollowDialog by remember { mutableStateOf(false) }
+
+    if (showUnfollowDialog) {
+        DefaultDialog(
+            onDismiss = { showUnfollowDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_playlist_from_library_confirm, playlist.title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showUnfollowDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showUnfollowDialog = false
+                    if (dbPlaylist != null) {
+                        database.transaction {
+                            val currentPlaylist = dbPlaylist.playlist
+                            update(currentPlaylist, playlist)
+                            update(currentPlaylist.toggleLike())
+                        }
+                    }
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
     Column(
         modifier =
             modifier
@@ -625,7 +658,9 @@ private fun OnlinePlaylistHeader(
             // Like Button - Smaller secondary button
             Surface(
                 onClick = {
-                    if (dbPlaylist != null) {
+                    if (dbPlaylist?.playlist?.bookmarkedAt != null) {
+                        showUnfollowDialog = true
+                    } else if (dbPlaylist != null) {
                         database.transaction {
                             val currentPlaylist = dbPlaylist.playlist
                             update(currentPlaylist, playlist)

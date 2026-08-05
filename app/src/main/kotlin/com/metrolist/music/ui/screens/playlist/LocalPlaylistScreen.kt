@@ -409,6 +409,63 @@ fun LocalPlaylistScreen(
         )
     }
 
+    var songPendingSwipeRemove by remember { mutableStateOf<PlaylistSong?>(null) }
+    var resetSwipeDismiss by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    if (songPendingSwipeRemove != null) {
+        DefaultDialog(
+            onDismiss = {
+                resetSwipeDismiss?.invoke()
+                songPendingSwipeRemove = null
+                resetSwipeDismiss = null
+            },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_song_from_playlist_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = {
+                    resetSwipeDismiss?.invoke()
+                    songPendingSwipeRemove = null
+                    resetSwipeDismiss = null
+                }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    val currentItem = songPendingSwipeRemove
+                    songPendingSwipeRemove = null
+                    resetSwipeDismiss = null
+                    if (currentItem != null) {
+                        val browseId = playlist?.playlist?.browseId
+                        val setVideoId = currentItem.map.setVideoId
+                        val songId = currentItem.map.songId
+                        val playlistId = currentItem.map.playlistId
+
+                        database.transaction {
+                            move(playlistId, currentItem.map.position, Int.MAX_VALUE)
+                            delete(currentItem.map.copy(position = Int.MAX_VALUE))
+                        }
+
+                        if (browseId != null) {
+                            syncUtils.scheduleRemoveFromPlaylist(
+                                browseId,
+                                songId,
+                                playlistId,
+                            ) {
+                                setVideoId
+                            }
+                        }
+                    }
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
     val headerItems = 2
     val lazyListState = rememberLazyListState()
     var dragInfo by remember {
@@ -553,29 +610,6 @@ fun LocalPlaylistScreen(
                 ) {
                     val currentItem by rememberUpdatedState(song)
 
-                    fun deleteFromPlaylist() {
-                        // Capture values before deletion — DB entry will be gone afterwards
-                        val browseId = playlist?.playlist?.browseId
-                        val setVideoId = currentItem.map.setVideoId
-                        val songId = currentItem.map.songId
-                        val playlistId = currentItem.map.playlistId
-
-                        database.transaction {
-                            move(playlistId, currentItem.map.position, Int.MAX_VALUE)
-                            delete(currentItem.map.copy(position = Int.MAX_VALUE))
-                        }
-
-                        if (browseId != null) {
-                            syncUtils.scheduleRemoveFromPlaylist(
-                                browseId,
-                                songId,
-                                playlistId
-                            ) {
-                                setVideoId
-                            }
-                        }
-                    }
-
                     val swipeRemoveEnabled by rememberPreference(SwipeToRemoveSongKey, defaultValue = false)
                     val dismissBoxState =
                         rememberSwipeToDismissBoxState(
@@ -590,7 +624,12 @@ fun LocalPlaylistScreen(
                             )
                         ) {
                             processedDismiss = true
-                            deleteFromPlaylist()
+                            songPendingSwipeRemove = currentItem
+                            resetSwipeDismiss = {
+                                coroutineScope.launch {
+                                    dismissBoxState.reset()
+                                }
+                            }
                         }
                         if (dv == SwipeToDismissBoxValue.Settled) {
                             processedDismiss = false
@@ -887,6 +926,49 @@ fun LocalPlaylistHeader(
 
     val liked = playlist.playlist.bookmarkedAt != null
     val editable: Boolean = playlist.playlist.isEditable
+
+    var showSyncConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showSyncConfirmDialog) {
+        DefaultDialog(
+            onDismiss = { showSyncConfirmDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.sync_playlist_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                AuraSecondaryAction(onClick = { showSyncConfirmDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                AuraSecondaryAction(onClick = {
+                    showSyncConfirmDialog = false
+                    scope.launch(Dispatchers.IO) {
+                        val playlistPage =
+                            YouTube
+                                .playlist(playlist.playlist.browseId!!)
+                                .completed()
+                                .getOrNull() ?: return@launch
+                        database.transaction {
+                            clearPlaylist(playlist.id)
+                            val songIds = playlistPage.songs
+                                .map(SongItem::toMediaMetadata)
+                                .onEach(::insert)
+                                .map { it.id to it.setVideoId }
+                            addSongsToPlaylist(playlist, songIds)
+                        }
+                        withContext(Dispatchers.Main) {
+                            snackbarHostState.showSnackbar(playlistSyncedStr)
+                        }
+                    }
+                }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
 
     val overrideThumbnail = remember { mutableStateOf<String?>(null) }
     var isCustomThumbnail: Boolean =
@@ -1381,24 +1463,7 @@ fun LocalPlaylistHeader(
                             downloadState = downloadState,
                             onEdit = onShowEditDialog,
                             onSync = {
-                                scope.launch(Dispatchers.IO) {
-                                    val playlistPage =
-                                        YouTube
-                                            .playlist(playlist.playlist.browseId!!)
-                                            .completed()
-                                            .getOrNull() ?: return@launch
-                                    database.transaction {
-                                        clearPlaylist(playlist.id)
-                                        val songIds = playlistPage.songs
-                                            .map(SongItem::toMediaMetadata)
-                                            .onEach(::insert)
-                                            .map { it.id to it.setVideoId }
-                                        addSongsToPlaylist(playlist, songIds)
-                                    }
-                                    withContext(Dispatchers.Main) {
-                                        snackbarHostState.showSnackbar(playlistSyncedStr)
-                                    }
-                                }
+                                showSyncConfirmDialog = true
                             },
                             onDelete = onshowDeletePlaylistDialog,
                             onDownload = {
