@@ -105,7 +105,9 @@ fun LyricsMenu(
     
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
-    val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    val djAiProviderId by rememberPreference(com.metrolist.music.constants.DjAiProviderKey, com.metrolist.music.ai.DjAiProvider.NANO.id)
+    val djAiApiKey by rememberPreference(com.metrolist.music.constants.DjAiApiKey, "")
+    val aiProvider by rememberPreference(AiProviderKey, djAiProviderId)
     val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
@@ -114,7 +116,17 @@ fun LyricsMenu(
     var respectAgentPositioning by rememberPreference(RespectAgentPositioningKey, true)
     var showIntervalIndicator by rememberPreference(ShowIntervalIndicatorKey, true)
 
-    val hasApiKey = if (aiProvider == "DeepL") deeplApiKey.isNotBlank() else openRouterApiKey.isNotBlank()
+    val isDjLyricsProvider =
+        com.metrolist.music.ai.DjAiProvider.entries.any { it.id.equals(aiProvider, ignoreCase = true) }
+    val hasApiKey =
+        when {
+            aiProvider == "DeepL" -> deeplApiKey.isNotBlank()
+            isDjLyricsProvider &&
+                com.metrolist.music.ai.DjAiProvider.fromId(aiProvider) ==
+                com.metrolist.music.ai.DjAiProvider.NANO -> true
+            isDjLyricsProvider -> djAiApiKey.isNotBlank() || openRouterApiKey.isNotBlank()
+            else -> openRouterApiKey.isNotBlank()
+        }
     
     // Observe the authoritative translation-active state from the singleton; this persists
     // correctly across menu open/close cycles and avoids the lyricsProvider() race condition.

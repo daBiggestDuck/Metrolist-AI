@@ -115,7 +115,7 @@ class HomeViewModel @Inject constructor(
         database.speedDialDao.getAll()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** Spotify Home shows a fixed 2×3 shortcut grid (6 tiles), not a multi-page dial. */
+    /** Spotify Home shows a fixed 4×2 shortcut grid (8 tiles), not a multi-page dial. */
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
             database.speedDialDao.getAll(),
@@ -124,7 +124,7 @@ class HomeViewModel @Inject constructor(
         ) { pinned, keepListening, quick ->
             val pinnedItems = pinned.map { it.toYTItem() }
             val filled = pinnedItems.toMutableList()
-            val targetSize = 6
+            val targetSize = 8
 
             if (filled.size < targetSize) {
                 // Keep Listening (History/Heavy Rotation)

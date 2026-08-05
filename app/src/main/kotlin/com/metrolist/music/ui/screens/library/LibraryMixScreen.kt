@@ -403,7 +403,7 @@ fun LibraryMixScreen(
                     state = lazyListState,
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
-                    item(
+                    stickyHeader(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -739,9 +739,8 @@ fun LibraryMixScreen(
                         ),
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
-                    item(
+                    stickyHeader(
                         key = "filter",
-                        span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         filterContent()

@@ -116,6 +116,21 @@ fun SettingsScreen(
             (extra?.contains(query, ignoreCase = true) == true)
     }
 
+    fun matchesDeep(vararg keywords: String): Boolean {
+        if (query.isEmpty()) return true
+        return keywords.any { it.contains(query, ignoreCase = true) }
+    }
+
+    val nestedAppearance = listOf("dark theme", "pure black", "dynamic theme", "player background", "theme", "appearance")
+    val nestedContent = listOf("content language", "content country", "explicit", "quick picks", "proxy", "randomize")
+    val nestedPlayer = listOf("audio quality", "persistent queue", "skip silence", "normalization", "lyrics", "player")
+    val nestedPrivacy = listOf("listen history", "search history", "privacy")
+    val nestedDj = listOf("nano dj", "gemini nano", "openai", "anthropic", "openrouter", "groq", "hack club", "dj")
+    val nestedAi = listOf("lyrics translation", "ai provider", "deepl", "translate")
+    val nestedIntegrations = listOf("discord", "lastfm", "spotify", "exportify", "taste", "listen together")
+    val nestedBackup = listOf("backup", "restore", "csv", "exportify", "import")
+    val nestedStorage = listOf("cache", "storage", "clear song cache", "image cache")
+
     val updateAvailable =
         BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME
 
@@ -175,7 +190,7 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(integrationsTitle, accountSectionTitle)) {
+            if (matches(integrationsTitle, accountSectionTitle) || matchesDeep(*nestedIntegrations.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = integrationsTitle,
@@ -188,7 +203,7 @@ fun SettingsScreen(
 
     val contentDisplayItems =
         buildList {
-            if (matches(appearanceTitle, contentDisplaySectionTitle)) {
+            if (matches(appearanceTitle, contentDisplaySectionTitle) || matchesDeep(*nestedAppearance.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = appearanceTitle,
@@ -197,7 +212,7 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(contentTitle, contentDisplaySectionTitle)) {
+            if (matches(contentTitle, contentDisplaySectionTitle) || matchesDeep(*nestedContent.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = contentTitle,
@@ -206,7 +221,7 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(aiLyricsTitle, contentDisplaySectionTitle)) {
+            if (matches(aiLyricsTitle, contentDisplaySectionTitle) || matchesDeep(*nestedAi.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = aiLyricsTitle,
@@ -228,7 +243,7 @@ fun SettingsScreen(
 
     val playbackItems =
         buildList {
-            if (matches(playerTitle, playbackSectionTitle)) {
+            if (matches(playerTitle, playbackSectionTitle) || matchesDeep(*nestedPlayer.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = playerTitle,
@@ -237,7 +252,7 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(nanoDjTitle, playbackSectionTitle)) {
+            if (matches(nanoDjTitle, playbackSectionTitle) || matchesDeep(*nestedDj.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = nanoDjTitle,
@@ -260,7 +275,7 @@ fun SettingsScreen(
 
     val privacyItems =
         buildList {
-            if (matches(privacyTitle, privacySocialSectionTitle)) {
+            if (matches(privacyTitle, privacySocialSectionTitle) || matchesDeep(*nestedPrivacy.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = privacyTitle,
@@ -327,7 +342,7 @@ fun SettingsScreen(
 
     val aboutDataItems =
         buildList {
-            if (matches(storageTitle, aboutDataSectionTitle)) {
+            if (matches(storageTitle, aboutDataSectionTitle) || matchesDeep(*nestedStorage.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = storageTitle,
@@ -336,7 +351,7 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(backupTitle, aboutDataSectionTitle)) {
+            if (matches(backupTitle, aboutDataSectionTitle) || matchesDeep(*nestedBackup.toTypedArray())) {
                 add(
                     SettingsHubEntry(
                         title = backupTitle,

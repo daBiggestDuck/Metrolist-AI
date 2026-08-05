@@ -221,7 +221,7 @@ class SpotifyImportManager(
     suspend fun importTasteFromTracks(
         tracks: List<Pair<String, String>>,
         playlistName: String = TASTE_PLAYLIST_NAME,
-        @Suppress("UNUSED_PARAMETER") enableNano: Boolean,
+        enableNano: Boolean,
         onProgress: (SpotifyImportProgress) -> Unit = {},
     ): SpotifyImportResult =
         withContext(Dispatchers.IO) {
@@ -231,25 +231,30 @@ class SpotifyImportManager(
             }
 
             // Persist listening + Spotify taste prefs FIRST so Exportify imports succeed even
-            // when YouTube matching later fails or times out.
-            onProgress(SpotifyImportProgress(phase = "Saving taste", total = cleaned.size))
+            // when YouTube matching later fails or times out. AI analysis uses the selected DJ provider.
+            onProgress(SpotifyImportProgress(phase = "Analyzing taste with DJ AI", total = cleaned.size))
             val taste =
                 CsvTasteImportHelper.importTaste(
                     context = appContext,
                     database = database,
                     tracks = cleaned,
-                    // Bulk CSV: heuristic summary is reliable; Nano can refine later from listens.
-                    enableNano = false,
+                    enableNano = enableNano,
                 )
 
             val topArtists = deriveTopArtists(cleaned)
             val topTracks = cleaned.take(50)
+            val hints =
+                appContext.dataStore.data.first()[SpotifyTasteHintsKey]
+                    ?.lines()
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    .orEmpty()
+                    .ifEmpty { heuristicTasteAnalysis(topArtists, topTracks).searchHints }
             val analysis =
                 TasteAnalysisResult(
                     summary = taste.summary,
-                    searchHints =
-                        heuristicTasteAnalysis(topArtists, topTracks).searchHints,
-                    usedAi = false,
+                    searchHints = hints,
+                    usedAi = TasteSummary.isUsable(taste.summary),
                 )
 
             val spotifyTracks =

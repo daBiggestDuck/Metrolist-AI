@@ -5,9 +5,11 @@
 
 package com.metrolist.music.ui.screens.library
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -19,6 +21,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.LibraryMixViewModel
 
@@ -32,7 +35,12 @@ fun LibraryScreen() {
     val mixViewModel: LibraryMixViewModel = hiltViewModel()
 
     val filterContent = @Composable {
-        Row {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(AuraPlayerCanvas),
+        ) {
             ChipsRow(
                 chips = listOf(
                     LibraryFilter.PLAYLISTS to stringResource(R.string.filter_playlists),

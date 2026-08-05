@@ -300,37 +300,32 @@ fun AuraFilterPill(
     val border = if (selected) Color.Transparent else AuraHairline
     Row(
         modifier
-            .height(36.dp)
+            .height(28.dp)
+            .clip(AuraPillShape)
+            .background(bg)
             .then(
-                if (selected) {
-                    Modifier
-                        .clip(AuraPillShape)
-                        .background(bg)
+                if (!selected) {
+                    Modifier.border(1.dp, border, AuraPillShape)
                 } else {
-                    Modifier.auraFloatingIsland(
-                        shape = AuraPillShape,
-                        color = bg,
-                        borderColor = border,
-                        elevation = 0.dp,
-                    )
+                    Modifier
                 },
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (leadingIcon != null) {
             Icon(
                 painter = leadingIcon,
                 contentDescription = null,
                 tint = fg,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
             )
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             color = fg,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,

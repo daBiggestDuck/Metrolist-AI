@@ -59,7 +59,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 private val AuraNavUnselected = Color(0xFFB3B3B3)
 private val AuraNavSelected = Color(0xFFFFFFFF)
-private val AuraNavIndicator = Color.White.copy(alpha = 0.20f)
+private val AuraNavIndicator = Color.White.copy(alpha = 0.28f)
 private val AuraNavPillBg = AuraElevated
 
 @Stable
@@ -139,8 +139,8 @@ fun AppNavigationRail(
             targetValue = (selectedIndex ?: 0).toFloat(),
             animationSpec =
                 spring(
-                    dampingRatio = 0.58f,
-                    stiffness = Spring.StiffnessMedium,
+                    dampingRatio = 0.72f,
+                    stiffness = Spring.StiffnessMediumLow,
                 ),
             label = "auraRailIndicator",
         )
@@ -264,8 +264,8 @@ fun AppNavigationBar(
             targetValue = (selectedIndex ?: 0).toFloat(),
             animationSpec =
                 spring(
-                    dampingRatio = 0.58f,
-                    stiffness = Spring.StiffnessMedium,
+                    dampingRatio = 0.72f,
+                    stiffness = Spring.StiffnessMediumLow,
                 ),
             label = "auraNavIndicator",
         )
@@ -304,7 +304,7 @@ fun AppNavigationBar(
                             .align(Alignment.CenterStart)
                             .width(tabWidth)
                             .fillMaxHeight()
-                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                            .padding(horizontal = 6.dp, vertical = 5.dp)
                             .graphicsLayer {
                                 translationX = animatedIndex.value * tabWidthPx
                             }

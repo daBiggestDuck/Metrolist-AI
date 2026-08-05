@@ -220,13 +220,23 @@ fun OriginalLyrics(
 
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
-    val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    val djAiProviderId by rememberPreference(com.metrolist.music.constants.DjAiProviderKey, com.metrolist.music.ai.DjAiProvider.NANO.id)
+    val djAiApiKey by rememberPreference(com.metrolist.music.constants.DjAiApiKey, "")
+    val aiProvider by rememberPreference(AiProviderKey, djAiProviderId)
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
     val openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
     val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
     val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     val aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
+    val isDjLyricsProvider =
+        com.metrolist.music.ai.DjAiProvider.entries.any { it.id.equals(aiProvider, ignoreCase = true) }
+    val lyricsApiKey =
+        when {
+            aiProvider == "DeepL" -> deeplApiKey
+            isDjLyricsProvider -> djAiApiKey.ifBlank { openRouterApiKey }
+            else -> openRouterApiKey
+        }
 
     val scope = rememberCoroutineScope()
 
@@ -389,12 +399,19 @@ fun OriginalLyrics(
     // Listen for manual trigger
     LaunchedEffect(showLyrics, lines.size) {
         LyricsTranslationHelper.manualTrigger.collect {
-            val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
+            val effectiveApiKey =
+                when {
+                    aiProvider == "DeepL" -> deeplApiKey
+                    isDjLyricsProvider &&
+                        com.metrolist.music.ai.DjAiProvider.fromId(aiProvider) ==
+                        com.metrolist.music.ai.DjAiProvider.NANO -> "nano"
+                    else -> lyricsApiKey
+                }
             if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {
                 LyricsTranslationHelper.translateLyrics(
                     lyrics = lines,
                     targetLanguage = translateLanguage,
-                    apiKey = openRouterApiKey,
+                    apiKey = lyricsApiKey,
                     baseUrl = openRouterBaseUrl,
                     model = openRouterModel,
                     mode = translateMode,
@@ -403,7 +420,7 @@ fun OriginalLyrics(
                     provider = aiProvider,
                     deeplApiKey = deeplApiKey,
                     deeplFormality = deeplFormality,
-                    useStreaming = true,
+                    useStreaming = !isDjLyricsProvider,
                     songId = currentSong?.id ?: "",
                     database = database,
                     systemPrompt = aiSystemPrompt,

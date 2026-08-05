@@ -95,7 +95,7 @@ fun AuraProfileMenuSheet(
                             Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(AuraHighlight),
+                                .background(Color(0xFF333333)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -166,31 +166,23 @@ private fun AuraProfileMenuRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(AuraHighlight),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (showBadge) {
-                BadgedBox(badge = { Badge() }) {
-                    Icon(
-                        painter = icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            } else {
+        // Plain icons — no colored circular boxes behind each row.
+        if (showBadge) {
+            BadgedBox(badge = { Badge() }) {
                 Icon(
                     painter = icon,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
+        } else {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
+            )
         }
         Text(
             text = title,

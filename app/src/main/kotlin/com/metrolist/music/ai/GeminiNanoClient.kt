@@ -160,15 +160,16 @@ suspend fun analyzeSpotifyTaste(
 
     val prompt =
         """
-        You are Nano DJ's taste analyst (on-device Gemini Nano replacing Spotify DJ).
-        Summarize the listener's taste for a personalized radio host, and list song search
-        queries Nano DJ can play on YouTube Music.
-        Reply with EXACTLY this format (no markdown):
-        SUMMARY: <2-3 sentence taste summary for a DJ>
+        You are a music-taste analyst for a personalized radio DJ (Metrolist Nano DJ).
+        Given this listener's imported track and artist history, write a real taste profile
+        the DJ can use — never reply with blank text, "undefined", or placeholders.
+
+        Reply with EXACTLY this format (no markdown, no extra commentary):
+        SUMMARY: <2-3 vivid sentences describing genres, moods, eras, and artists>
         HINTS:
         - <Song Title> - <Artist>
         - <Song Title> - <Artist>
-        (up to 8 HINTS lines of real playable songs)
+        (up to 8 HINTS lines of real playable songs matching this taste)
 
         Top artists: $artistLine
         Top tracks: $trackLine

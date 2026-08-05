@@ -196,7 +196,18 @@ object LyricsTranslationHelper {
             scope.launch(Dispatchers.IO) {
                 try {
                     // Validate inputs
-                    val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
+                    val isDjProvider =
+                        com.metrolist.music.ai.DjAiProvider.entries.any {
+                            it.id.equals(provider, ignoreCase = true)
+                        }
+                    val effectiveApiKey =
+                        when {
+                            provider == "DeepL" -> deeplApiKey
+                            isDjProvider &&
+                                com.metrolist.music.ai.DjAiProvider.fromId(provider) ==
+                                com.metrolist.music.ai.DjAiProvider.NANO -> "nano"
+                            else -> apiKey
+                        }
                     if (effectiveApiKey.isBlank()) {
                         _status.value = TranslationStatus.Error(context.getString(com.metrolist.music.R.string.ai_error_api_key_required))
                         return@launch
@@ -288,6 +299,16 @@ object LyricsTranslationHelper {
                                 targetLanguage = targetLanguage,
                                 apiKey = deeplApiKey,
                                 formality = deeplFormality,
+                            )
+                        } else if (isDjProvider) {
+                            Timber.d("Using DJ AI provider %s for lyrics translation", provider)
+                            translateWithDjClient(
+                                context = context,
+                                text = fullText,
+                                targetLanguage = fullLanguageName,
+                                mode = mode,
+                                lineCount = nonEmptyEntries.size,
+                                systemPrompt = systemPrompt,
                             )
                         } else if (provider == "Mistral") {
                             Timber.d("Using Mistral for translation")
@@ -457,6 +478,59 @@ object LyricsTranslationHelper {
                     }
                 }
             }
+    }
+
+    private suspend fun translateWithDjClient(
+        context: Context,
+        text: String,
+        targetLanguage: String,
+        mode: String,
+        lineCount: Int,
+        systemPrompt: String,
+    ): Result<List<String>> {
+        val client = com.metrolist.music.ai.GeminiNanoClient.get(context)
+        val status = runCatching { client.checkStatus() }.getOrNull()
+        if (status != com.metrolist.music.ai.GeminiNanoStatus.Available) {
+            return Result.failure(
+                IllegalStateException(
+                    context.getString(com.metrolist.music.R.string.ai_error_api_key_required),
+                ),
+            )
+        }
+        val promptBody =
+            buildString {
+                append(
+                    systemPrompt.ifBlank {
+                        com.metrolist.music.constants.DEFAULT_AI_SYSTEM_PROMPT
+                            .replace("{lineCount}", lineCount.toString())
+                    },
+                )
+                append("\n\nMode: ").append(mode)
+                append("\nTarget language: ").append(targetLanguage)
+                append("\nTranslate the following lyrics lines. Return ONLY a JSON array of ").append(lineCount)
+                append(" strings:\n\n")
+                append(text)
+            }
+        val raw = client.generateContent(promptBody)?.trim().orEmpty()
+        if (raw.isBlank()) {
+            return Result.failure(IllegalStateException("Empty AI response"))
+        }
+        return runCatching {
+            val jsonStart = raw.indexOf('[')
+            val jsonEnd = raw.lastIndexOf(']')
+            val json =
+                if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                    raw.substring(jsonStart, jsonEnd + 1)
+                } else {
+                    raw
+                }
+            val arr = org.json.JSONArray(json)
+            buildList {
+                for (i in 0 until arr.length()) {
+                    add(arr.optString(i, ""))
+                }
+            }
+        }
     }
 
     sealed class TranslationStatus {
