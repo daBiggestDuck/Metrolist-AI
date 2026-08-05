@@ -206,6 +206,7 @@ fun BackupAndRestore(
                     ),
                     Material3SettingsItem(
                         title = { Text(stringResource(R.string.import_csv)) },
+                        description = { Text(stringResource(R.string.import_csv_desc)) },
                         icon = painterResource(R.drawable.playlist_add),
                         onClick = {
                             importPlaylistFromCsv.launch(

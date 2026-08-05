@@ -40,6 +40,7 @@ import com.metrolist.music.playback.MusicService
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_AUTOMIX_FILE
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_PLAYER_STATE_FILE
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
+import com.metrolist.music.utils.CsvImportColumnDetector
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -499,20 +500,14 @@ class BackupRestoreViewModel @Inject constructor(
     }
 
     fun previewCsvFile(context: Context, uri: Uri): CsvImportState {
-        val previewRows = mutableListOf<List<String>>()
-        val csvState: CsvImportState
         runCatching {
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 val lines = stream.bufferedReader().readLines()
-                val rowsToPreview = lines.take(6).map { parseCsvLine(it) }
-                previewRows.addAll(rowsToPreview)
-
-                val hasHeader = lines.isNotEmpty() && lines[0].contains(",")
-                csvState = CsvImportState(
-                    previewRows = previewRows,
-                    hasHeader = hasHeader,
-                )
-                return csvState
+                val previewRows = lines.take(6).map { parseCsvLine(it) }
+                val hasHeader =
+                    previewRows.isNotEmpty() &&
+                        CsvImportColumnDetector.looksLikeHeaderRow(previewRows.first())
+                return CsvImportColumnDetector.detect(previewRows, hasHeader)
             }
         }.onFailure {
             reportException(it)

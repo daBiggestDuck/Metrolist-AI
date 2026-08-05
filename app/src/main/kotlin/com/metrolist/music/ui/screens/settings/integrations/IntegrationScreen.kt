@@ -60,6 +60,11 @@ fun IntegrationScreen(
                         navController.navigate("settings/integrations/spotify")
                     }
                 ),
+                IntegrationCardItem(
+                    icon = painterResource(R.drawable.radio),
+                    title = { Text(stringResource(R.string.dj_settings_title)) },
+                    onClick = { navController.navigate("settings/dj") },
+                ),
             )
         )
     }

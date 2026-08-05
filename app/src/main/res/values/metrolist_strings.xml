@@ -810,6 +810,12 @@
     <string name="listen_on_metrolist">Listen on Metrolist</string>
 
     <!-- CSV Import Strings -->
+    <string name="import_csv_desc">Import playlists from CSV exports. Works with Exportify (Spotify), two-column title/artist files, and exports with Track Name + Artist Name columns. Songs are matched on YouTube Music.</string>
+    <string name="csv_import_help">Supported: Exportify CSV (Track Name, Artist Name(s), Album, …), two-column title/artist CSV, or optional YouTube URL column. Map columns below if auto-detect missed.</string>
+    <string name="csv_import_exportify_url">https://exportify.net</string>
+    <string name="csv_import_exportify_link">Exportify</string>
+    <string name="csv_import_exportify_prefix">Tip: export Spotify playlists with </string>
+    <string name="csv_import_exportify_suffix"> (free) — then pick the CSV here.</string>
     <string name="map_csv_columns">Map CSV columns</string>
     <string name="first_row_is_header">First row is header</string>
     <string name="artist_name_column">Artist name column</string>
@@ -1038,6 +1044,13 @@
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
 
     <!-- Nano DJ AI (multi-provider) -->
+    <string name="dj_settings_title">Nano DJ</string>
+    <string name="dj_settings_desc">AI radio host, provider, and voice</string>
+    <string name="dj_settings_intro">Configure Nano DJ — the on-device AI radio host. Uses Gemini Nano on supported phones, or a cloud provider with your API key. This is separate from lyrics translation AI.</string>
+    <string name="dj_settings_section_ai">AI provider</string>
+    <string name="dj_settings_section_playback">Playback</string>
+    <string name="dj_settings_spotify_link">Provider, model download, and DJ voice settings</string>
+    <string name="ai_provider_help_generic">Choose a lyrics translation provider above, then add your API key in the setup section.</string>
     <string name="gemini_nano_section">Nano DJ AI</string>
     <string name="gemini_nano_enable">Enable Nano DJ AI</string>
     <string name="gemini_nano_enable_desc">Power Nano DJ commentary/picks and taste analysis with on-device Gemini Nano or a cloud provider</string>
@@ -1118,7 +1131,7 @@
     <string name="spotify_playlist_tracks_owner">%1$d tracks • %2$s</string>
     <string name="spotify_import_action">Import</string>
     <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
-    <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Easiest path: use a Metrolist playlist for taste or Import a playlist file, enable Nano in AI settings, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
+    <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Easiest path: use a Metrolist playlist for taste or Import a playlist file, enable Nano DJ in Settings → Nano DJ, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
     <string name="spotify_view_taste">Your music taste</string>
     <string name="spotify_view_taste_desc">See what Nano DJ has learned from your listening, playlists, and file imports</string>
     <string name="spotify_import_all_playlists">Import all playlists</string>

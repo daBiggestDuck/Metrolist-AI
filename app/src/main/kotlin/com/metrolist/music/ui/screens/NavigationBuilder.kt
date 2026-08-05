@@ -23,6 +23,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.navigation.navArgument
+import com.metrolist.music.ui.navigation.nestedScreenEnter
+import com.metrolist.music.ui.navigation.nestedScreenExit
+import com.metrolist.music.ui.navigation.nestedScreenPopEnter
+import com.metrolist.music.ui.navigation.nestedScreenPopExit
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
@@ -49,6 +53,7 @@ import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.screens.settings.DjSettings
 import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
@@ -347,79 +352,203 @@ fun NavGraphBuilder.navigationBuilder(
         YouTubeBrowseScreen(navController)
     }
 
-    composable("settings") {
+    composable(
+        route = "settings",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         SettingsScreen(navController, latestVersionName)
     }
 
-    composable("settings/appearance") {
+    composable(
+        route = "settings/appearance",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         AppearanceSettings(navController, activity, snackbarHostState)
     }
 
-    composable("settings/appearance/theme") {
+    composable(
+        route = "settings/appearance/theme",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         ThemeScreen(navController)
     }
 
-    composable("settings/content") {
+    composable(
+        route = "settings/content",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         ContentSettings(navController)
     }
 
-    composable("settings/content/romanization") {
+    composable(
+        route = "settings/content/romanization",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         RomanizationSettings(navController)
     }
 
-    composable("settings/ai") {
+    composable(
+        route = "settings/ai",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         AiSettings(navController)
     }
 
-    composable("settings/player") {
+    composable(
+        route = "settings/dj",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
+        DjSettings(navController)
+    }
+
+    composable(
+        route = "settings/player",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         PlayerSettings(navController)
     }
 
-    composable("settings/stream_sources") {
+    composable(
+        route = "settings/stream_sources",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         StreamSourcesSettings(navController)
     }
 
-    composable("settings/storage") {
+    composable(
+        route = "settings/storage",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         StorageSettings(navController)
     }
 
-    composable("settings/privacy") {
+    composable(
+        route = "settings/privacy",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         PrivacySettings(navController)
     }
 
-    composable("settings/backup_restore") {
+    composable(
+        route = "settings/backup_restore",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         BackupAndRestore(navController)
     }
 
-    composable("settings/integrations") {
+    composable(
+        route = "settings/integrations",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         IntegrationScreen(navController)
     }
 
-    composable("settings/integrations/discord") {
+    composable(
+        route = "settings/integrations/discord",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         DiscordSettings(navController)
     }
 
-    composable("settings/integrations/lastfm") {
+    composable(
+        route = "settings/integrations/lastfm",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         LastFMSettings(navController)
     }
 
-    composable("settings/integrations/spotify") {
+    composable(
+        route = "settings/integrations/spotify",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         SpotifySettings(navController)
     }
 
-    composable("settings/integrations/spotify/taste") {
+    composable(
+        route = "settings/integrations/spotify/taste",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         SpotifyTasteScreen(navController)
     }
 
-    composable(route = "settings/integrations/listen_together") {
+    composable(
+        route = "settings/integrations/listen_together",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         ListenTogetherSettings(navController)
     }
 
-    composable("settings/updater") {
+    composable(
+        route = "settings/updater",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         UpdaterScreen(navController)
     }
 
-    composable("settings/about") {
+    composable(
+        route = "settings/about",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         AboutScreen(navController)
     }
 
@@ -457,7 +586,13 @@ fun NavGraphBuilder.navigationBuilder(
     composable("recognition_history") {
         RecognitionHistoryScreen(navController)
     }
-    composable("settings/android_auto") {
+    composable(
+        route = "settings/android_auto",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
         AndroidAutoSettings(navController)
     }
 }

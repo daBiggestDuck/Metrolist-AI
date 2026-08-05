@@ -102,7 +102,7 @@ fun SpotifySettings(
     var topArtistsPref by rememberPreference(SpotifyTopArtistsKey, "")
     var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
     val enableGeminiNano by rememberPreference(EnableGeminiNanoKey, true)
-    val (nanoDjSpeak, onNanoDjSpeakChange) = rememberPreference(NanoDjSpeakKey, true)
+    val (nanoDjSpeak, _) = rememberPreference(NanoDjSpeakKey, true)
 
     var isConnected by remember {
         mutableStateOf(!SpotifyTokenStore.retrieve().isNullOrBlank())
@@ -698,20 +698,10 @@ fun SpotifySettings(
         )
         AuraDivider()
         AuraRow(
-            title = stringResource(R.string.nano_dj_speak),
-            subtitle = stringResource(R.string.nano_dj_speak_desc),
-            trailingContent = {
-                Switch(
-                    checked = nanoDjSpeak,
-                    onCheckedChange = onNanoDjSpeakChange,
-                    colors =
-                        SwitchDefaults.colors(
-                            checkedTrackColor = AuraSpotifyGreen,
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                )
-            },
-            onClick = { onNanoDjSpeakChange(!nanoDjSpeak) },
+            title = stringResource(R.string.dj_settings_title),
+            subtitle = stringResource(R.string.dj_settings_spotify_link),
+            showChevron = true,
+            onClick = { navController.navigate("settings/dj") },
         )
 
         if (isConnected) {

@@ -33,7 +33,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -76,6 +81,43 @@ fun CsvColumnMappingDialog(
                 text = stringResource(R.string.map_csv_columns),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Text(
+                text = stringResource(R.string.csv_import_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            val exportifyUrl = stringResource(R.string.csv_import_exportify_url)
+            val exportifyLinkText = stringResource(R.string.csv_import_exportify_link)
+            val exportifyAnnotated =
+                buildAnnotatedString {
+                    append(stringResource(R.string.csv_import_exportify_prefix))
+                    val linkStart = length
+                    append(exportifyLinkText)
+                    val linkEnd = length
+                    append(stringResource(R.string.csv_import_exportify_suffix))
+                    addLink(
+                        LinkAnnotation.Url(
+                            url = exportifyUrl,
+                            styles =
+                                TextLinkStyles(
+                                    style =
+                                        SpanStyle(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            textDecoration = TextDecoration.Underline,
+                                        ),
+                                ),
+                        ),
+                        start = linkStart,
+                        end = linkEnd,
+                    )
+                }
+            Text(
+                text = exportifyAnnotated,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             // Preview rows
