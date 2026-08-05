@@ -1002,6 +1002,7 @@ class MainActivity : ComponentActivity() {
                             else -> R.string.aura_greeting_evening
                         }
                     }
+                val isHomeRoute = navBackStackEntry?.destination?.route == Screens.Home.route
                 val headerTitle =
                     when (navBackStackEntry?.destination?.route) {
                         Screens.Home.route -> stringResource(greetingRes)
@@ -1047,11 +1048,14 @@ class MainActivity : ComponentActivity() {
                                             text = headerTitle,
                                             style = MaterialTheme.typography.titleLarge,
                                             fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
+                                            maxLines = if (isHomeRoute) 2 else 1,
+                                            softWrap = true,
                                             overflow = TextOverflow.Ellipsis,
                                             color = Color.White,
                                         )
                                     },
+                                    // Home greeting sits next to profile with full width — not a cramped floating pill.
+                                    floatTitle = !isHomeRoute && headerTitle.isNotEmpty(),
                                     navigationIcon = {
                                         AuraFloatingChromeButton(
                                             onClick = { showProfileMenu = true },

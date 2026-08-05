@@ -113,8 +113,9 @@ class HomeViewModel @Inject constructor(
 
     val pinnedSpeedDialItems: StateFlow<List<SpeedDialItem>> =
         database.speedDialDao.getAll()
-            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Spotify Home shows a fixed 2×3 shortcut grid (6 tiles), not a multi-page dial. */
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
             database.speedDialDao.getAll(),
@@ -123,7 +124,7 @@ class HomeViewModel @Inject constructor(
         ) { pinned, keepListening, quick ->
             val pinnedItems = pinned.map { it.toYTItem() }
             val filled = pinnedItems.toMutableList()
-            val targetSize = 27
+            val targetSize = 6
 
             if (filled.size < targetSize) {
                 // Keep Listening (History/Heavy Rotation)
@@ -182,7 +183,7 @@ class HomeViewModel @Inject constructor(
             }
             
             filled.take(targetSize)
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     suspend fun getRandomItem(): YTItem? {
         try {
@@ -725,6 +726,30 @@ class HomeViewModel @Inject constructor(
         wrappedManager.dispose()
     }
 
+    private var isHomeDataLoaded = false
+
+    fun loadHomeData() {
+        if (isHomeDataLoaded) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cookie = context.dataStore.data
+                    .map { it[InnerTubeCookieKey] }
+                    .distinctUntilChanged()
+                    .first()
+
+                if (!cookie.isNullOrEmpty()) {
+                    YouTube.cookie = cookie
+                }
+
+                isHomeDataLoaded = true
+                load()
+            } catch (e: Exception) {
+                isHomeDataLoaded = false
+                Timber.e(e, "Failed to load home data")
+            }
+        }
+    }
+
     init {
         // Run sync in separate coroutine with cooldown to avoid blocking UI
         viewModelScope.launch(Dispatchers.IO) {
@@ -792,29 +817,9 @@ class HomeViewModel @Inject constructor(
                     }
                 }
         }
-    }
 
-    private var isHomeDataLoaded = false
-
-    fun loadHomeData() {
-        if (isHomeDataLoaded) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val cookie = context.dataStore.data
-                    .map { it[InnerTubeCookieKey] }
-                    .distinctUntilChanged()
-                    .first()
-
-                if (!cookie.isNullOrEmpty()) {
-                    YouTube.cookie = cookie
-                }
-
-                isHomeDataLoaded = true
-                load()
-            } catch (e: Exception) {
-                isHomeDataLoaded = false
-                Timber.e(e, "Failed to load home data")
-            }
-        }
+        // Warm local shortcuts + home payload as soon as the activity-scoped VM exists
+        // so Home's first paint can bind cached StateFlows instead of empty placeholders.
+        loadHomeData()
     }
 }
