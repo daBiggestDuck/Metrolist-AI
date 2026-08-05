@@ -27,6 +27,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -42,15 +44,20 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.RecentSearchesStore
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrivacySettings(
     navController: NavController
 ) {
+    val context = LocalContext.current
     val database = LocalDatabase.current
+    val scope = rememberCoroutineScope()
     val (pauseListenHistory, onPauseListenHistoryChange) = rememberPreference(
         key = PauseListenHistoryKey,
         defaultValue = false
@@ -118,6 +125,9 @@ fun PrivacySettings(
                         showClearSearchHistoryDialog = false
                         database.query {
                             clearSearchHistory()
+                        }
+                        scope.launch(Dispatchers.IO) {
+                            RecentSearchesStore.clear(context)
                         }
                     }) {
                     Text(text = stringResource(android.R.string.ok))
