@@ -117,6 +117,8 @@ interface GeminiNanoClient {
                 DjAiProvider.ANTHROPIC -> "claude-haiku-4-5-20251001"
                 DjAiProvider.HUGGINGFACE -> "meta-llama/Meta-Llama-3-8B-Instruct"
                 DjAiProvider.OPENROUTER -> OpenRouterDefaultModel
+                DjAiProvider.GROQ -> "llama-3.3-70b-versatile"
+                DjAiProvider.HACKCLUB -> "qwen/qwen3-32b"
             }
     }
 }

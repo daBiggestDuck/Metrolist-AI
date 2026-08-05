@@ -17,8 +17,8 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
- * Cloud chat backends for Nano DJ (OpenAI-compatible, Anthropic Messages, Hugging Face router).
- * Implements [GeminiNanoClient] so existing DJ / taste call sites stay unchanged.
+ * Cloud chat backends for Nano DJ (OpenAI-compatible including Groq / Hack Club / HF / OpenRouter,
+ * plus Anthropic Messages). Implements [GeminiNanoClient] so DJ / taste call sites stay unchanged.
  */
 class CloudDjLlmClient(
     private val provider: DjAiProvider,
@@ -61,16 +61,7 @@ class CloudDjLlmClient(
         }
 
     private fun openAiCompatibleChat(prompt: String): String? {
-        val url =
-            when {
-                !baseUrl.isNullOrBlank() -> baseUrl
-                provider == DjAiProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
-                provider == DjAiProvider.HUGGINGFACE ->
-                    "https://router.huggingface.co/v1/chat/completions"
-                provider == DjAiProvider.OPENROUTER ->
-                    "https://openrouter.ai/api/v1/chat/completions"
-                else -> "https://api.openai.com/v1/chat/completions"
-            }
+        val url = resolveChatCompletionsUrl()
 
         val body =
             JSONObject()
@@ -163,11 +154,34 @@ class CloudDjLlmClient(
         }
     }
 
+    private fun resolveChatCompletionsUrl(): String {
+        val override = baseUrl?.trim()?.takeIf { it.isNotBlank() } ?: return defaultChatCompletionsUrl()
+        val trimmed = override.trimEnd('/')
+        return if (trimmed.endsWith("/chat/completions")) {
+            trimmed
+        } else {
+            "$trimmed/chat/completions"
+        }
+    }
+
+    private fun defaultChatCompletionsUrl(): String =
+        when (provider) {
+            DjAiProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
+            DjAiProvider.HUGGINGFACE -> "https://router.huggingface.co/v1/chat/completions"
+            DjAiProvider.OPENROUTER -> "https://openrouter.ai/api/v1/chat/completions"
+            DjAiProvider.GROQ -> "https://api.groq.com/openai/v1/chat/completions"
+            DjAiProvider.HACKCLUB -> "https://ai.hackclub.com/proxy/v1/chat/completions"
+            DjAiProvider.ANTHROPIC, DjAiProvider.NANO ->
+                "https://api.openai.com/v1/chat/completions"
+        }
+
     private fun defaultModel(): String =
         when (provider) {
             DjAiProvider.OPENAI -> "gpt-4o-mini"
             DjAiProvider.HUGGINGFACE -> "meta-llama/Meta-Llama-3-8B-Instruct"
             DjAiProvider.OPENROUTER -> "google/gemini-2.5-flash-lite"
+            DjAiProvider.GROQ -> "llama-3.3-70b-versatile"
+            DjAiProvider.HACKCLUB -> "qwen/qwen3-32b"
             DjAiProvider.ANTHROPIC -> "claude-haiku-4-5-20251001"
             DjAiProvider.NANO -> ""
         }

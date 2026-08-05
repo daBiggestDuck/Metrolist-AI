@@ -473,7 +473,7 @@ val DeeplApiKey = stringPreferencesKey("deeplApiKey")
 val DeeplFormalityKey = stringPreferencesKey("deeplFormality")
 val AiSystemPromptKey = stringPreferencesKey("aiSystemPrompt")
 val EnableGeminiNanoKey = booleanPreferencesKey("enableGeminiNano")
-/** DJ / taste LLM backend: nano | openai | anthropic | huggingface | openrouter */
+/** DJ / taste LLM backend: nano | openai | anthropic | huggingface | openrouter | groq | hackclub */
 val DjAiProviderKey = stringPreferencesKey("djAiProvider")
 val DjAiApiKey = stringPreferencesKey("djAiApiKey")
 val DjAiModelKey = stringPreferencesKey("djAiModel")
