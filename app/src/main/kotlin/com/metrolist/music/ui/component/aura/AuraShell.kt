@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -206,13 +207,14 @@ fun AuraFloatingTitleIsland(
     Box(
         modifier =
             modifier
-                .heightIn(min = 40.dp)
+                .heightIn(min = 32.dp)
+                .wrapContentWidth()
                 .auraFloatingIsland(
                     shape = AuraFloatingPillShape,
                     color = AuraElevated,
                     elevation = 0.dp,
                 )
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 5.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         content()

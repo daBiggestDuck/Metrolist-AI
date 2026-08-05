@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,6 +50,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
+import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumFilter
@@ -110,7 +113,12 @@ fun LibraryAlbumsScreen(
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
 
     val filterContent = @Composable {
-        Row {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .auraStickyChromeBackground(),
+        ) {
             Spacer(Modifier.width(12.dp))
             AuraFilterPill(
                 label = stringResource(R.string.albums),
@@ -251,7 +259,7 @@ fun LibraryAlbumsScreen(
             LibraryViewType.LIST -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = auraContentPaddingBelowChrome(),
                 ) {
                     item(
                         key = "filter",
@@ -307,7 +315,7 @@ fun LibraryAlbumsScreen(
                         GridCells.Adaptive(
                             minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
                         ),
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = auraContentPaddingBelowChrome(),
                 ) {
                     item(
                         key = "filter",

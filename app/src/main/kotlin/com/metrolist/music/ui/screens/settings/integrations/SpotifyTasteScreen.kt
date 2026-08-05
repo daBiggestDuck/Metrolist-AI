@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.screens.settings.integrations
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -234,12 +235,19 @@ fun SpotifyTasteScreen(
         tasteSuccessTrackCount = trackCount
         tasteSuccessUsedAi = usedAi
         showTasteSuccessDialog = true
+        Toast
+            .makeText(
+                context,
+                context.getString(R.string.taste_updated_snackbar, trackCount),
+                Toast.LENGTH_SHORT,
+            ).show()
     }
 
     fun showTasteError(message: String?) {
         tasteErrorMessage = message ?: context.getString(R.string.ai_error_unknown)
         showTasteErrorDialog = true
         statusMessage = tasteErrorMessage
+        Toast.makeText(context, tasteErrorMessage, Toast.LENGTH_LONG).show()
     }
 
     fun requestTasteOverwrite(action: () -> Unit) {
@@ -405,6 +413,7 @@ fun SpotifyTasteScreen(
                         }
                     if (parsed.tracks.isEmpty()) {
                         statusMessage = context.getString(R.string.spotify_file_import_empty)
+                        showTasteError(statusMessage)
                         return@launch
                     }
                     pendingFileTracks = parsed.tracks
@@ -413,7 +422,7 @@ fun SpotifyTasteScreen(
                             ?: SpotifyImportManager.TASTE_PLAYLIST_NAME
                     showFilePlaylistNameDialog = true
                 } catch (e: Exception) {
-                    statusMessage = e.message
+                    showTasteError(e.message)
                     reportException(e)
                 }
             }
@@ -639,6 +648,22 @@ fun SpotifyTasteScreen(
 
         // —— My taste ——
         AuraSectionLabel(stringResource(R.string.spotify_taste_my_section))
+        if (isBusy) {
+            Text(
+                text =
+                    buildString {
+                        append(progress.phase.ifBlank { context.getString(R.string.spotify_taste_loading) })
+                        if (progress.currentTitle.isNotBlank()) {
+                            append(" — ")
+                            append(progress.currentTitle)
+                        }
+                    },
+                style = MaterialTheme.typography.bodyMedium,
+                color = AuraSpotifyGreen,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
         if (!hasTaste) {
             Text(
                 text = stringResource(R.string.spotify_taste_empty_friendly),
@@ -817,8 +842,16 @@ fun SpotifyTasteScreen(
                         )
                     statusMessage =
                         result.fold(
-                            onSuccess = { context.getString(R.string.nano_dj_started) },
-                            onFailure = { it.message },
+                            onSuccess = {
+                                val msg = context.getString(R.string.nano_dj_started)
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                msg
+                            },
+                            onFailure = {
+                                val msg = it.message ?: context.getString(R.string.ai_error_unknown)
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                msg
+                            },
                         )
                     isBusy = false
                 }

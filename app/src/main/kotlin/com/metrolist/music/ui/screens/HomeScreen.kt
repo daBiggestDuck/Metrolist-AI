@@ -124,6 +124,8 @@ import com.metrolist.music.ui.component.aura.AuraHomeShortcutGrid
 import com.metrolist.music.ui.component.aura.AuraShortcutItem
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
+import com.metrolist.music.ui.component.aura.auraBelowTopChrome
+import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -1162,20 +1164,22 @@ fun HomeScreen(
 
             LazyColumn(
                 state = lazylistState,
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                contentPadding = auraContentPaddingBelowChrome(),
             ) {
                 item(key = "chips_row", contentType = CONTENT_TYPE_HEADER) {
                     val chips =
                         remember(homePage?.chips) {
                             homePage?.chips?.map { it to it.title }.orEmpty()
                         }
-                    ChipsRow(
-                        chips = chips,
-                        currentValue = selectedChip,
-                        onValueUpdate = {
-                            viewModel.toggleChip(it)
-                        },
-                    )
+                    Box(modifier = Modifier.auraBelowTopChrome()) {
+                        ChipsRow(
+                            chips = chips,
+                            currentValue = selectedChip,
+                            onValueUpdate = {
+                                viewModel.toggleChip(it)
+                            },
+                        )
+                    }
                 }
 
                 // Spotify Home: fixed 4×2 shortcuts under chips (no title / no pager).

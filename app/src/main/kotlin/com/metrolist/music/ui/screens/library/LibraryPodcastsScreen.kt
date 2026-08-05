@@ -62,6 +62,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
+import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
@@ -178,7 +180,12 @@ fun LibraryPodcastsScreen(
     ) {
         // Chip row header — same pattern as LibrarySongsScreen
         val chipsHeader = @Composable {
-            Row {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .auraStickyChromeBackground(),
+            ) {
                 Spacer(Modifier.width(12.dp))
                 AuraFilterPill(
                     label = stringResource(R.string.filter_podcasts),
@@ -205,7 +212,7 @@ fun LibraryPodcastsScreen(
             PodcastFilter.EPISODES -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = auraContentPaddingBelowChrome(),
                 ) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
@@ -267,7 +274,7 @@ fun LibraryPodcastsScreen(
             PodcastFilter.CHANNELS -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = auraContentPaddingBelowChrome(),
                 ) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
@@ -335,7 +342,7 @@ fun LibraryPodcastsScreen(
             PodcastFilter.DOWNLOADED -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = auraContentPaddingBelowChrome(),
                 ) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()

@@ -60,6 +60,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
+import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
@@ -351,13 +353,18 @@ fun LibrarySongsScreen(
     ) {
         LazyColumn(
             state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            contentPadding = auraContentPaddingBelowChrome(),
         ) {
             item(
                 key = "filter",
                 contentType = CONTENT_TYPE_HEADER,
             ) {
-                Row {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .auraStickyChromeBackground(),
+                ) {
                     Spacer(Modifier.width(12.dp))
                     AuraFilterPill(
                         label = stringResource(R.string.songs),

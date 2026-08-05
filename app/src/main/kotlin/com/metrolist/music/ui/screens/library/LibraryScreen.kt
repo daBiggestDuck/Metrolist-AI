@@ -5,7 +5,6 @@
 
 package com.metrolist.music.ui.screens.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +21,7 @@ import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.LibraryMixViewModel
 
@@ -39,7 +39,7 @@ fun LibraryScreen() {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .background(AuraPlayerCanvas),
+                    .auraStickyChromeBackground(AuraPlayerCanvas),
         ) {
             ChipsRow(
                 chips = listOf(

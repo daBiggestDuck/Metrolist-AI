@@ -1461,6 +1461,7 @@ class MainActivity : ComponentActivity() {
                             onHistory = { navController.navigate("history") },
                             onStats = { navController.navigate("stats") },
                             onSettings = { navController.navigate("settings") },
+                            onIntegrations = { navController.navigate("settings/integrations") },
                             onListenTogether = { navController.navigate("listen_together_from_topbar") },
                             onRecognize = { navController.navigate("recognition") },
                             onWhatsNew = { showChangelog.value = true },
@@ -1736,6 +1737,7 @@ private fun AuraProfileMenuContent(
     onHistory: () -> Unit,
     onStats: () -> Unit,
     onSettings: () -> Unit,
+    onIntegrations: () -> Unit,
     onListenTogether: () -> Unit,
     onRecognize: () -> Unit,
     onWhatsNew: () -> Unit,
@@ -1773,6 +1775,11 @@ private fun AuraProfileMenuContent(
                     titleRes = R.string.settings,
                     icon = painterResource(R.drawable.settings),
                     onClick = onSettings,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.integrations,
+                    icon = painterResource(R.drawable.integration),
+                    onClick = onIntegrations,
                 ),
                 AuraProfileMenuItem(
                     titleRes = R.string.listen_together,

@@ -251,13 +251,15 @@ fun AuraTopBar(
                 navigationIcon()
             }
             if (floatTitle) {
+                // fill=false so the pill hugs title text instead of stretching edge-to-edge
                 AuraFloatingTitleIsland(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f, fill = false),
                 ) {
                     CompositionLocalProvider(LocalContentColor provides colors.titleContentColor) {
                         title()
                     }
                 }
+                Box(modifier = Modifier.weight(1f))
             } else {
                 Box(
                     modifier = Modifier.weight(1f),

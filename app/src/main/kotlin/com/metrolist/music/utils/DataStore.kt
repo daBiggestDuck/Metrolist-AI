@@ -7,10 +7,12 @@ package com.metrolist.music.utils
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -100,18 +102,25 @@ fun <T> rememberPreference(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val state =
+    val stored =
         remember {
             context.dataStore.data
                 .map { it[key] ?: defaultValue }
                 .distinctUntilChanged()
         }.collectAsStateWithLifecycle(defaultValue)
 
+    // Local mirror so setters update UI immediately (DataStore write is async).
+    val state = remember { mutableStateOf(defaultValue) }
+    LaunchedEffect(stored.value) {
+        state.value = stored.value
+    }
+
     return remember {
         object : MutableState<T> {
             override var value: T
                 get() = state.value
                 set(value) {
+                    state.value = value
                     coroutineScope.launch {
                         context.safeDataStoreEdit {
                             it[key] = value
