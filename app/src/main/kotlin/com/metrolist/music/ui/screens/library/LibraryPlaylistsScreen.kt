@@ -11,14 +11,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -41,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -74,7 +70,6 @@ import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
-import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibraryPlaylistGridItem
@@ -83,8 +78,6 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SortHeader
-import com.metrolist.music.ui.component.aura.AuraFab
-import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.utils.rememberEnumPreference
@@ -106,8 +99,6 @@ fun LibraryPlaylistsScreen(
     navController: NavController,
     filterContent: @Composable () -> Unit,
     viewModel: LibraryPlaylistsViewModel = hiltViewModel(),
-    initialTextFieldValue: String? = null,
-    allowSyncing: Boolean = true,
 ) {
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
@@ -115,7 +106,7 @@ fun LibraryPlaylistsScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    var viewType by rememberEnumPreference(PlaylistViewTypeKey, LibraryViewType.GRID)
+    var viewType by rememberEnumPreference(PlaylistViewTypeKey, LibraryViewType.LIST)
     val (sortType, onSortTypeChange) = rememberEnumPreference(
         PlaylistSortTypeKey,
         PlaylistSortType.CREATE_DATE
@@ -305,19 +296,16 @@ fun LibraryPlaylistsScreen(
         }
     }
 
-    var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
-
-    if (showCreatePlaylistDialog) {
-        CreatePlaylistDialog(
-            onDismiss = { showCreatePlaylistDialog = false },
-            initialTextFieldValue = initialTextFieldValue,
-            allowSyncing = allowSyncing,
-            onPlaylistCreated = { playlistId ->
-                showCreatePlaylistDialog = false
-                navController.navigate("local_playlist/$playlistId")
-            }
-        )
+    val librarySearchRequest =
+        backStackEntry?.savedStateHandle?.getStateFlow("librarySearch", false)?.collectAsStateWithLifecycle()
+    LaunchedEffect(librarySearchRequest?.value) {
+        if (librarySearchRequest?.value == true) {
+            isSearchActive = true
+            backStackEntry?.savedStateHandle?.set("librarySearch", false)
+        }
     }
+
+    // Create playlist lives in the Library AuraTopBar "+" (Spotify header pattern).
 
     val headerContent = @Composable {
         LibrarySearchHeader(
@@ -357,16 +345,6 @@ fun LibraryPlaylistsScreen(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.secondary,
             )
-
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
 
             IconButton(
                 onClick = {
@@ -529,25 +507,6 @@ fun LibraryPlaylistsScreen(
                     }
                 }
             }
-        }
-
-        // Always visible + button (no scroll hiding)
-        AuraFab(
-            onClick = { showCreatePlaylistDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current
-                        .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
-                )
-                .padding(16.dp),
-            contentDescription = stringResource(R.string.create_playlist),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.add),
-                contentDescription = null,
-                tint = AuraSpotifyOnGreen,
-            )
         }
     }
 }

@@ -11,14 +11,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -91,7 +88,6 @@ import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.AlbumListItem
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ArtistListItem
-import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LocalMenuState
@@ -100,8 +96,6 @@ import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SortHeader
-import com.metrolist.music.ui.component.aura.AuraFab
-import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
@@ -129,7 +123,7 @@ fun LibraryMixScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
-    var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.GRID)
+    var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.LIST)
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
             MixSortTypeKey,
@@ -143,17 +137,7 @@ fun LibraryMixScreen(
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsStateWithLifecycle()
-    var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    
-    if (showCreatePlaylistDialog) {
-        CreatePlaylistDialog(
-            onDismiss = { showCreatePlaylistDialog = false },
-            onPlaylistCreated = { playlistId ->
-                showCreatePlaylistDialog = false
-                navController.navigate("local_playlist/$playlistId")
-            }
-        )
-    }
+    // Create playlist lives in the Library AuraTopBar "+" (Spotify header pattern).
     
     val normalizedQuery = remember(isSearchActive, searchQuery, debouncedSearchQuery) {
         if (isSearchActive) {
@@ -328,6 +312,15 @@ fun LibraryMixScreen(
         }
     }
 
+    val librarySearchRequest =
+        backStackEntry?.savedStateHandle?.getStateFlow("librarySearch", false)?.collectAsStateWithLifecycle()
+    LaunchedEffect(librarySearchRequest?.value) {
+        if (librarySearchRequest?.value == true) {
+            isSearchActive = true
+            backStackEntry?.savedStateHandle?.set("librarySearch", false)
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (ytmSync) {
             // Let cached Mix paint first; sync is cooldown-gated in SyncUtils.
@@ -365,16 +358,6 @@ fun LibraryMixScreen(
             )
 
             Spacer(Modifier.weight(1f))
-
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
 
             IconButton(
                 onClick = {
@@ -1035,25 +1018,6 @@ fun LibraryMixScreen(
                     }
                 }
             }
-        }
-
-        // Always visible + button (no scroll hiding)
-        AuraFab(
-            onClick = { showCreatePlaylistDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current
-                        .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
-                )
-                .padding(16.dp),
-            contentDescription = stringResource(R.string.create_playlist),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.add),
-                contentDescription = null,
-                tint = AuraSpotifyOnGreen,
-            )
         }
 
         Indicator(

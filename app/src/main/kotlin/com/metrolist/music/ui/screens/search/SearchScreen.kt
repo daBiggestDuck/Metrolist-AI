@@ -488,29 +488,13 @@ private fun SearchBrowseHub(
         contentPadding = contentPadding,
         modifier = Modifier.fillMaxSize(),
     ) {
-        item(key = "search_title") {
-            Text(
-                text = stringResource(R.string.search),
-                style =
-                    MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                    ),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 16.dp),
-            )
-        }
-
         item(key = "search_field") {
             Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .padding(bottom = 24.dp)
+                        .padding(top = 8.dp, bottom = 24.dp)
                         .height(48.dp)
                         .clip(RoundedCornerShape(percent = 50))
                         .background(SearchHubFieldColor)

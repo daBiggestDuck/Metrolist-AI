@@ -275,7 +275,8 @@ fun AppNavigationBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                // Tight vertical inset so the pill docks under the mini-player (Spotify gap).
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         BoxWithConstraints(
@@ -337,6 +338,16 @@ fun AppNavigationBar(
                         )
                     val iconTint = if (isSelected) AuraNavSelected else AuraNavUnselected
                     val labelTint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
+                    val selectedProgress =
+                        animateFloatAsState(
+                            targetValue = if (isSelected) 1f else 0f,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = 0.72f,
+                                    stiffness = Spring.StiffnessMedium,
+                                ),
+                            label = "auraNavTabSelect",
+                        )
 
                     Column(
                         modifier =
@@ -360,7 +371,15 @@ fun AppNavigationBar(
                             painter = painterResource(id = iconRes),
                             contentDescription = stringResource(screen.titleId),
                             tint = iconTint,
-                            modifier = Modifier.size(if (slimNav) 22.dp else 24.dp),
+                            modifier =
+                                Modifier
+                                    .size(if (slimNav) 22.dp else 24.dp)
+                                    .graphicsLayer {
+                                        val p = selectedProgress.value
+                                        val scale = 1f + 0.1f * p
+                                        scaleX = scale
+                                        scaleY = scale
+                                    },
                         )
                         if (!slimNav) {
                             Spacer(modifier = Modifier.height(2.dp))
@@ -372,6 +391,10 @@ fun AppNavigationBar(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 lineHeight = 12.sp,
+                                modifier =
+                                    Modifier.graphicsLayer {
+                                        alpha = 0.72f + 0.28f * selectedProgress.value
+                                    },
                             )
                         }
                     }

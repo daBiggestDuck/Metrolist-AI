@@ -21,10 +21,13 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -178,6 +181,7 @@ import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
+import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
@@ -1003,16 +1007,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 val isHomeRoute = navBackStackEntry?.destination?.route == Screens.Home.route
+                val isLibraryRoute = navBackStackEntry?.destination?.route == Screens.Library.route
                 val headerTitle =
                     when (navBackStackEntry?.destination?.route) {
                         Screens.Home.route -> stringResource(greetingRes)
-                        // Browse hub owns the large Search title; shell keeps profile only.
-                        Screens.Search.route -> ""
+                        Screens.Search.route -> stringResource(R.string.search)
                         else -> currentTitleRes?.let { stringResource(it) } ?: ""
                     }
 
                 var showAccountDialog by remember { mutableStateOf(false) }
                 var showProfileMenu by remember { mutableStateOf(false) }
+                var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
                 val baseBg = if (pureBlack) Color.Black else Color(0xFF121212)
 
@@ -1082,6 +1087,35 @@ class MainActivity : ComponentActivity() {
                                                         modifier = Modifier.size(20.dp),
                                                     )
                                                 }
+                                            }
+                                        }
+                                    },
+                                    actions = {
+                                        if (isLibraryRoute) {
+                                            AuraFloatingChromeButton(
+                                                onClick = {
+                                                    navBackStackEntry?.savedStateHandle?.set(
+                                                        "librarySearch",
+                                                        true,
+                                                    )
+                                                },
+                                                contentDescription = stringResource(R.string.search),
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.search),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                            AuraFloatingChromeButton(
+                                                onClick = { showCreatePlaylistDialog = true },
+                                                contentDescription = stringResource(R.string.create_playlist),
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.add),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(22.dp),
+                                                )
                                             }
                                         }
                                     },
@@ -1191,7 +1225,10 @@ class MainActivity : ComponentActivity() {
                                         modifier =
                                             Modifier
                                                 .align(Alignment.BottomCenter)
-                                                .height(bottomInset + navPadding)
+                                                // Keep the pill above the system gesture inset — do not
+                                                // center it into bottomInset (that created the player gap).
+                                                .padding(bottom = bottomInset)
+                                                .height(navPadding)
                                                 // Use graphicsLayer instead of offset to avoid recomposition
                                                 // graphicsLayer runs during draw phase, not composition phase
                                                 .graphicsLayer {
@@ -1316,43 +1353,67 @@ class MainActivity : ComponentActivity() {
                                             else -> Screens.Home
                                         }.route,
                                     enterTransition = {
-                                        val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-                                        val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-
-                                        if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
+                                        val toTab = routeIndexMap[targetState.destination.route]
+                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        if (fromTab != null && toTab != null) {
+                                            fadeIn(tween(220)) +
+                                                scaleIn(
+                                                    initialScale = 0.985f,
+                                                    animationSpec = tween(220),
+                                                )
                                         } else {
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
+                                            slideInHorizontally(
+                                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                                initialOffsetX = { it },
+                                            ) + fadeIn(tween(180))
                                         }
                                     },
                                     exitTransition = {
-                                        val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-                                        val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-
-                                        if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
+                                        val toTab = routeIndexMap[targetState.destination.route]
+                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        if (fromTab != null && toTab != null) {
+                                            fadeOut(tween(180)) +
+                                                scaleOut(
+                                                    targetScale = 0.985f,
+                                                    animationSpec = tween(180),
+                                                )
                                         } else {
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(200))
+                                            slideOutHorizontally(
+                                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                                targetOffsetX = { -it / 4 },
+                                            ) + fadeOut(tween(180))
                                         }
                                     },
                                     popEnterTransition = {
-                                        val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-                                        val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-
-                                        if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
+                                        val toTab = routeIndexMap[targetState.destination.route]
+                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        if (fromTab != null && toTab != null) {
+                                            fadeIn(tween(220)) +
+                                                scaleIn(
+                                                    initialScale = 0.985f,
+                                                    animationSpec = tween(220),
+                                                )
                                         } else {
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
+                                            slideInHorizontally(
+                                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                                initialOffsetX = { -it / 4 },
+                                            ) + fadeIn(tween(180))
                                         }
                                     },
                                     popExitTransition = {
-                                        val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-                                        val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-
-                                        if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
+                                        val toTab = routeIndexMap[targetState.destination.route]
+                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        if (fromTab != null && toTab != null) {
+                                            fadeOut(tween(180)) +
+                                                scaleOut(
+                                                    targetScale = 0.985f,
+                                                    animationSpec = tween(180),
+                                                )
                                         } else {
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(200))
+                                            slideOutHorizontally(
+                                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                                targetOffsetX = { it },
+                                            ) + fadeOut(tween(180))
                                         }
                                     },
                                     // Pinned Aura top bar is a no-op nested-scroll target; skip attachment.
@@ -1379,6 +1440,16 @@ class MainActivity : ComponentActivity() {
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
+
+                    if (showCreatePlaylistDialog) {
+                        CreatePlaylistDialog(
+                            onDismiss = { showCreatePlaylistDialog = false },
+                            onPlaylistCreated = { playlistId ->
+                                showCreatePlaylistDialog = false
+                                navController.navigate("local_playlist/$playlistId")
+                            },
+                        )
+                    }
 
                     if (showProfileMenu) {
                         AuraProfileMenuContent(
