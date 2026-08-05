@@ -52,8 +52,11 @@ object ListeningTasteTracker {
     /** Monotonic generation so slower Nano refreshes cannot overwrite newer taste. */
     private val nanoGeneration = AtomicInteger(0)
 
-    private suspend fun <T> prefsGet(context: Context, key: Preferences.Key<T>, default: T): T =
-        context.dataStore.data.first()[key] ?: default
+    private suspend fun prefsSnapshot(context: Context): Preferences =
+        context.dataStore.data.first()
+
+    private fun <T> Preferences.getOr(key: Preferences.Key<T>, default: T): T =
+        this[key] ?: default
 
     enum class DjLane(
         val id: String,
@@ -120,22 +123,24 @@ object ListeningTasteTracker {
 
     suspend fun loadProfile(context: Context): Profile {
         memoryProfile?.let { return it }
+        val prefs = prefsSnapshot(context)
         return Profile(
-            artists = decodeWeights(prefsGet(context, ListeningTasteArtistsKey, "")),
-            tracks = decodeWeights(prefsGet(context, ListeningTasteTracksKey, "")),
-            categories = decodeWeights(prefsGet(context, ListeningTasteCategoriesKey, "")),
-            summary = prefsGet(context, ListeningTasteSummaryKey, ""),
-            lastUpdatedMs = prefsGet(context, ListeningTasteLastUpdatedKey, 0L),
-            listenCount = prefsGet(context, ListeningTasteListenCountKey, 0),
-            activeLane = DjLane.fromId(prefsGet(context, ListeningTasteActiveLaneKey, "")),
-            excludedSongIds = prefsGet(context, ListeningTasteExcludedSongIdsKey, emptySet()),
+            artists = decodeWeights(prefs.getOr(ListeningTasteArtistsKey, "")),
+            tracks = decodeWeights(prefs.getOr(ListeningTasteTracksKey, "")),
+            categories = decodeWeights(prefs.getOr(ListeningTasteCategoriesKey, "")),
+            summary = prefs.getOr(ListeningTasteSummaryKey, ""),
+            lastUpdatedMs = prefs.getOr(ListeningTasteLastUpdatedKey, 0L),
+            listenCount = prefs.getOr(ListeningTasteListenCountKey, 0),
+            activeLane = DjLane.fromId(prefs.getOr(ListeningTasteActiveLaneKey, "")),
+            excludedSongIds = prefs.getOr(ListeningTasteExcludedSongIdsKey, emptySet()),
         ).also { memoryProfile = it }
     }
 
     suspend fun isExcluded(context: Context, songId: String): Boolean {
         if (songId.isBlank()) return false
         memoryProfile?.let { return songId in it.excludedSongIds }
-        return songId in prefsGet(context, ListeningTasteExcludedSongIdsKey, emptySet())
+        val prefs = prefsSnapshot(context)
+        return songId in prefs.getOr(ListeningTasteExcludedSongIdsKey, emptySet())
     }
 
     suspend fun setExcluded(context: Context, songId: String, excluded: Boolean) {
@@ -356,20 +361,21 @@ object ListeningTasteTracker {
      */
     suspend fun loadMergedTaste(context: Context): MergedTaste {
         val profile = loadProfile(context)
+        val prefs = prefsSnapshot(context)
 
-        val spotifySummary = prefsGet(context, SpotifyTasteSummaryKey, "")
+        val spotifySummary = prefs.getOr(SpotifyTasteSummaryKey, "")
         val spotifyArtists =
-            prefsGet(context, SpotifyTopArtistsKey, "")
+            prefs.getOr(SpotifyTopArtistsKey, "")
                 .split('\n')
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
         val spotifyTracks =
-            prefsGet(context, SpotifyTopTracksKey, "")
+            prefs.getOr(SpotifyTopTracksKey, "")
                 .split('\n')
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
         val spotifyHints =
-            prefsGet(context, SpotifyTasteHintsKey, "")
+            prefs.getOr(SpotifyTasteHintsKey, "")
                 .split('\n')
                 .map { it.trim() }
                 .filter { it.isNotBlank() }

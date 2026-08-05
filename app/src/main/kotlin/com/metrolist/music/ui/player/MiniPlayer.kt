@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -60,12 +59,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -76,7 +75,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -109,6 +107,7 @@ import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -345,7 +344,7 @@ private fun NewMiniPlayer(
 
                                     if (allowLeft || allowRight || canReturnToCenter) {
                                         totalDragDistance += kotlin.math.abs(adjustedDragAmount)
-                                        coroutineScope.launch {
+                                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
                                             offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDragAmount)
                                         }
                                     }
@@ -385,14 +384,9 @@ private fun NewMiniPlayer(
                 Modifier
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
-                    .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .shadow(
-                        elevation = 3.dp,
-                        shape = RoundedCornerShape(32.dp),
-                        clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.35f),
-                        spotColor = Color.Black.copy(alpha = 0.35f),
-                    )
+                    // Draw-phase swipe translate — layout offset invalidated every drag pixel.
+                    .graphicsLayer { translationX = offsetXAnimatable.value }
+                    // Hairline only — soft shadow redraws every player-sheet slide frame.
                     .clip(RoundedCornerShape(32.dp))
                     .background(color = backgroundColor)
                     .border(1.dp, outlineColor, RoundedCornerShape(32.dp))
@@ -407,7 +401,10 @@ private fun NewMiniPlayer(
                     // Avoid Compose .blur on the always-visible mini player — scrim only.
                     mediaMetadata?.thumbnailUrl?.let { url ->
                         AsyncImage(
-                            model = url,
+                            model = ImageRequest.Builder(context)
+                                .data(url)
+                                .size(256)
+                                .build(),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
@@ -815,7 +812,7 @@ private fun LegacyMiniPlayer(
 
                                     if (allowLeft || allowRight || canReturnToCenter) {
                                         totalDragDistance += kotlin.math.abs(adjustedDragAmount)
-                                        coroutineScope.launch {
+                                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
                                             offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDragAmount)
                                         }
                                     }
@@ -866,7 +863,7 @@ private fun LegacyMiniPlayer(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
+                    .graphicsLayer { translationX = offsetXAnimatable.value }
                     .padding(end = 12.dp),
         ) {
             Box(Modifier.weight(1f)) {
@@ -896,28 +893,45 @@ private fun LegacyMiniPlayer(
             }
         }
 
-        // Swipe indicator
-        if (offsetXAnimatable.value.absoluteValue > 50f) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(if (offsetXAnimatable.value > 0) Alignment.CenterStart else Alignment.CenterEnd)
-                        .padding(horizontal = 16.dp),
-            ) {
-                Icon(
-                    painter =
-                        painterResource(
-                            if (offsetXAnimatable.value > 0) R.drawable.skip_previous else R.drawable.skip_next,
-                        ),
-                    contentDescription = null,
-                    tint =
-                        primaryColor.copy(
-                            alpha = (offsetXAnimatable.value.absoluteValue / autoSwipeThreshold).coerceIn(0f, 1f),
-                        ),
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        }
+        // Swipe cues — always composed; alpha only in graphicsLayer (no drag-frame recomposition).
+        Icon(
+            painter = painterResource(R.drawable.skip_previous),
+            contentDescription = null,
+            tint = primaryColor,
+            modifier =
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(horizontal = 16.dp)
+                    .size(24.dp)
+                    .graphicsLayer {
+                        val ox = offsetXAnimatable.value
+                        alpha =
+                            if (ox > 50f) {
+                                (ox.absoluteValue / autoSwipeThreshold).coerceIn(0f, 1f)
+                            } else {
+                                0f
+                            }
+                    },
+        )
+        Icon(
+            painter = painterResource(R.drawable.skip_next),
+            contentDescription = null,
+            tint = primaryColor,
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(horizontal = 16.dp)
+                    .size(24.dp)
+                    .graphicsLayer {
+                        val ox = offsetXAnimatable.value
+                        alpha =
+                            if (ox < -50f) {
+                                (ox.absoluteValue / autoSwipeThreshold).coerceIn(0f, 1f)
+                            } else {
+                                0f
+                            }
+                    },
+        )
     }
 }
 

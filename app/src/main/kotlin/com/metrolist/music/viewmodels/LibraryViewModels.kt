@@ -353,6 +353,10 @@ constructor(
             }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 }
 
+/**
+ * Default Library Mix tab. Lists are eagerly cached in memory so bottom-tab
+ * switches restore instantly from the library tab cache instead of empty→Room.
+ */
 @HiltViewModel
 class LibraryMixViewModel
 @Inject
