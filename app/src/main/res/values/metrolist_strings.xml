@@ -372,12 +372,21 @@
     <!-- Lyrics Offset Settings -->
     <string name="lyrics_offset">Lyrics offset</string>
 
-    <!-- Material 3 Settings Sections -->
+    <!-- Material 3 Settings Sections (Spotify-style groups) -->
     <string name="settings_section_ui">Interface</string>
     <string name="settings_section_privacy">Privacy &amp; Security</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_section_storage">Storage &amp; Data</string>
     <string name="settings_section_system">System &amp; About</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_section_content_display">Content and display</string>
+    <string name="settings_section_playback">Playback</string>
+    <string name="settings_section_privacy_social">Privacy and social</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_about_data">About and data</string>
+    <string name="search_settings">Search settings</string>
+    <string name="your_profile">Your profile</string>
+    <string name="whats_new">What\'s new</string>
 
     <!-- Updater -->
     <string name="updater">Updater</string>

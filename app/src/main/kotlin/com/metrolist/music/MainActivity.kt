@@ -66,7 +66,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraTopBar
-import com.metrolist.music.ui.component.aura.AuraFloatingActionCluster
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
@@ -153,7 +152,6 @@ import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
-import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
@@ -1004,13 +1002,6 @@ class MainActivity : ComponentActivity() {
 
                 var showAccountDialog by remember { mutableStateOf(false) }
 
-                val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
-                val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
-                val showHistoryButton =
-                    remember(pauseListenHistory, eventCount) {
-                        !(pauseListenHistory && eventCount == 0)
-                    }
-
                 val baseBg = if (pureBlack) Color.Black else Color(0xFF121212)
 
                 CompositionLocalProvider(
@@ -1050,77 +1041,31 @@ class MainActivity : ComponentActivity() {
                                             color = Color.White,
                                         )
                                     },
-                                    actions = {
-                                        AuraFloatingActionCluster {
-                                            if (showHistoryButton) {
-                                                AuraFloatingChromeButton(
-                                                    onClick = { navController.navigate("history") },
-                                                    contentDescription = stringResource(R.string.history),
-                                                ) {
+                                    navigationIcon = {
+                                        AuraFloatingChromeButton(
+                                            onClick = { showAccountDialog = true },
+                                            contentDescription = stringResource(R.string.account),
+                                        ) {
+                                            BadgedBox(badge = {
+                                                if (latestVersionName != BuildConfig.VERSION_NAME) {
+                                                    Badge()
+                                                }
+                                            }) {
+                                                if (accountImageUrl != null) {
+                                                    AsyncImage(
+                                                        model = accountImageUrl,
+                                                        contentDescription = null,
+                                                        modifier =
+                                                            Modifier
+                                                                .size(22.dp)
+                                                                .clip(CircleShape),
+                                                    )
+                                                } else {
                                                     Icon(
-                                                        painter = painterResource(R.drawable.history),
+                                                        painter = painterResource(R.drawable.account),
                                                         contentDescription = null,
                                                         modifier = Modifier.size(20.dp),
                                                     )
-                                                }
-                                            }
-                                            AuraFloatingChromeButton(
-                                                onClick = { navController.navigate("stats") },
-                                                contentDescription = stringResource(R.string.stats),
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.stats),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(20.dp),
-                                                )
-                                            }
-                                            AuraFloatingChromeButton(
-                                                onClick = { navController.navigate("settings") },
-                                                contentDescription = stringResource(R.string.settings),
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.settings),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(20.dp),
-                                                )
-                                            }
-                                            if (listenTogetherInTopBar) {
-                                                AuraFloatingChromeButton(
-                                                    onClick = { navController.navigate("listen_together_from_topbar") },
-                                                    contentDescription = stringResource(R.string.together),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.group_outlined),
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                }
-                                            }
-                                            AuraFloatingChromeButton(
-                                                onClick = { showAccountDialog = true },
-                                                contentDescription = stringResource(R.string.account),
-                                            ) {
-                                                BadgedBox(badge = {
-                                                    if (latestVersionName != BuildConfig.VERSION_NAME) {
-                                                        Badge()
-                                                    }
-                                                }) {
-                                                    if (accountImageUrl != null) {
-                                                        AsyncImage(
-                                                            model = accountImageUrl,
-                                                            contentDescription = null,
-                                                            modifier =
-                                                                Modifier
-                                                                    .size(22.dp)
-                                                                    .clip(CircleShape),
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.account),
-                                                            contentDescription = null,
-                                                            modifier = Modifier.size(20.dp),
-                                                        )
-                                                    }
                                                 }
                                             }
                                         }
