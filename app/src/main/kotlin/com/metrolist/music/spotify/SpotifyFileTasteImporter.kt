@@ -8,6 +8,9 @@ package com.metrolist.music.spotify
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.metrolist.music.utils.CsvImportColumnDetector
+import com.metrolist.music.utils.CsvParser
+import com.metrolist.music.utils.CsvPlaylistParser
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -259,43 +262,32 @@ object SpotifyFileTasteImporter {
                 .toList()
         if (lines.isEmpty()) return emptyList()
 
-        val header = lines.first()
-        val headerCols = splitCsvLine(header).map { it.trim().lowercase() }
-        val trackIdx =
-            headerCols.indexOfFirst {
-                it in setOf("track name", "trackname", "track", "title", "song", "song name", "name")
-            }
-        val artistIdx =
-            headerCols.indexOfFirst {
-                it in setOf(
-                    "artist name",
-                    "artist name(s)",
-                    "artistname",
-                    "artist",
-                    "artists",
-                    "artist names",
-                )
-            }
+        val previewRows = lines.take(6).map { CsvParser.parseLine(it) }
+        val hasHeader =
+            previewRows.isNotEmpty() &&
+                CsvImportColumnDetector.looksLikeHeaderRow(previewRows.first())
+        val mapping = CsvImportColumnDetector.detect(previewRows, hasHeader)
 
-        if (trackIdx >= 0 && artistIdx >= 0) {
-            return lines.drop(1).mapNotNull { line ->
-                val cols = splitCsvLine(line)
-                val title = cols.getOrNull(trackIdx)?.trim().orEmpty()
-                val artist = cols.getOrNull(artistIdx)?.trim().orEmpty()
-                if (title.isBlank()) null else title to artist
+        if (hasHeader && mapping.titleColumnIndex >= 0 && mapping.artistColumnIndex >= 0) {
+            val parsed = CsvPlaylistParser.parse(lines, mapping)
+            if (parsed.tracks.isNotEmpty()) {
+                Timber.tag(TAG).d("Parsed %d tracks via Exportify-style CSV headers", parsed.tracks.size)
+                return parsed.tracks
             }
         }
 
         // Two-column CSV without known headers: Title,Artist
+        val header = lines.first()
+        val headerCols = CsvParser.parseLine(header).map { CsvParser.normalizeHeader(it) }
         if (headerCols.size >= 2 && !header.contains(" - ") && header.contains(',')) {
-            val sample = lines.take(5).map { splitCsvLine(it) }
+            val sample = lines.take(5).map { CsvParser.parseLine(it) }
             if (sample.all { it.size >= 2 }) {
                 val looksLikeHeader =
                     headerCols[0] in setOf("title", "track", "song", "name") ||
                         headerCols[1] in setOf("artist", "artists")
                 val dataLines = if (looksLikeHeader) lines.drop(1) else lines
                 return dataLines.mapNotNull { line ->
-                    val cols = splitCsvLine(line)
+                    val cols = CsvParser.parseLine(line)
                     val title = cols.getOrNull(0)?.trim().orEmpty()
                     val artist = cols.drop(1).joinToString(", ").trim()
                     if (title.isBlank()) null else title to artist
@@ -328,7 +320,7 @@ object SpotifyFileTasteImporter {
         }
 
         if (',' in trimmed) {
-            val cols = splitCsvLine(trimmed)
+            val cols = CsvParser.parseLine(trimmed)
             if (cols.size >= 2) {
                 val title = cols[0].trim()
                 val artist = cols.drop(1).joinToString(", ").trim()
@@ -338,35 +330,6 @@ object SpotifyFileTasteImporter {
 
         // Title only
         return trimmed to ""
-    }
-
-    /** Minimal CSV split that respects double-quoted fields. */
-    private fun splitCsvLine(line: String): List<String> {
-        val result = mutableListOf<String>()
-        val current = StringBuilder()
-        var inQuotes = false
-        var i = 0
-        while (i < line.length) {
-            val c = line[i]
-            when {
-                c == '"' -> {
-                    if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-                        current.append('"')
-                        i++
-                    } else {
-                        inQuotes = !inQuotes
-                    }
-                }
-                c == ',' && !inQuotes -> {
-                    result += current.toString()
-                    current.clear()
-                }
-                else -> current.append(c)
-            }
-            i++
-        }
-        result += current.toString()
-        return result
     }
 
     private fun queryDisplayName(context: Context, uri: Uri): String? {

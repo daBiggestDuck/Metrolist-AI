@@ -9,6 +9,7 @@ import android.content.Context
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.ai.GeminiNanoClient
+import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.TasteAnalysisResult
 import com.metrolist.music.ai.analyzeSpotifyTaste
 import com.metrolist.music.db.MusicDatabase
@@ -220,6 +221,8 @@ class SpotifyImportManager(
             if (cleaned.isEmpty()) {
                 throw IllegalArgumentException("No tracks to import")
             }
+
+            ListeningTasteTracker.importFromTracks(appContext, cleaned, enableNano = enableNano)
 
             val topArtists = deriveTopArtists(cleaned)
             val topTracks = cleaned.take(50)

@@ -810,7 +810,7 @@
     <string name="listen_on_metrolist">Listen on Metrolist</string>
 
     <!-- CSV Import Strings -->
-    <string name="import_csv_desc">Import playlists from Spotify via Exportify. Go to exportify.net → log in with Spotify → export playlist → download CSV → import here. Songs are matched on YouTube Music.</string>
+    <string name="import_csv_desc">Import playlists from Spotify via Exportify (exportify.net). Export your playlist → download CSV → import here. Taste and Nano DJ seeds update automatically; you can optionally add tracks to a playlist.</string>
     <string name="csv_import_help">Exportify CSV (recommended): Track URI, Track Name, Album Name, Artist Name(s), Release Date, Duration (ms), and more. Two-column title/artist CSV also works. Map columns below if auto-detect missed.</string>
     <string name="csv_import_exportify_url">https://exportify.net</string>
     <string name="csv_import_exportify_link">exportify.net</string>
@@ -830,6 +830,11 @@
     <string name="csv_import_success">Imported %1$d tracks</string>
     <string name="csv_import_partial">Imported %1$d of %2$d tracks</string>
     <string name="csv_import_no_matches">No tracks matched on YouTube Music (%1$d in file)</string>
+    <string name="csv_import_taste_success">Updated taste from %1$d tracks (%2$d artists). Nano DJ seeds refreshed.</string>
+    <string name="csv_import_taste_failed">CSV import failed: %1$s</string>
+    <string name="csv_import_complete_title">Taste updated</string>
+    <string name="csv_import_add_to_playlist">Add to playlist</string>
+    <string name="csv_import_add_playlist_prompt">Optionally match these %1$d tracks on YouTube Music and add them to a playlist.</string>
 
     <string name="recently_converted">Recently converted</string>
     <string name="column_label">Column %d</string>

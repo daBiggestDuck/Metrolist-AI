@@ -39,6 +39,8 @@ object ListeningTasteTracker {
     private const val MAX_CATEGORIES = 12
     private const val DECAY = 0.985f
     private const val LISTEN_BOOST = 1f
+    /** Stronger weight for bulk playlist/taste imports (e.g. Exportify CSV). */
+    private const val IMPORT_BOOST = 2.5f
     private const val NANO_REFRESH_EVERY = 8
     /** Persist at most every N listens (in-memory cache fills the gaps). */
     private const val PERSIST_EVERY = 4
@@ -120,6 +122,125 @@ object ListeningTasteTracker {
         val categories: List<String>,
         val lane: DjLane,
     )
+
+    /**
+     * Bulk-seed continuous listening taste from an imported track list (Exportify CSV, etc.).
+     * Returns the number of tracks applied. Persists immediately so Nano DJ sees new seeds.
+     */
+    suspend fun importFromTracks(
+        context: Context,
+        tracks: List<Pair<String, String>>,
+        enableNano: Boolean = true,
+        client: GeminiNanoClient = GeminiNanoClient.get(context),
+    ): Int {
+        val cleaned =
+            tracks
+                .map { (title, artist) -> title.trim() to artist.trim() }
+                .filter { it.first.isNotBlank() }
+        if (cleaned.isEmpty()) return 0
+
+        if (memoryProfile == null) {
+            loadProfile(context)
+        }
+
+        val updated =
+            mutex.withLock {
+                val profile = memoryProfile ?: Profile()
+
+                var artistsNext = profile.artists
+                var tracksNext = profile.tracks
+                var categoriesNext = profile.categories
+                var recentTitle = ""
+
+                cleaned.forEach { (title, artistStr) ->
+                    recentTitle = title
+                    val artistNames =
+                        artistStr
+                            .split(',')
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                    artistsNext = decayAndBoost(artistsNext, artistNames, IMPORT_BOOST, MAX_ARTISTS)
+                    val trackKey =
+                        if (artistNames.isNotEmpty()) {
+                            "$title — ${artistNames.joinToString(", ")}"
+                        } else {
+                            title
+                        }
+                    tracksNext = decayAndBoost(tracksNext, listOf(trackKey), IMPORT_BOOST, MAX_TRACKS)
+                    categoriesNext =
+                        decayAndBoost(
+                            categoriesNext,
+                            inferCategories(title, artistNames),
+                            IMPORT_BOOST * 0.75f,
+                            MAX_CATEGORIES,
+                        )
+                }
+
+                val lane = pickLane(categoriesNext, artistsNext, recentTitle = recentTitle)
+                val summary =
+                    profile.summary.ifBlank {
+                        heuristicListeningSummary(artistsNext, tracksNext, categoriesNext, lane)
+                    }
+
+                Profile(
+                    artists = artistsNext,
+                    tracks = tracksNext,
+                    categories = categoriesNext,
+                    summary = summary,
+                    lastUpdatedMs = System.currentTimeMillis(),
+                    listenCount = profile.listenCount,
+                    activeLane = lane,
+                    excludedSongIds = profile.excludedSongIds,
+                ).also { memoryProfile = it }
+            }
+
+        persistProfile(context, updated)
+
+        Timber.tag(TAG).i(
+            "importFromTracks applied %d tracks → %d artists, %d weighted tracks, lane=%s",
+            cleaned.size,
+            updated.artists.size,
+            updated.tracks.size,
+            updated.activeLane.id,
+        )
+
+        if (enableNano) {
+            val generation = nanoGeneration.incrementAndGet()
+            val artistsForNano = updated.topArtists(12)
+            val tracksForNano = updated.topTracks(15)
+            val categoriesForNano = updated.topCategories(6)
+            val refresh =
+                refreshSummaryWithNano(
+                    artists = artistsForNano,
+                    tracks = tracksForNano,
+                    categories = categoriesForNano,
+                    lane = updated.activeLane,
+                    client = client,
+                )
+            if (refresh != null && generation == nanoGeneration.get()) {
+                mutex.withLock {
+                    if (generation != nanoGeneration.get()) return@withLock
+                    val base = memoryProfile ?: updated
+                    val categoriesForStore =
+                        if (refresh.categories.isNotEmpty()) {
+                            mergeCategoryHints(base.categories, refresh.categories)
+                        } else {
+                            base.categories
+                        }
+                    val refreshed =
+                        base.copy(
+                            summary = refresh.summary,
+                            categories = categoriesForStore,
+                            lastUpdatedMs = System.currentTimeMillis(),
+                        )
+                    memoryProfile = refreshed
+                    persistProfile(context, refreshed)
+                }
+            }
+        }
+
+        return cleaned.size
+    }
 
     suspend fun loadProfile(context: Context): Profile {
         memoryProfile?.let { return it }

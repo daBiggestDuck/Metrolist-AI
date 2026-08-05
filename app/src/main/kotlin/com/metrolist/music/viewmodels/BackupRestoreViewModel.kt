@@ -42,6 +42,9 @@ import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_PLAYER_STA
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
 import com.metrolist.music.utils.CsvImportColumnDetector
 import com.metrolist.music.utils.CsvParser
+import com.metrolist.music.utils.CsvPlaylistParser
+import com.metrolist.music.utils.CsvTasteImportHelper
+import com.metrolist.music.utils.CsvTasteImportResult
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -71,8 +74,10 @@ data class CsvImportState(
 
 data class CsvImportResult(
     val songs: List<Song>,
+    val tracks: List<Pair<String, String>>,
     val parsedCount: Int,
     val totalRows: Int,
+    val tasteResult: CsvTasteImportResult? = null,
 )
 
 data class ConvertedSongLog(
@@ -509,6 +514,7 @@ class BackupRestoreViewModel @Inject constructor(
     fun previewCsvFile(context: Context, uri: Uri): CsvImportState {
         runCatching {
             val lines = readCsvLines(context, uri)
+            Timber.tag("CsvImport").d("previewCsvFile: read %d lines from %s", lines.size, uri)
             if (lines.isEmpty()) {
                 return CsvImportState()
             }
@@ -519,6 +525,7 @@ class BackupRestoreViewModel @Inject constructor(
             return CsvImportColumnDetector.detect(previewRows, hasHeader)
         }.onFailure {
             reportException(it)
+            Timber.tag("CsvImport").e(it, "previewCsvFile failed for %s", uri)
             Toast.makeText(context, R.string.csv_import_preview_failed, Toast.LENGTH_SHORT).show()
         }
         return CsvImportState()
@@ -528,70 +535,71 @@ class BackupRestoreViewModel @Inject constructor(
         context: Context,
         uri: Uri,
         columnMapping: CsvImportState,
+        updateTaste: Boolean = true,
         onProgress: (Int) -> Unit = {},
         onLogUpdate: (List<ConvertedSongLog>) -> Unit = {},
     ): CsvImportResult = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        val songs = arrayListOf<Song>()
         val recentLogs = mutableListOf<ConvertedSongLog>()
         var totalRows = 0
+        var parseResult = CsvPlaylistParser.ParseResult(emptyList(), emptyList())
+        var tasteResult: CsvTasteImportResult? = null
 
         runCatching {
             val lines = readCsvLines(context, uri)
             val startIndex = if (columnMapping.hasHeader) 1 else 0
-            val dataLines = lines.drop(startIndex).filter { it.isNotBlank() }
-            totalRows = dataLines.size
-            val totalLines = totalRows.coerceAtLeast(1)
+            totalRows = lines.drop(startIndex).count { it.isNotBlank() }
+            Timber.tag("CsvImport").i(
+                "importPlaylistFromCsv: %d data rows, updateTaste=%s, uri=%s",
+                totalRows,
+                updateTaste,
+                uri,
+            )
 
-            dataLines.forEachIndexed { index, line ->
-                val parts = CsvParser.parseLine(line)
+            parseResult = CsvPlaylistParser.parse(lines, columnMapping)
 
-                if (parts.isNotEmpty() &&
-                    columnMapping.artistColumnIndex < parts.size &&
-                    columnMapping.titleColumnIndex < parts.size
-                ) {
-                    val title = parts[columnMapping.titleColumnIndex].trim()
-                    val artistStr = parts[columnMapping.artistColumnIndex].trim()
-
-                    if (title.isNotEmpty() && artistStr.isNotEmpty()) {
-                        val artists =
-                            CsvParser.splitArtistNames(artistStr)
-                                .map { ArtistEntity(id = "", name = it) }
-
-                        val mockSong =
-                            Song(
-                                song =
-                                    SongEntity(
-                                        id = "",
-                                        title = title,
-                                    ),
-                                artists = artists,
-                            )
-                        songs.add(mockSong)
-
-                        val logEntry =
-                            ConvertedSongLog(
-                                title = title,
-                                artists = artists.joinToString(", ") { it.name },
-                            )
-                        recentLogs.add(0, logEntry)
-                        if (recentLogs.size > 3) {
-                            recentLogs.removeAt(recentLogs.size - 1)
-                        }
-                        onLogUpdate(recentLogs.toList())
-                    }
+            parseResult.songs.forEachIndexed { index, song ->
+                val logEntry =
+                    ConvertedSongLog(
+                        title = song.song.title,
+                        artists = song.artists.joinToString(", ") { it.name },
+                    )
+                recentLogs.add(0, logEntry)
+                if (recentLogs.size > 3) {
+                    recentLogs.removeAt(recentLogs.size - 1)
                 }
+                onLogUpdate(recentLogs.toList())
 
-                val progress = ((index + 1) * 100) / totalLines
+                val progress = ((index + 1) * 100) / totalRows.coerceAtLeast(1)
                 onProgress(progress)
             }
+
+            if (updateTaste && parseResult.tracks.isNotEmpty()) {
+                onProgress(95)
+                tasteResult =
+                    CsvTasteImportHelper.importTaste(
+                        context = context,
+                        database = database,
+                        tracks = parseResult.tracks,
+                    )
+                Timber.tag("CsvImport").i(
+                    "Taste import complete: %d tracks, %d artists",
+                    tasteResult.trackCount,
+                    tasteResult.artistCount,
+                )
+            }
+            onProgress(100)
         }.onFailure {
             reportException(it)
+            Timber.tag("CsvImport").e(it, "importPlaylistFromCsv failed")
+            throw it
         }
 
         CsvImportResult(
-            songs = songs,
-            parsedCount = songs.size,
+            songs = parseResult.songs,
+            tracks = parseResult.tracks,
+            parsedCount = parseResult.songs.size,
             totalRows = totalRows,
+            tasteResult = tasteResult,
         )
     }
 
@@ -603,8 +611,13 @@ class BackupRestoreViewModel @Inject constructor(
         val text =
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 CsvParser.stripBom(stream.bufferedReader().readText())
-            } ?: return emptyList()
-        return text.lines().filter { it.isNotBlank() }
+            } ?: run {
+                Timber.tag("CsvImport").w("readCsvLines: could not open stream for %s", uri)
+                return emptyList()
+            }
+        val lines = text.lines().filter { it.isNotBlank() }
+        Timber.tag("CsvImport").d("readCsvLines: %d non-blank lines from %s", lines.size, uri)
+        return lines
     }
 
     fun loadM3UOnline(

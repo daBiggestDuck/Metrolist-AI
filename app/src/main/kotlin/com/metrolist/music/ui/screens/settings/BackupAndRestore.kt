@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,6 +69,8 @@ import com.metrolist.music.viewmodels.ConvertedSongLog
 import com.metrolist.music.viewmodels.CsvImportState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
@@ -100,6 +103,9 @@ fun BackupAndRestore(
     var csvImportProgress by rememberSaveable { mutableIntStateOf(0) }
     val csvRecentLogs = remember { mutableStateListOf<ConvertedSongLog>() }
     var pendingCsvUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var showCsvImportComplete by rememberSaveable { mutableStateOf(false) }
+    var csvTasteTrackCount by rememberSaveable { mutableIntStateOf(0) }
+    var csvTasteArtistCount by rememberSaveable { mutableIntStateOf(0) }
 
     // Restore confirmation dialog state
     var showRestoreConfirmDialog by rememberSaveable { mutableStateOf(false) }
@@ -144,6 +150,14 @@ fun BackupAndRestore(
     val importPlaylistFromCsv =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            } catch (e: SecurityException) {
+                Timber.tag("CsvImport").w(e, "Persistable URI permission not granted for %s", uri)
+            }
             pendingCsvUri = uri
             val previewState = viewModel.previewCsvFile(context, uri)
             if (previewState.previewRows.isEmpty()) {
@@ -282,41 +296,88 @@ fun BackupAndRestore(
                 csvImportState = mappingState
                 pendingCsvUri?.let { uri ->
                     showCsvImportProgress = true
-                    coroutineScope.launch(Dispatchers.Default) {
-                        val result =
-                            viewModel.importPlaylistFromCsv(
-                                context,
-                                uri,
-                                mappingState,
-                                onProgress = { progress ->
-                                    csvImportProgress = progress
-                                },
-                                onLogUpdate = { logs ->
-                                    csvRecentLogs.clear()
-                                    csvRecentLogs.addAll(logs)
-                                },
-                            )
-                        showCsvImportProgress = false
-                        csvImportProgress = 0
-                        csvRecentLogs.clear()
-                        pendingCsvUri = null
-                        csvImportState = null
+                    csvImportProgress = 0
+                    coroutineScope.launch {
+                        try {
+                            val result =
+                                withContext(Dispatchers.IO) {
+                                    viewModel.importPlaylistFromCsv(
+                                        context,
+                                        uri,
+                                        mappingState,
+                                        updateTaste = true,
+                                        onProgress = { progress ->
+                                            coroutineScope.launch(Dispatchers.Main) {
+                                                csvImportProgress = progress
+                                            }
+                                        },
+                                        onLogUpdate = { logs ->
+                                            coroutineScope.launch(Dispatchers.Main) {
+                                                csvRecentLogs.clear()
+                                                csvRecentLogs.addAll(logs)
+                                            }
+                                        },
+                                    )
+                                }
 
-                        if (result.songs.isEmpty()) {
+                            showCsvImportProgress = false
+                            csvImportProgress = 0
+                            csvRecentLogs.clear()
+                            pendingCsvUri = null
+                            csvImportState = null
+
+                            if (result.songs.isEmpty()) {
+                                Toast.makeText(
+                                    context,
+                                    R.string.csv_import_no_tracks,
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            } else {
+                                val taste = result.tasteResult
+                                if (taste != null) {
+                                    csvTasteTrackCount = taste.trackCount
+                                    csvTasteArtistCount = taste.artistCount
+                                    importedSongs.clear()
+                                    importedSongs.addAll(result.songs)
+                                    showCsvImportComplete = true
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.csv_import_taste_success,
+                                            taste.trackCount,
+                                            taste.artistCount,
+                                        ),
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.csv_import_found_tracks,
+                                            result.parsedCount,
+                                        ),
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                    importedSongs.clear()
+                                    importedSongs.addAll(result.songs)
+                                    showChoosePlaylistDialogOnline = true
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("CsvImport").e(e, "CSV import failed in UI")
+                            showCsvImportProgress = false
+                            csvImportProgress = 0
+                            csvRecentLogs.clear()
+                            pendingCsvUri = null
+                            csvImportState = null
                             Toast.makeText(
                                 context,
-                                R.string.csv_import_no_tracks,
+                                context.getString(
+                                    R.string.csv_import_taste_failed,
+                                    e.message ?: context.getString(R.string.ai_error_unknown),
+                                ),
                                 Toast.LENGTH_LONG,
                             ).show()
-                        } else {
-                            importedSongs.clear()
-                            importedSongs.addAll(result.songs)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.csv_import_found_tracks, result.parsedCount),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                            showChoosePlaylistDialogOnline = true
                         }
                     }
                 }
@@ -333,6 +394,51 @@ fun BackupAndRestore(
             // Cannot dismiss while importing
         },
     )
+
+    if (showCsvImportComplete) {
+        DefaultDialog(
+            onDismiss = { showCsvImportComplete = false },
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.playlist_add),
+                    contentDescription = null,
+                )
+            },
+            title = { Text(stringResource(R.string.csv_import_complete_title)) },
+            buttons = {
+                AuraSecondaryAction(onClick = { showCsvImportComplete = false }) {
+                    Text(stringResource(R.string.close))
+                }
+                AuraSecondaryAction(onClick = {
+                        showCsvImportComplete = false
+                        showChoosePlaylistDialogOnline = true
+                    }) {
+                    Text(stringResource(R.string.csv_import_add_to_playlist))
+                }
+            },
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.csv_import_taste_success,
+                        csvTasteTrackCount,
+                        csvTasteArtistCount,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text =
+                    stringResource(
+                        R.string.csv_import_add_playlist_prompt,
+                        csvTasteTrackCount,
+                    ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
 
     // Restore confirmation dialog
     if (showRestoreConfirmDialog) {
