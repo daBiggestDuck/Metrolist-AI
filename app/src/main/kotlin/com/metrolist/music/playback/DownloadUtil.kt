@@ -37,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -250,7 +251,34 @@ constructor(
         downloads.value = result
     }
 
-    fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
+    /**
+     * Emits only when this song's download entry changes — avoids recomposing every
+     * list row whenever any other download updates.
+     */
+    fun getDownload(songId: String): Flow<Download?> =
+        downloads.map { it[songId] }.distinctUntilChanged()
+
+    /**
+     * Aggregate download badge state for an album/playlist row.
+     * Emits only when the combined state for [songIds] changes.
+     */
+    fun getCollectionDownloadState(songIds: Collection<String>): Flow<Int> {
+        if (songIds.isEmpty()) {
+            return kotlinx.coroutines.flow.flowOf(Download.STATE_STOPPED)
+        }
+        val ids = songIds as? List<String> ?: songIds.toList()
+        return downloads
+            .map { map ->
+                when {
+                    ids.all { map[it]?.state == Download.STATE_COMPLETED } -> Download.STATE_COMPLETED
+                    ids.any {
+                        val state = map[it]?.state
+                        state == Download.STATE_QUEUED || state == Download.STATE_DOWNLOADING
+                    } -> Download.STATE_DOWNLOADING
+                    else -> Download.STATE_STOPPED
+                }
+            }.distinctUntilChanged()
+    }
 
     fun release() {
         scope.cancel()

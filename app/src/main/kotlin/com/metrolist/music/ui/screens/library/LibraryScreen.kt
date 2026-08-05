@@ -13,17 +13,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.R
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.viewmodels.LibraryMixViewModel
 
 @Composable
 fun LibraryScreen() {
     val navController = LocalNavController.current
     var filterType by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
+
+    // Warm Mix ViewModel for the whole Library tab visit so chip switches and
+    // bottom-tab restores paint from in-memory lists instead of empty→Room.
+    val mixViewModel: LibraryMixViewModel = hiltViewModel()
 
     val filterContent = @Composable {
         Row {
@@ -46,7 +52,7 @@ fun LibraryScreen() {
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (filterType) {
-            LibraryFilter.LIBRARY -> LibraryMixScreen(navController, filterContent)
+            LibraryFilter.LIBRARY -> LibraryMixScreen(navController, filterContent, mixViewModel)
             LibraryFilter.PLAYLISTS -> LibraryPlaylistsScreen(navController, filterContent)
             LibraryFilter.SONGS -> LibrarySongsScreen(
                 navController,

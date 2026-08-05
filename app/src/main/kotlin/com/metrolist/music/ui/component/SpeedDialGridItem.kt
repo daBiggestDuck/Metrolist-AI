@@ -30,6 +30,18 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.ui.utils.resize
 
+/** Stable scrim — avoid allocating a new Brush on every Speed Dial cell recomposition. */
+private val SpeedDialScrimBrush =
+    Brush.verticalGradient(
+        colors =
+            listOf(
+                Color.Black.copy(alpha = 0.4f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.6f),
+                Color.Black.copy(alpha = 0.9f),
+            ),
+    )
+
 @Composable
 fun SpeedDialGridItem(
     item: YTItem,
@@ -39,77 +51,65 @@ fun SpeedDialGridItem(
     isPlaying: Boolean = false,
 ) {
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(1f) // Square aspect ratio
-            .clip(RoundedCornerShape(ThumbnailCornerRadius))
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(ThumbnailCornerRadius)),
     ) {
-        // Thumbnail
         ItemThumbnail(
             thumbnailUrl = item.thumbnail?.resize(200, 200),
             isActive = isActive,
             isPlaying = isPlaying,
             shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Gradient Overlay for Text Readability and Icon Contrast
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.4f), // Top scrim for icon visibility on bright covers
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.6f),
-                            Color.Black.copy(alpha = 0.9f)
-                        )
-                    )
-                )
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(SpeedDialScrimBrush),
         )
 
-        // Title and Chevron
         Row(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(8.dp) // Reduced padding for tighter layout
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.titleSmall, // Smaller, punchier font
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
-            
-            // Navigation Chevron for browsable items (Album, Playlist, Artist)
+
             if (item !is SongItem) {
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
+            }
         }
-    }
-        // Pinned Icon
         if (isPinned) {
             Icon(
                 painter = painterResource(R.drawable.ic_push_pin),
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(16.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(16.dp),
             )
         }
-
-
     }
 }

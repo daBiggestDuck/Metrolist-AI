@@ -33,6 +33,9 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.LibraryFilter
+import com.metrolist.music.constants.MixSortDescendingKey
+import com.metrolist.music.constants.MixSortType
+import com.metrolist.music.constants.MixSortTypeKey
 import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
@@ -43,12 +46,17 @@ import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.db.entities.LocalItem
+import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
 import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.filterYoutubeShorts
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
+import com.metrolist.music.extensions.reversed
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.playback.DownloadUtil
 import com.metrolist.music.utils.PodcastRefreshTrigger
@@ -59,6 +67,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,12 +76,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.Collator
 import java.time.Duration
 import java.time.LocalDateTime
 import javax.inject.Inject
+
+private val LibraryListSharing = SharingStarted.WhileSubscribed(5 * 60 * 1000L)
 
 @HiltViewModel
 class LibrarySongsViewModel
@@ -87,7 +100,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, LibraryListSharing, "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -114,7 +127,7 @@ constructor(
                     SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                     SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
@@ -141,7 +154,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, LibraryListSharing, "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -161,7 +174,7 @@ constructor(
                     ArtistFilter.LIKED -> database.artistsBookmarked(sortType, descending)
                     ArtistFilter.LIBRARY -> database.artists(sortType, descending)
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 
     val filteredArtists =
         combine(allArtists, searchQuery) { artists, query ->
@@ -171,7 +184,7 @@ constructor(
                     matchesNormalizedQuery(normalizedQuery, artist.artist.name)
                 }
                 .distinctBy { it.id }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncArtistsSubscriptions() }
@@ -179,6 +192,7 @@ constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            delay(1_500)
             allArtists.collect { artists ->
                 artists
                     .map { it.artist }
@@ -212,7 +226,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, LibraryListSharing, "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -237,7 +251,7 @@ constructor(
                     AlbumFilter.LIBRARY -> database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                     AlbumFilter.UPLOADED -> database.albumsUploaded(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
@@ -245,6 +259,7 @@ constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            delay(1_500)
             allAlbums.collect { albums ->
                 albums
                     .filter {
@@ -278,7 +293,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, LibraryListSharing, "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -295,7 +310,7 @@ constructor(
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideYoutubeShorts) ->
                 database.playlists(sortType, descending).map { it.filterYoutubeShorts(hideYoutubeShorts) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncSavedPlaylists() }
@@ -305,6 +320,7 @@ constructor(
         context.dataStore.data
             .map { it[TopSize] ?: "50" }
             .distinctUntilChanged()
+            .stateIn(viewModelScope, LibraryListSharing, "50")
 }
 
 @HiltViewModel
@@ -319,7 +335,7 @@ constructor(
     val artist =
         database
             .artist(artistId)
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .stateIn(viewModelScope, LibraryListSharing, null)
 
     val songs =
         context.dataStore.data
@@ -334,7 +350,7 @@ constructor(
             .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
                 val (sortType, descending) = sortDesc
                 database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 }
 
 @HiltViewModel
@@ -352,7 +368,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, LibraryListSharing, "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -376,18 +392,22 @@ constructor(
         context.dataStore.data
             .map { it[TopSize] ?: "50" }
             .distinctUntilChanged()
+            .stateIn(viewModelScope, LibraryListSharing, "50")
+
     var artists =
         database
             .artistsBookmarked(
                 ArtistSortType.CREATE_DATE,
                 true,
-            ).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            ).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     var albums = context.dataStore.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
             database.albumsLiked(AlbumSortType.CREATE_DATE, true).map { it.filterExplicitAlbums(hideExplicit) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     var songs = context.dataStore.data
         .map { Triple(it[HideExplicitKey] ?: false, it[HideVideoSongsKey] ?: false, it[HideYoutubeShortsKey] ?: false) }
         .distinctUntilChanged()
@@ -401,16 +421,70 @@ constructor(
                     .filterExplicit(hideExplicit)
                     .filterVideoSongs(hideVideoSongs)
             }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, LibraryListSharing, emptyList())
+
     var playlists = context.dataStore.data
         .map { it[HideYoutubeShortsKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideYoutubeShorts ->
             database.playlists(PlaylistSortType.CREATE_DATE, true).map { it.filterYoutubeShorts(hideYoutubeShorts) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val mixItems: StateFlow<List<LocalItem>> =
+        combine(
+            albums,
+            artists,
+            playlists,
+            context.dataStore.data
+                .map {
+                    Pair(
+                        it[MixSortTypeKey].toEnum(MixSortType.CREATE_DATE),
+                        it[MixSortDescendingKey] ?: true,
+                    )
+                }.distinctUntilChanged(),
+        ) { albumList, artistList, playlistList, (sortType, descending) ->
+            val items = albumList + artistList + playlistList
+            when (sortType) {
+                MixSortType.CREATE_DATE ->
+                    items.sortedBy { item ->
+                        when (item) {
+                            is Album -> item.album.bookmarkedAt
+                            is Artist -> item.artist.bookmarkedAt
+                            is Playlist -> item.playlist.createdAt
+                            else -> LocalDateTime.now()
+                        }
+                    }
+
+                MixSortType.NAME -> {
+                    val collator = Collator.getInstance()
+                    items.sortedWith(
+                        compareBy(collator) { item ->
+                            when (item) {
+                                is Album -> item.album.title
+                                is Artist -> item.artist.name
+                                is Playlist -> item.playlist.name
+                                else -> ""
+                            }
+                        },
+                    )
+                }
+
+                MixSortType.LAST_UPDATED ->
+                    items.sortedBy { item ->
+                        when (item) {
+                            is Album -> item.album.lastUpdateTime
+                            is Artist -> item.artist.lastUpdateTime
+                            is Playlist -> item.playlist.lastUpdateTime
+                            else -> LocalDateTime.now()
+                        }
+                    }
+            }.reversed(descending)
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            delay(1_500)
             albums.collect { albums ->
                 albums
                     .filter {
@@ -430,6 +504,7 @@ constructor(
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
+            delay(1_500)
             artists.collect { artists ->
                 artists
                     .map { it.artist }
@@ -510,7 +585,7 @@ constructor(
             .flatMapLatest { (sortDesc, hideExplicit) ->
                 val (sortType, descending) = sortDesc
                 database.downloadedPodcastEpisodes(sortType, descending).map { it.filterExplicit(hideExplicit) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, LibraryListSharing, emptyList())
 
     // Saved podcast episodes (in library, not necessarily downloaded)
     val savedEpisodes =
