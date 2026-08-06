@@ -822,9 +822,9 @@ class MainActivity : ComponentActivity() {
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
                         collapsedBound =
-                            bottomInset +
+                            bottomInset.coerceAtLeast(bottomInsetDp) +
                                 (if (!showRail && shouldShowNavigationBar) navPadding else 0.dp) +
-                                (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp) +
+                                (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 8.dp) +
                                 MiniPlayerHeight,
                         expandedBound = maxHeight,
                     )

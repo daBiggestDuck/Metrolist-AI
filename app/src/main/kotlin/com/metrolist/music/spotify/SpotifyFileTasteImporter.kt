@@ -19,6 +19,8 @@ import java.io.ByteArrayOutputStream
 data class SpotifyFileParseResult(
     val tracks: List<Pair<String, String>>,
     val playlistName: String?,
+    /** True when headers look like Exportify (Track Name + Artist Name(s)). */
+    val isExportify: Boolean = false,
 )
 
 /**
@@ -56,6 +58,7 @@ object SpotifyFileTasteImporter {
             throw IllegalArgumentException("File is empty")
         }
 
+        val isExportifyCsv = looksLikeExportifyCsv(trimmed)
         val tracks =
             when {
                 looksLikeJson(trimmed) -> parseJson(trimmed)
@@ -80,8 +83,32 @@ object SpotifyFileTasteImporter {
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
 
-        Timber.tag(TAG).d("Parsed %d tracks from %s", tracks.size, displayName ?: uri)
-        return SpotifyFileParseResult(tracks = tracks, playlistName = playlistName)
+        Timber.tag(TAG).d(
+            "Parsed %d tracks from %s (exportify=%s)",
+            tracks.size,
+            displayName ?: uri,
+            isExportifyCsv,
+        )
+        return SpotifyFileParseResult(
+            tracks = tracks,
+            playlistName = playlistName,
+            isExportify = isExportifyCsv,
+        )
+    }
+
+    private fun looksLikeExportifyCsv(text: String): Boolean {
+        val header = text.lineSequence().firstOrNull { it.isNotBlank() } ?: return false
+        val cols = CsvParser.parseLine(header).map { CsvParser.normalizeHeader(it) }
+        val hasTrack = cols.any { it == "track name" || it == "trackname" || it == "track_name" }
+        val hasArtist =
+            cols.any {
+                it == "artist name" ||
+                    it == "artist name(s)" ||
+                    it == "artistname" ||
+                    it == "artist_name" ||
+                    it == "artists"
+            }
+        return hasTrack && hasArtist
     }
 
     private fun looksLikeJson(text: String): Boolean {

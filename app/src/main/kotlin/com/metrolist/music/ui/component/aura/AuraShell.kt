@@ -207,14 +207,14 @@ fun AuraFloatingTitleIsland(
     Box(
         modifier =
             modifier
-                .heightIn(min = 32.dp)
+                .heightIn(min = 36.dp)
                 .wrapContentWidth()
                 .auraFloatingIsland(
                     shape = AuraFloatingPillShape,
                     color = AuraElevated,
                     elevation = 0.dp,
                 )
-                .padding(horizontal = 12.dp, vertical = 5.dp),
+                .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         content()

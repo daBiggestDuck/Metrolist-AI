@@ -87,21 +87,21 @@ object CsvTasteImportHelper {
                 throw IllegalStateException("Taste import produced no artists or tracks")
             }
 
-            // 2) Seed weighted listening artists/tracks (no nested AI).
+            // 2) Seed weighted listening artists/tracks (no nested AI, no interim summary write).
             val seeded =
                 ListeningTasteTracker.importFromTracks(
                     context,
                     cleaned,
                     enableNano = false,
+                    persistSummary = false,
                 )
             if (seeded <= 0) {
                 throw IllegalStateException("Failed to seed listening taste from CSV tracks")
             }
 
-            // 3) Overwrite listening summary with the AI answer (importFromTracks wrote a heuristic).
+            // 3) Write AI summary once (listening + Spotify keys) — no heuristic flash.
             ListeningTasteTracker.forceSummary(context, summary)
 
-            // 4) Persist Spotify taste prefs + listening summary key in one write (UI re-reads both).
             context.safeDataStoreEdit { prefs ->
                 prefs[ListeningTasteSummaryKey] = summary
                 prefs[SpotifyTasteSummaryKey] = summary

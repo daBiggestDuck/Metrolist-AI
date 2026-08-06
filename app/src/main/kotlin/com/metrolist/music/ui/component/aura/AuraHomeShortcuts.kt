@@ -109,15 +109,14 @@ fun AuraShortcutTile(
 }
 
 /**
- * Fixed Spotify Home shortcut grid: **4 columns × 2 rows** (8 tiles).
- * Compact tiles so a phone-width row fits four wide chips.
+ * Fixed Spotify Home shortcut grid: **2 columns × 4 rows** (8 tiles).
  */
 @Composable
 fun AuraHomeShortcutGrid(
     items: List<AuraShortcutItem>,
     modifier: Modifier = Modifier,
 ) {
-    val columns = 4
+    val columns = 2
     val limited = remember(items) { items.take(8) }
     val rows = remember(limited) { limited.chunked(columns) }
     Column(

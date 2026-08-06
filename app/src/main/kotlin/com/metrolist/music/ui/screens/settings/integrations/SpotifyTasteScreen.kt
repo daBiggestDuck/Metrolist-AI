@@ -267,10 +267,11 @@ fun SpotifyTasteScreen(
         summary: String,
         searchHints: List<String>,
     ) {
-        TasteSummary.sanitizeOrNull(summary)?.let {
-            tasteSummary = it
-            listeningSummary = it
-        }
+        val usable = TasteSummary.sanitizeOrNull(summary)
+            ?: TasteSummary.fromArtistsAndTracks(newArtists, newTracks)
+        // Always write both keys so the on-page summary updates immediately.
+        tasteSummary = usable
+        listeningSummary = usable
         if (searchHints.isNotEmpty()) {
             tasteHints =
                 searchHints
@@ -303,13 +304,16 @@ fun SpotifyTasteScreen(
                         },
                     )
                 val analysis = result.tasteAnalysis
-                if (analysis == null || !TasteSummary.isUsable(analysis.summary)) {
+                if (analysis == null) {
                     showTasteError(context.getString(R.string.spotify_taste_import_failed_summary))
                 } else {
+                    val summary =
+                        TasteSummary.sanitizeOrNull(analysis.summary)
+                            ?: TasteSummary.fromArtistsAndTracks(result.topArtists, result.topTracks)
                     applyTasteProfile(
                         result.topArtists,
                         result.topTracks,
-                        analysis.summary,
+                        summary,
                         analysis.searchHints,
                     )
                     statusMessage =
@@ -327,7 +331,7 @@ fun SpotifyTasteScreen(
                             )
                         }
                     showTasteSuccess(
-                        analysis.summary,
+                        summary,
                         result.topTracks.size.coerceAtLeast(fileTracks.size),
                         analysis.usedAi,
                     )
@@ -416,11 +420,22 @@ fun SpotifyTasteScreen(
                         showTasteError(statusMessage)
                         return@launch
                     }
-                    pendingFileTracks = parsed.tracks
-                    pendingFilePlaylistName =
+                    val playlistName =
                         parsed.playlistName?.takeIf { it.isNotBlank() }
                             ?: SpotifyImportManager.TASTE_PLAYLIST_NAME
-                    showFilePlaylistNameDialog = true
+                    // Exportify CSV: skip the rename dialog and import ASAP (overwrite confirm only).
+                    if (parsed.isExportify) {
+                        requestTasteOverwrite {
+                            runFileTasteImport(
+                                fileTracks = parsed.tracks,
+                                playlistName = playlistName,
+                            )
+                        }
+                    } else {
+                        pendingFileTracks = parsed.tracks
+                        pendingFilePlaylistName = playlistName
+                        showFilePlaylistNameDialog = true
+                    }
                 } catch (e: Exception) {
                     showTasteError(e.message)
                     reportException(e)

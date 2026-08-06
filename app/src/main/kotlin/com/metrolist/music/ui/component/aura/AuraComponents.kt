@@ -251,7 +251,8 @@ fun AuraTopBar(
                 navigationIcon()
             }
             if (floatTitle) {
-                // fill=false so the pill hugs title text instead of stretching edge-to-edge
+                // fill=false + sole flexible weight: pill hugs text up to all space before actions
+                // (a second weight(1f) spacer was capping titles at ~half width).
                 AuraFloatingTitleIsland(
                     modifier = Modifier.weight(1f, fill = false),
                 ) {
@@ -259,7 +260,6 @@ fun AuraTopBar(
                         title()
                     }
                 }
-                Box(modifier = Modifier.weight(1f))
             } else {
                 Box(
                     modifier = Modifier.weight(1f),

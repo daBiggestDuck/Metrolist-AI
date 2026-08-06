@@ -829,11 +829,16 @@ fun BottomSheetPlayer(
                 null
             },
         collapsedContent = {
-            MiniPlayer(
-                positionState = positionState,
-                durationState = durationState,
-                onClick = { state.expandSoft() },
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().height(state.collapsedBound),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                MiniPlayer(
+                    positionState = positionState,
+                    durationState = durationState,
+                    onClick = { state.expandSoft() },
+                )
+            }
         },
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->

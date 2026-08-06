@@ -22,8 +22,8 @@ val NavigationBarHeight = 64.dp
 val SlimNavBarHeight = 60.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-/** Spotify-tight dock: mini-player sits snug above the pill nav (almost no gap). */
-val MiniPlayerBottomSpacing = 2.dp
+/** Spotify-tight dock: mini-player sits above the pill nav with room for the gesture bar. */
+val MiniPlayerBottomSpacing = 10.dp
 val QueuePeekHeight = 64.dp
 /** Floating header strip: status-bar insets are separate; this is the island row height. */
 val AppBarHeight = 72.dp

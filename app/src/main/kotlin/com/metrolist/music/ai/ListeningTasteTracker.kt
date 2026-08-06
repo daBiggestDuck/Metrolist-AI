@@ -126,11 +126,16 @@ object ListeningTasteTracker {
     /**
      * Bulk-seed continuous listening taste from an imported track list (Exportify CSV, etc.).
      * Returns the number of tracks applied. Persists immediately so Nano DJ sees new seeds.
+     *
+     * @param persistSummary When false, artists/tracks/categories are saved but the summary
+     * key is left untouched so a follow-up [forceSummary] can write the AI blurb without a
+     * heuristic flash on the taste screen.
      */
     suspend fun importFromTracks(
         context: Context,
         tracks: List<Pair<String, String>>,
         enableNano: Boolean = true,
+        persistSummary: Boolean = true,
         client: GeminiNanoClient = GeminiNanoClient.get(context),
     ): Int {
         val cleaned =
@@ -194,7 +199,11 @@ object ListeningTasteTracker {
                 ).also { memoryProfile = it }
             }
 
-        persistProfile(context, updated)
+        if (persistSummary) {
+            persistProfile(context, updated)
+        } else {
+            persistProfileWithoutSummary(context, updated)
+        }
 
         Timber.tag(TAG).i(
             "importFromTracks applied %d tracks → %d artists, %d weighted tracks, lane=%s, summaryLen=%d",
@@ -478,6 +487,18 @@ object ListeningTasteTracker {
             prefs[ListeningTasteTracksKey] = encodeWeights(profile.tracks)
             prefs[ListeningTasteCategoriesKey] = encodeWeights(profile.categories)
             prefs[ListeningTasteSummaryKey] = summary
+            prefs[ListeningTasteLastUpdatedKey] = profile.lastUpdatedMs
+            prefs[ListeningTasteListenCountKey] = profile.listenCount
+            prefs[ListeningTasteActiveLaneKey] = profile.activeLane.id
+        }
+    }
+
+    /** Seed weights/lane without touching the summary key (CSV AI summary writes next). */
+    private suspend fun persistProfileWithoutSummary(context: Context, profile: Profile) {
+        context.safeDataStoreEdit { prefs ->
+            prefs[ListeningTasteArtistsKey] = encodeWeights(profile.artists)
+            prefs[ListeningTasteTracksKey] = encodeWeights(profile.tracks)
+            prefs[ListeningTasteCategoriesKey] = encodeWeights(profile.categories)
             prefs[ListeningTasteLastUpdatedKey] = profile.lastUpdatedMs
             prefs[ListeningTasteListenCountKey] = profile.listenCount
             prefs[ListeningTasteActiveLaneKey] = profile.activeLane.id

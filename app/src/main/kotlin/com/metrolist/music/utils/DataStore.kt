@@ -109,18 +109,23 @@ fun <T> rememberPreference(
                 .distinctUntilChanged()
         }.collectAsStateWithLifecycle(defaultValue)
 
-    // Local mirror so setters update UI immediately (DataStore write is async).
-    val state = remember { mutableStateOf(defaultValue) }
+    // Optimistic override so setters paint immediately. Only drop the override once DataStore
+    // catches up to the same value — never clobber a fresher local write with a stale emission
+    // (Exportify taste summary was losing to the interim heuristic listening summary).
+    val localOverride = remember { mutableStateOf<T?>(null) }
     LaunchedEffect(stored.value) {
-        state.value = stored.value
+        val override = localOverride.value ?: return@LaunchedEffect
+        if (override == stored.value) {
+            localOverride.value = null
+        }
     }
 
     return remember {
         object : MutableState<T> {
             override var value: T
-                get() = state.value
+                get() = localOverride.value ?: stored.value
                 set(value) {
-                    state.value = value
+                    localOverride.value = value
                     coroutineScope.launch {
                         context.safeDataStoreEdit {
                             it[key] = value
