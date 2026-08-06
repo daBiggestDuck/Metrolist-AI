@@ -76,6 +76,11 @@
     <string name="select">Select all</string>
     <string name="like_all">Like all</string>
     <string name="dislike_all">Dislike all</string>
+    <string name="add_selection_to_liked_desc">Like or unlike all songs in the selected playlists</string>
+    <string name="add_to_bad_taste">Add to bad taste</string>
+    <string name="add_to_bad_taste_desc">Exclude songs from the selected playlists from listening taste</string>
+    <string name="delete_playlists_confirm">Do you really want to delete %1$d playlists?</string>
+    <string name="remove_download_playlists_confirm">Remove downloads for %1$d playlists?</string>
     <string name="sort_by_last_updated">Date updated</string>
     <string name="link_copied">Link copied to clipboard</string>
     <string name="starting_radio">Starting radio…</string>
