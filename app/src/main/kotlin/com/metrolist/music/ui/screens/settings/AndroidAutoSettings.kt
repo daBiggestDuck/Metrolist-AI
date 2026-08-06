@@ -5,20 +5,25 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,21 +32,22 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import com.metrolist.music.ui.component.aura.AuraTopBar
-import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -54,14 +60,17 @@ import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.PreferenceEntry
+import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraHairline
+import com.metrolist.music.ui.component.aura.AuraSecondaryAction
+import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.auraHairlineBorder
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.map
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.math.roundToInt
-import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 
 enum class AndroidAutoSection(val id: String) {
     LIKED("liked"),
@@ -159,56 +168,88 @@ fun AndroidAutoSettings(
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        // Visible sections
-        Material3SettingsGroup(
-            title = stringResource(R.string.android_auto_visible_sections),
-            items = listOf(
-                Material3SettingsItem(
-                    title = {},
-                    description = { Text(stringResource(R.string.android_auto_reorder_hint)) },
-                    onClick = null
-                )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.android_auto_visible_sections).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 1.2.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
             )
-        )
-
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height((sections.size * 80).dp),
-            userScrollEnabled = false,
-        ) {
-            items(sections, key = { (section, _) -> section.id }) { (section, enabled) ->
-                ReorderableItem(reorderableState, key = section.id) {
-                    Material3SettingsGroup(
-                        items = listOf(
-                            Material3SettingsItem(
-                                icon = painterResource(
-                                    when (section) {
-                                        AndroidAutoSection.LIKED -> R.drawable.favorite
-                                        AndroidAutoSection.SONGS -> R.drawable.music_note
-                                        AndroidAutoSection.ARTISTS -> R.drawable.artist
-                                        AndroidAutoSection.ALBUMS -> R.drawable.album
-                                        AndroidAutoSection.PLAYLISTS -> R.drawable.queue_music
+            Text(
+                text = stringResource(R.string.android_auto_reorder_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp, start = 4.dp, end = 4.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AuraElevated)
+                    .auraHairlineBorder(RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+            ) {
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height((sections.size * 72).dp),
+                    userScrollEnabled = false,
+                ) {
+                    itemsIndexed(sections, key = { _, (section, _) -> section.id }) { index, (section, enabled) ->
+                        ReorderableItem(reorderableState, key = section.id) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        sections = sections.map { (s, e) ->
+                                            if (s == section) s to !e else s to e
+                                        }
+                                        onSectionsChange(serializeSections(sections))
                                     }
-                                ),
-                                title = { Text(section.label()) },
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.drag_handle),
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .longPressDraggableHandle(
+                                    .padding(horizontal = 4.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        when (section) {
+                                            AndroidAutoSection.LIKED -> R.drawable.favorite
+                                            AndroidAutoSection.SONGS -> R.drawable.music_note
+                                            AndroidAutoSection.ARTISTS -> R.drawable.artist
+                                            AndroidAutoSection.ALBUMS -> R.drawable.album
+                                            AndroidAutoSection.PLAYLISTS -> R.drawable.queue_music
+                                        }
+                                    ),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = section.label(),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Icon(
+                                    painter = painterResource(R.drawable.drag_handle),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .longPressDraggableHandle(
                                             onDragStarted = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            }
+                                            },
                                         ),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Spacer(Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Switch(
                                     checked = enabled,
                                     onCheckedChange = { newValue ->
@@ -225,26 +266,23 @@ fun AndroidAutoSettings(
                                             contentDescription = null,
                                             modifier = Modifier.size(SwitchDefaults.IconSize),
                                         )
-                                    }
+                                    },
                                 )
                             }
-                        },
-                        onClick = {
-                            sections = sections.map { (s, e) ->
-                                if (s == section) s to !e else s to e
-                            }
-                            onSectionsChange(serializeSections(sections))
-                        },
-                    )
-                )
-            )
-        }
+                        }
+                        if (index < sections.lastIndex) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(AuraHairline),
+                            )
+                        }
+                    }
+                }
             }
         }
 
-        Spacer(Modifier.height(27.dp))
-
-        // Quick-add destination playlist
         var showTargetPlaylistDialog by remember { mutableStateOf(false) }
 
         if (showTargetPlaylistDialog) {
@@ -281,10 +319,10 @@ fun AndroidAutoSettings(
                     AuraSecondaryAction(onClick = { showTargetPlaylistDialog = false }) {
                         Text(stringResource(android.R.string.cancel))
                     }
-                }
+                },
             )
         }
-        
+
         Material3SettingsGroup(
             title = stringResource(R.string.android_auto_target_playlist),
             items = listOf(
@@ -292,14 +330,11 @@ fun AndroidAutoSettings(
                     icon = painterResource(R.drawable.playlist_add),
                     title = { Text(stringResource(R.string.android_auto_target_playlist)) },
                     description = { Text(playlistLabels(targetPlaylist)) },
-                    onClick = { showTargetPlaylistDialog = true }
-                )
-            )
+                    onClick = { showTargetPlaylistDialog = true },
+                ),
+            ),
         )
 
-        Spacer(Modifier.height(27.dp))
-
-        // YouTube playlists
         Material3SettingsGroup(
             title = stringResource(R.string.mixes),
             items = listOf(
@@ -319,17 +354,14 @@ fun AndroidAutoSettings(
                                     contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize),
                                 )
-                            }
+                            },
                         )
                     },
-                    onClick = { onYoutubePlaylistsChange(!youtubePlaylistsEnabled) }
-                )
-            )
+                    onClick = { onYoutubePlaylistsChange(!youtubePlaylistsEnabled) },
+                ),
+            ),
         )
 
-        Spacer(Modifier.height(27.dp))
-
-        // Search options
         Material3SettingsGroup(
             title = stringResource(R.string.android_auto_search_options),
             items = listOf(
@@ -341,7 +373,7 @@ fun AndroidAutoSettings(
                             remember { listOf(10, 25, 50, 75, 100, 150, 200, -1) }
                         Column {
                             Text(stringResource(R.string.android_auto_search_local_songs_limit_desc))
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text =
                                     when (androidAutoSearchLocalLimit) {
@@ -349,6 +381,7 @@ fun AndroidAutoSettings(
                                         else -> "$androidAutoSearchLocalLimit ${stringResource(R.string.songs)}"
                                     },
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Slider(
                                 value = limitValues.indexOf(androidAutoSearchLocalLimit).toFloat(),
                                 enabled = true,
@@ -360,12 +393,10 @@ fun AndroidAutoSettings(
                                 valueRange = 0f..(limitValues.size - 1).toFloat(),
                             )
                         }
-                    }
-                )
-            )
+                    },
+                ),
+            ),
         )
-
-        Spacer(Modifier.height(27.dp))
     }
 
     AuraTopBar(

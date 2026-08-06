@@ -59,8 +59,15 @@ import kotlinx.coroutines.flow.collectLatest
 
 private val AuraNavUnselected = Color(0xFFB3B3B3)
 private val AuraNavSelected = Color(0xFFFFFFFF)
-private val AuraNavIndicator = Color.White.copy(alpha = 0.28f)
+/** Higher-contrast bubble so travel between tabs reads clearly. */
+private val AuraNavIndicator = Color.White.copy(alpha = 0.5f)
 private val AuraNavPillBg = AuraElevated
+/** Soft overshoot so the bubble visibly “bounces” into the selected icon. */
+private val AuraNavIndicatorTravel =
+    spring<Float>(
+        dampingRatio = 0.62f,
+        stiffness = Spring.StiffnessMediumLow,
+    )
 
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
@@ -137,11 +144,7 @@ fun AppNavigationRail(
     val animatedIndex =
         animateFloatAsState(
             targetValue = (selectedIndex ?: 0).toFloat(),
-            animationSpec =
-                spring(
-                    dampingRatio = 0.72f,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
+            animationSpec = AuraNavIndicatorTravel,
             label = "auraRailIndicator",
         )
     val showIndicator = selectedIndex != null
@@ -262,11 +265,7 @@ fun AppNavigationBar(
     val animatedIndex =
         animateFloatAsState(
             targetValue = (selectedIndex ?: 0).toFloat(),
-            animationSpec =
-                spring(
-                    dampingRatio = 0.72f,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
+            animationSpec = AuraNavIndicatorTravel,
             label = "auraNavIndicator",
         )
     val showIndicator = selectedIndex != null
@@ -295,6 +294,10 @@ fun AppNavigationBar(
             val tabCount = navigationItems.size.coerceAtLeast(1)
             val tabWidth = maxWidth / tabCount
             val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
+            // Narrower bubble under the icon reads as a clear sliding pill, not a full-tab wash.
+            val indicatorInset = 10.dp
+            val indicatorWidth = (tabWidth - indicatorInset * 2).coerceAtLeast(36.dp)
+            val indicatorOffsetPx = with(LocalDensity.current) { indicatorInset.toPx() }
 
             // Sliding indicator — read State.value only inside graphicsLayer (no tab recomposition).
             if (showIndicator) {
@@ -302,11 +305,12 @@ fun AppNavigationBar(
                     modifier =
                         Modifier
                             .align(Alignment.CenterStart)
-                            .width(tabWidth)
+                            .width(indicatorWidth)
                             .fillMaxHeight()
-                            .padding(horizontal = 6.dp, vertical = 5.dp)
+                            .padding(vertical = 5.dp)
                             .graphicsLayer {
-                                translationX = animatedIndex.value * tabWidthPx
+                                translationX =
+                                    indicatorOffsetPx + animatedIndex.value * tabWidthPx
                             }
                             .clip(AuraFloatingPillShape)
                             .background(AuraNavIndicator),
@@ -343,8 +347,8 @@ fun AppNavigationBar(
                             targetValue = if (isSelected) 1f else 0f,
                             animationSpec =
                                 spring(
-                                    dampingRatio = 0.72f,
-                                    stiffness = Spring.StiffnessMedium,
+                                    dampingRatio = 0.62f,
+                                    stiffness = Spring.StiffnessMediumLow,
                                 ),
                             label = "auraNavTabSelect",
                         )
@@ -376,7 +380,7 @@ fun AppNavigationBar(
                                     .size(if (slimNav) 22.dp else 24.dp)
                                     .graphicsLayer {
                                         val p = selectedProgress.value
-                                        val scale = 1f + 0.1f * p
+                                        val scale = 1f + 0.12f * p
                                         scaleX = scale
                                         scaleY = scale
                                     },

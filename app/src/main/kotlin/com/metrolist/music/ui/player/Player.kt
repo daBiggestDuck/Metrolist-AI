@@ -1041,6 +1041,16 @@ fun BottomSheetPlayer(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        mediaMetadata.artists.firstOrNull()?.id?.let { artistId ->
+                            PlayerSubscribeButton(
+                                artistId = artistId,
+                                metadata = mediaMetadata,
+                                primaryColor = textButtonColor,
+                                outlineColor = iconButtonColor.copy(alpha = 0.45f),
+                                onSurfaceColor = iconButtonColor,
+                            )
+                        }
+
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                             if (showLyrics) {
                                 AuraIconButton(onClick = { isFullScreen = !isFullScreen },

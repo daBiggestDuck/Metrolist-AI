@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -183,7 +184,14 @@ fun ArtistSongsScreen(
         }
 
         AuraTopBar(
-            title = { Text(artist?.artist?.name.orEmpty()) },
+            title = {
+                Text(
+                    text = artist?.artist?.name.orEmpty(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            floatTitle = !artist?.artist?.name.isNullOrBlank(),
             navigationIcon = {
                 IconButton(
                     onClick = navController::navigateUp,

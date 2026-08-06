@@ -32,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -44,8 +43,6 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.parseCookieString
-import com.metrolist.music.BuildConfig
-import com.metrolist.music.LocalChangelogState
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
 import com.metrolist.music.constants.AccountEmailKey
@@ -62,7 +59,6 @@ import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraOutlinedButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
-import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.viewmodels.AccountSettingsViewModel
@@ -71,14 +67,13 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun AccountSettings(
     navController: NavController,
     onClose: () -> Unit,
     latestVersionName: String,
 ) {
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
-    val showChangelog = LocalChangelogState.current
 
     val (accountNamePref, _) = rememberPreference(AccountNameKey, "")
     val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
@@ -109,9 +104,7 @@ fun AccountSettings(
     var pendingTokenAccountEmail by remember { mutableStateOf("") }
     var pendingTokenAccountChannelHandle by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-
-    val updateAvailable =
-        BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME
+    // latestVersionName retained for dialog call-site compatibility (profile-only sheet).
 
     fun navigateAndClose(route: String) {
         onClose()
@@ -367,79 +360,7 @@ fun AccountSettings(
             useLowContrast = true,
         )
 
-        Spacer(Modifier.height(8.dp))
-
-        val historyIcon = painterResource(R.drawable.history)
-        val statsIcon = painterResource(R.drawable.stats)
-        val settingsIcon = painterResource(R.drawable.settings)
-        val togetherIcon = painterResource(R.drawable.group_outlined)
-        val integrationsIcon = painterResource(R.drawable.integration)
-        val whatsNewIcon = painterResource(R.drawable.newspaper)
-        val updateIcon = painterResource(R.drawable.update)
-        val updateDownloadUrl =
-            if (updateAvailable) {
-                Updater.getCachedLatestRelease()?.let { Updater.getDownloadUrlForCurrentVariant(it) }
-            } else {
-                null
-            }
-
-        Material3SettingsGroup(
-            items =
-                listOfNotNull(
-                    Material3SettingsItem(
-                        icon = historyIcon,
-                        title = { Text(stringResource(R.string.history)) },
-                        onClick = { navigateAndClose("history") },
-                    ),
-                    Material3SettingsItem(
-                        icon = statsIcon,
-                        title = { Text(stringResource(R.string.stats)) },
-                        onClick = { navigateAndClose("stats") },
-                    ),
-                    Material3SettingsItem(
-                        icon = settingsIcon,
-                        title = { Text(stringResource(R.string.settings)) },
-                        showBadge = updateAvailable,
-                        onClick = { navigateAndClose("settings") },
-                    ),
-                    Material3SettingsItem(
-                        icon = togetherIcon,
-                        title = { Text(stringResource(R.string.together)) },
-                        onClick = { navigateAndClose("listen_together_from_topbar") },
-                    ),
-                    Material3SettingsItem(
-                        icon = integrationsIcon,
-                        title = { Text(stringResource(R.string.integrations)) },
-                        onClick = { navigateAndClose("settings/integrations") },
-                    ),
-                    Material3SettingsItem(
-                        icon = whatsNewIcon,
-                        title = { Text(stringResource(R.string.whats_new)) },
-                        onClick = {
-                            onClose()
-                            showChangelog.value = true
-                        },
-                    ),
-                    updateDownloadUrl?.let { downloadUrl ->
-                        Material3SettingsItem(
-                            icon = updateIcon,
-                            title = { Text(stringResource(R.string.new_version_available)) },
-                            description = {
-                                Text(
-                                    text = latestVersionName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            showBadge = true,
-                            onClick = { uriHandler.openUri(downloadUrl) },
-                        )
-                    },
-                ),
-            useLowContrast = true,
-        )
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier.height(12.dp))
 
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_account),

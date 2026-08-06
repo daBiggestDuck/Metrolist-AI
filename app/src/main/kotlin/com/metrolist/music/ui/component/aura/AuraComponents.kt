@@ -251,15 +251,15 @@ fun AuraTopBar(
                 navigationIcon()
             }
             if (floatTitle) {
-                // fill=false so the pill hugs title text instead of stretching edge-to-edge
+                // Hug title text (cap width so long artist names ellipsize); spacer keeps actions trailing.
                 AuraFloatingTitleIsland(
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.widthIn(max = 320.dp),
                 ) {
                     CompositionLocalProvider(LocalContentColor provides colors.titleContentColor) {
                         title()
                     }
                 }
-                Box(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
             } else {
                 Box(
                     modifier = Modifier.weight(1f),

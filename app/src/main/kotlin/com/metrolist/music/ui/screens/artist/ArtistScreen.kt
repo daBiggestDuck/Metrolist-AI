@@ -1030,7 +1030,16 @@ fun ArtistScreen(
     }
 
     AuraTopBar(
-        title = { if (!transparentAppBar) Text(artistPage?.artist?.title.orEmpty()) },
+        title = {
+            if (!transparentAppBar) {
+                Text(
+                    text = artistPage?.artist?.title.orEmpty(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+        floatTitle = !transparentAppBar && !artistPage?.artist?.title.isNullOrBlank(),
         navigationIcon = {
             IconButton(
                 onClick = navController::navigateUp,

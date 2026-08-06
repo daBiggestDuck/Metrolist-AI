@@ -124,8 +124,6 @@ import com.metrolist.music.ui.component.aura.AuraHomeShortcutGrid
 import com.metrolist.music.ui.component.aura.AuraShortcutItem
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
-import com.metrolist.music.ui.component.aura.auraBelowTopChrome
-import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -146,7 +144,6 @@ import com.metrolist.music.playback.queues.YouTubeAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ArtistGridItem
-import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
@@ -1164,23 +1161,9 @@ fun HomeScreen(
 
             LazyColumn(
                 state = lazylistState,
-                contentPadding = auraContentPaddingBelowChrome(),
+                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             ) {
-                item(key = "chips_row", contentType = CONTENT_TYPE_HEADER) {
-                    val chips =
-                        remember(homePage?.chips) {
-                            homePage?.chips?.map { it to it.title }.orEmpty()
-                        }
-                    Box(modifier = Modifier.auraBelowTopChrome()) {
-                        ChipsRow(
-                            chips = chips,
-                            currentValue = selectedChip,
-                            onValueUpdate = {
-                                viewModel.toggleChip(it)
-                            },
-                        )
-                    }
-                }
+                // Filters stick in the top chrome next to profile (MainActivity AuraTopBar).
 
                 // Spotify Home: fixed 4×2 shortcuts under chips (no title / no pager).
                 if (selectedChip == null && speedDialItems.isNotEmpty()) {

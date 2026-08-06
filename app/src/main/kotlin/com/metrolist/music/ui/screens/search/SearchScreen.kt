@@ -80,7 +80,6 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
@@ -363,6 +362,18 @@ fun SearchScreen(
                             )
                         }
                     },
+                    actions = {
+                        AuraFloatingChromeButton(
+                            onClick = { navController.navigate("recognition") },
+                            contentDescription = stringResource(R.string.recognize_music),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.mic),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    },
                     colors =
                         TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent,
@@ -400,12 +411,6 @@ fun SearchScreen(
                         )
                     }
                 }
-
-                HideOnScrollFAB(
-                    lazyListState = hubListState,
-                    icon = R.drawable.mic,
-                    onClick = { navController.navigate("recognition") },
-                )
             }
         }
     } else {
@@ -422,12 +427,6 @@ fun SearchScreen(
                     navController.navigate("youtube_browse/$browseId?params=$params")
                 },
                 viewModel = hiltViewModel(),
-            )
-
-            HideOnScrollFAB(
-                lazyListState = hubListState,
-                icon = R.drawable.mic,
-                onClick = { navController.navigate("recognition") },
             )
         }
     }

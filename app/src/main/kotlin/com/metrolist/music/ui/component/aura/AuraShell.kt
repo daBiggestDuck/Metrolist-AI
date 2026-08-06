@@ -208,7 +208,8 @@ fun AuraFloatingTitleIsland(
         modifier =
             modifier
                 .heightIn(min = 32.dp)
-                .wrapContentWidth()
+                // unbounded=false so title Text gets a finite maxWidth and can ellipsize.
+                .wrapContentWidth(align = Alignment.CenterStart, unbounded = false)
                 .auraFloatingIsland(
                     shape = AuraFloatingPillShape,
                     color = AuraElevated,

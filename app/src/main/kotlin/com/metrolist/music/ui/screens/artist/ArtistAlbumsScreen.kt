@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
@@ -142,7 +143,14 @@ fun ArtistAlbumsScreen(
         }
 
         AuraTopBar(
-            title = { Text(artist?.artist?.name.orEmpty()) },
+            title = {
+                Text(
+                    text = artist?.artist?.name.orEmpty(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            floatTitle = !artist?.artist?.name.isNullOrBlank(),
             navigationIcon = {
                 IconButton(
                     onClick = navController::navigateUp,
