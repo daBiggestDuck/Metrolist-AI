@@ -70,6 +70,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
+import com.metrolist.music.ui.component.aura.AuraProfileMenuItem
+import com.metrolist.music.ui.component.aura.AuraProfileMenuSheet
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -154,6 +156,7 @@ import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
+import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
@@ -705,6 +708,7 @@ class MainActivity : ComponentActivity() {
 
                 val homeViewModel: HomeViewModel = hiltViewModel()
                 val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
+                val accountName by homeViewModel.accountName.collectAsStateWithLifecycle()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
@@ -1011,6 +1015,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                 var showAccountDialog by remember { mutableStateOf(false) }
+                var showProfileMenu by remember { mutableStateOf(false) }
                 var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
                 val baseBg = if (pureBlack) Color.Black else Color(0xFF121212)
@@ -1065,7 +1070,7 @@ class MainActivity : ComponentActivity() {
                                     floatTitle = !isHomeRoute && headerTitle.isNotEmpty(),
                                     navigationIcon = {
                                         AuraFloatingChromeButton(
-                                            onClick = { showAccountDialog = true },
+                                            onClick = { showProfileMenu = true },
                                             contentDescription = stringResource(R.string.your_profile),
                                         ) {
                                             BadgedBox(badge = {
@@ -1469,6 +1474,23 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    if (showProfileMenu) {
+                        AuraProfileMenuContent(
+                            accountName = accountName,
+                            accountImageUrl = accountImageUrl,
+                            showUpdateBadge = latestVersionName != BuildConfig.VERSION_NAME,
+                            onDismiss = { showProfileMenu = false },
+                            onAccount = { showAccountDialog = true },
+                            onHistory = { navController.navigate("history") },
+                            onStats = { navController.navigate("stats") },
+                            onSettings = { navController.navigate("settings") },
+                            onIntegrations = { navController.navigate("settings/integrations") },
+                            onListenTogether = { navController.navigate("listen_together_from_topbar") },
+                            onRecognize = { navController.navigate("recognition") },
+                            onWhatsNew = { showChangelog.value = true },
+                        )
+                    }
+
                     if (showAccountDialog) {
                         AccountSettingsDialog(
                             onDismiss = {
@@ -1726,6 +1748,79 @@ class MainActivity : ComponentActivity() {
             window.navigationBarColor = (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()
         }
     }
+}
+
+@Composable
+private fun AuraProfileMenuContent(
+    accountName: String,
+    accountImageUrl: String?,
+    showUpdateBadge: Boolean,
+    onDismiss: () -> Unit,
+    onAccount: () -> Unit,
+    onHistory: () -> Unit,
+    onStats: () -> Unit,
+    onSettings: () -> Unit,
+    onIntegrations: () -> Unit,
+    onListenTogether: () -> Unit,
+    onRecognize: () -> Unit,
+    onWhatsNew: () -> Unit,
+) {
+    // Collect eventCount only while the menu is open so history inserts do not recompose the shell.
+    val database = LocalDatabase.current
+    val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
+    val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
+    val showHistory = !(pauseListenHistory && eventCount == 0)
+
+    AuraProfileMenuSheet(
+        accountName = accountName,
+        accountImageUrl = accountImageUrl,
+        onDismiss = onDismiss,
+        items =
+            listOf(
+                AuraProfileMenuItem(
+                    titleRes = R.string.account,
+                    icon = painterResource(R.drawable.account),
+                    onClick = onAccount,
+                    showBadge = showUpdateBadge,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.history,
+                    icon = painterResource(R.drawable.history),
+                    onClick = onHistory,
+                    visible = showHistory,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.stats,
+                    icon = painterResource(R.drawable.stats),
+                    onClick = onStats,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.settings,
+                    icon = painterResource(R.drawable.settings),
+                    onClick = onSettings,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.integrations,
+                    icon = painterResource(R.drawable.integration),
+                    onClick = onIntegrations,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.listen_together,
+                    icon = painterResource(R.drawable.group_outlined),
+                    onClick = onListenTogether,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.recognize_music,
+                    icon = painterResource(R.drawable.mic),
+                    onClick = onRecognize,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.whats_new,
+                    icon = painterResource(R.drawable.newspaper),
+                    onClick = onWhatsNew,
+                ),
+            ),
+    )
 }
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }

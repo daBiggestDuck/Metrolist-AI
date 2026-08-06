@@ -60,12 +60,12 @@ import kotlinx.coroutines.flow.collectLatest
 private val AuraNavUnselected = Color(0xFFB3B3B3)
 private val AuraNavSelected = Color(0xFFFFFFFF)
 /** Higher-contrast bubble so travel between tabs reads clearly. */
-private val AuraNavIndicator = Color.White.copy(alpha = 0.5f)
+private val AuraNavIndicator = Color.White.copy(alpha = 0.62f)
 private val AuraNavPillBg = AuraElevated
 /** Soft overshoot so the bubble visibly “bounces” into the selected icon. */
 private val AuraNavIndicatorTravel =
     spring<Float>(
-        dampingRatio = 0.62f,
+        dampingRatio = 0.55f,
         stiffness = Spring.StiffnessMediumLow,
     )
 
@@ -295,8 +295,8 @@ fun AppNavigationBar(
             val tabWidth = maxWidth / tabCount
             val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
             // Narrower bubble under the icon reads as a clear sliding pill, not a full-tab wash.
-            val indicatorInset = 10.dp
-            val indicatorWidth = (tabWidth - indicatorInset * 2).coerceAtLeast(36.dp)
+            val indicatorInset = 14.dp
+            val indicatorWidth = (tabWidth - indicatorInset * 2).coerceAtLeast(32.dp)
             val indicatorOffsetPx = with(LocalDensity.current) { indicatorInset.toPx() }
 
             // Sliding indicator — read State.value only inside graphicsLayer (no tab recomposition).
@@ -307,7 +307,7 @@ fun AppNavigationBar(
                             .align(Alignment.CenterStart)
                             .width(indicatorWidth)
                             .fillMaxHeight()
-                            .padding(vertical = 5.dp)
+                            .padding(vertical = 7.dp)
                             .graphicsLayer {
                                 translationX =
                                     indicatorOffsetPx + animatedIndex.value * tabWidthPx
@@ -347,7 +347,7 @@ fun AppNavigationBar(
                             targetValue = if (isSelected) 1f else 0f,
                             animationSpec =
                                 spring(
-                                    dampingRatio = 0.62f,
+                                    dampingRatio = 0.55f,
                                     stiffness = Spring.StiffnessMediumLow,
                                 ),
                             label = "auraNavTabSelect",
