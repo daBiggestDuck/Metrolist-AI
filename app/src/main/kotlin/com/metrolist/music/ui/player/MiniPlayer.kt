@@ -89,8 +89,10 @@ import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTransportButton
 import com.metrolist.music.R
+import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DarkModeKey
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SwipeSensitivityKey
@@ -512,6 +514,16 @@ private fun NewMiniPlayer(
                     outlineColor = outlineColor,
                     onSurfaceColor = onSurfaceColor,
                 )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                mediaMetadata?.let {
+                    DislikeButton(
+                        songId = it.id,
+                        outlineColor = outlineColor,
+                        onSurfaceColor = onSurfaceColor,
+                    )
                 }
             }
         }
@@ -1171,9 +1183,13 @@ private fun FavoriteButton(
     outlineColor: Color,
     onSurfaceColor: Color,
 ) {
+    val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val coroutineScope = rememberCoroutineScope()
     val librarySong by database.song(songId).collectAsStateWithLifecycle(initialValue = null)
+    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
+    val isDisliked = songId in excludedTasteIds
     // For episodes, show saved state (inLibrary); for songs, show liked state
     val isEpisode = librarySong?.song?.isEpisode == true
     val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
@@ -1191,12 +1207,78 @@ private fun FavoriteButton(
                 ).background(
                     color = if (isLiked) errorColor.copy(alpha = 0.1f) else Color.Transparent,
                     shape = CircleShape,
-                ).clickable { playerConnection.service.toggleLike() },
+                ).clickable {
+                    if (!isEpisode && isDisliked && !isLiked) {
+                        coroutineScope.launch(Dispatchers.IO) {
+                            ListeningTasteTracker.setExcluded(context, songId, false)
+                        }
+                    }
+                    playerConnection.service.toggleLike()
+                },
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
-            contentDescription = null,
+            contentDescription = stringResource(if (isLiked) R.string.unlike_cd else R.string.like_cd),
             tint = if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun DislikeButton(
+    songId: String,
+    outlineColor: Color,
+    onSurfaceColor: Color,
+) {
+    val context = LocalContext.current
+    val database = LocalDatabase.current
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val coroutineScope = rememberCoroutineScope()
+    val librarySong by database.song(songId).collectAsStateWithLifecycle(initialValue = null)
+    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
+    val isEpisode = librarySong?.song?.isEpisode == true
+    if (isEpisode) return
+
+    val isDisliked = songId in excludedTasteIds
+    val isLiked = librarySong?.song?.liked == true
+    val accent = MaterialTheme.colorScheme.tertiary
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .border(
+                    width = 1.dp,
+                    color = if (isDisliked) accent.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f),
+                    shape = CircleShape,
+                ).background(
+                    color = if (isDisliked) accent.copy(alpha = 0.1f) else Color.Transparent,
+                    shape = CircleShape,
+                ).clickable {
+                    val exclude = !isDisliked
+                    coroutineScope.launch(Dispatchers.IO) {
+                        ListeningTasteTracker.setExcluded(context, songId, exclude)
+                    }
+                    if (exclude && isLiked) {
+                        playerConnection.service.toggleLike()
+                    }
+                },
+    ) {
+        Icon(
+            painter =
+                painterResource(
+                    if (isDisliked) {
+                        R.drawable.media3_icon_thumb_down_filled
+                    } else {
+                        R.drawable.media3_icon_thumb_down_unfilled
+                    },
+                ),
+            contentDescription =
+                stringResource(if (isDisliked) R.string.undislike_cd else R.string.dislike_cd),
+            tint = if (isDisliked) accent else onSurfaceColor.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp),
         )
     }

@@ -997,20 +997,12 @@ class MainActivity : ComponentActivity() {
                             else -> null
                         }
                     }
-                val greetingRes =
-                    remember {
-                        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-                        when {
-                            hour < 12 -> R.string.aura_greeting_morning
-                            hour < 18 -> R.string.aura_greeting_afternoon
-                            else -> R.string.aura_greeting_evening
-                        }
-                    }
                 val isHomeRoute = navBackStackEntry?.destination?.route == Screens.Home.route
                 val isLibraryRoute = navBackStackEntry?.destination?.route == Screens.Library.route
                 val headerTitle =
                     when (navBackStackEntry?.destination?.route) {
-                        Screens.Home.route -> stringResource(greetingRes)
+                        // Greeting scrolls with Home content — keep profile chrome only.
+                        Screens.Home.route -> ""
                         Screens.Search.route -> stringResource(R.string.search)
                         else -> currentTitleRes?.let { stringResource(it) } ?: ""
                     }

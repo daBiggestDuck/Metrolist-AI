@@ -1166,20 +1166,42 @@ fun HomeScreen(
                 state = lazylistState,
                 contentPadding = auraContentPaddingBelowChrome(),
             ) {
+                item(key = "home_greeting", contentType = CONTENT_TYPE_HEADER) {
+                    val greetingRes =
+                        remember {
+                            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                            when {
+                                hour < 12 -> R.string.aura_greeting_morning
+                                hour < 18 -> R.string.aura_greeting_afternoon
+                                else -> R.string.aura_greeting_evening
+                            }
+                        }
+                    Text(
+                        text = stringResource(greetingRes),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 2,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .auraBelowTopChrome()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+
                 item(key = "chips_row", contentType = CONTENT_TYPE_HEADER) {
                     val chips =
                         remember(homePage?.chips) {
                             homePage?.chips?.map { it to it.title }.orEmpty()
                         }
-                    Box(modifier = Modifier.auraBelowTopChrome()) {
-                        ChipsRow(
-                            chips = chips,
-                            currentValue = selectedChip,
-                            onValueUpdate = {
-                                viewModel.toggleChip(it)
-                            },
-                        )
-                    }
+                    ChipsRow(
+                        chips = chips,
+                        currentValue = selectedChip,
+                        onValueUpdate = {
+                            viewModel.toggleChip(it)
+                        },
+                    )
                 }
 
                 // Spotify Home: fixed 4×2 shortcuts under chips (no title / no pager).

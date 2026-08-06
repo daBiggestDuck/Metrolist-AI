@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,14 +33,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -46,6 +50,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.utils.parseCookieString
@@ -79,6 +84,9 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
+import com.metrolist.music.ui.menu.SelectionPlaylistMenu
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.utils.rememberEnumPreference
@@ -264,6 +272,30 @@ fun LibraryPlaylistsScreen(
         }
     }
 
+    val selectablePlaylists = remember(visibleResults) {
+        visibleResults.filter { !it.autoPlaylist }.map { it.playlist }
+    }
+
+    var inSelectMode by remember { mutableStateOf(false) }
+    val selection = remember { mutableStateListOf<String>() }
+    val onExitSelectionMode = {
+        inSelectMode = false
+        selection.clear()
+    }
+
+    if (inSelectMode) {
+        BackHandler(onBack = onExitSelectionMode)
+    }
+
+    LaunchedEffect(selectablePlaylists, inSelectMode) {
+        if (!inSelectMode) return@LaunchedEffect
+        val validIds = selectablePlaylists.map { it.id }.toSet()
+        selection.removeAll { it !in validIds }
+        if (selection.isEmpty() && selectablePlaylists.isEmpty()) {
+            onExitSelectionMode()
+        }
+    }
+
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
 
@@ -307,6 +339,57 @@ fun LibraryPlaylistsScreen(
     }
 
     // Create playlist lives in the Library AuraTopBar "+" (Spotify header pattern).
+
+    val selectionBarContent = @Composable {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .auraStickyChromeBackground(AuraPlayerCanvas)
+                    .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onExitSelectionMode) {
+                Icon(
+                    painter = painterResource(R.drawable.close),
+                    contentDescription = null,
+                )
+            }
+            Text(
+                text = pluralStringResource(R.plurals.n_selected, selection.size, selection.size),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Checkbox(
+                checked = selection.size == selectablePlaylists.size && selection.isNotEmpty(),
+                onCheckedChange = {
+                    if (selection.size == selectablePlaylists.size) {
+                        selection.clear()
+                    } else {
+                        selection.clear()
+                        selection.addAll(selectablePlaylists.map { it.id })
+                    }
+                },
+            )
+            IconButton(
+                onClick = {
+                    menuState.show {
+                        SelectionPlaylistMenu(
+                            playlists = selectablePlaylists.filter { it.id in selection },
+                            onDismiss = menuState::dismiss,
+                            clearAction = onExitSelectionMode,
+                        )
+                    }
+                },
+                enabled = selection.isNotEmpty(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = null,
+                )
+            }
+        }
+    }
 
     val headerContent = @Composable {
         LibrarySearchHeader(
@@ -385,14 +468,20 @@ fun LibraryPlaylistsScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        if (inSelectMode) {
+                            selectionBarContent()
+                        } else {
+                            filterContent()
+                        }
                     }
 
                     item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        headerContent()
+                        if (!inSelectMode) {
+                            headerContent()
+                        }
                     }
 
                     if (visibleResults.isEmpty()) {
@@ -415,22 +504,41 @@ fun LibraryPlaylistsScreen(
                         contentType = { CONTENT_TYPE_PLAYLIST },
                     ) { item ->
                         if (item.autoPlaylist) {
-                            PlaylistListItem(
-                                playlist = item.playlist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            item.route?.let(navController::navigate)
-                                        }
-                                        .animateItem(),
-                            )
+                            if (!inSelectMode) {
+                                PlaylistListItem(
+                                    playlist = item.playlist,
+                                    autoPlaylist = true,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                item.route?.let(navController::navigate)
+                                            }
+                                            .animateItem(),
+                                )
+                            }
                         } else {
+                            val selected = item.playlist.id in selection
                             LibraryPlaylistListItem(
                                 menuState = menuState,
                                 coroutineScope = coroutineScope,
                                 playlist = item.playlist,
+                                isSelected = selected,
+                                inSelectMode = inSelectMode,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        selection.add(item.playlist.id)
+                                    } else {
+                                        selection.remove(item.playlist.id)
+                                    }
+                                },
+                                onLongClickSelect = {
+                                    if (!inSelectMode) {
+                                        inSelectMode = true
+                                        selection.clear()
+                                        selection.add(item.playlist.id)
+                                    }
+                                },
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -451,7 +559,11 @@ fun LibraryPlaylistsScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        if (inSelectMode) {
+                            selectionBarContent()
+                        } else {
+                            filterContent()
+                        }
                     }
 
                     item(
@@ -459,7 +571,9 @@ fun LibraryPlaylistsScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        headerContent()
+                        if (!inSelectMode) {
+                            headerContent()
+                        }
                     }
 
                     if (visibleResults.isEmpty()) {
@@ -482,25 +596,44 @@ fun LibraryPlaylistsScreen(
                         contentType = { CONTENT_TYPE_PLAYLIST },
                     ) { item ->
                         if (item.autoPlaylist) {
-                            PlaylistGridItem(
-                                playlist = item.playlist,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                item.route?.let(navController::navigate)
-                                            },
-                                        )
-                                        .animateItem(),
-                            )
+                            if (!inSelectMode) {
+                                PlaylistGridItem(
+                                    playlist = item.playlist,
+                                    fillMaxWidth = true,
+                                    autoPlaylist = true,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = {
+                                                    item.route?.let(navController::navigate)
+                                                },
+                                            )
+                                            .animateItem(),
+                                )
+                            }
                         } else {
+                            val selected = item.playlist.id in selection
                             LibraryPlaylistGridItem(
                                 menuState = menuState,
                                 coroutineScope = coroutineScope,
                                 playlist = item.playlist,
+                                isSelected = selected,
+                                inSelectMode = inSelectMode,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        selection.add(item.playlist.id)
+                                    } else {
+                                        selection.remove(item.playlist.id)
+                                    }
+                                },
+                                onLongClickSelect = {
+                                    if (!inSelectMode) {
+                                        inSelectMode = true
+                                        selection.clear()
+                                        selection.add(item.playlist.id)
+                                    }
+                                },
                                 modifier = Modifier.animateItem(),
                             )
                         }

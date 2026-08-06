@@ -1240,6 +1240,16 @@
     <string name="dont_use_for_taste">Don’t use for taste</string>
     <string name="use_for_taste">Use for taste</string>
     <string name="dont_use_for_taste_desc">Skip this song when updating Nano DJ’s listening taste</string>
+    <string name="action_dislike">Dislike</string>
+    <string name="action_undislike">Remove dislike</string>
+    <string name="dislike_cd">Dislike song</string>
+    <string name="undislike_cd">Remove dislike</string>
+    <string name="like_cd">Like song</string>
+    <string name="unlike_cd">Remove like</string>
+    <string name="delete_playlists_confirm">Do you really want to delete %1$d playlists?</string>
+    <string name="remove_download_playlists_confirm">Remove downloads for %1$d playlists?</string>
+    <string name="select_all">Select all</string>
+    <string name="deselect_all">Deselect all</string>
 
     <!-- Aura floating home header greetings (Spotify-style) -->
     <string name="aura_greeting_morning">Good morning</string>
