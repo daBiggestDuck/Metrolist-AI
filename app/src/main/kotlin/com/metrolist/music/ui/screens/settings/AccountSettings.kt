@@ -267,7 +267,7 @@ fun AccountSettings(
                 cookieValue.isNotEmpty() && "SAPISID" in parseCookieString(cookieValue)
             },
             extraContent = {
-                Spacer(Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 InfoLabel(text = stringResource(R.string.token_adv_login_description))
             },
         )
@@ -297,7 +297,7 @@ fun AccountSettings(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Material3SettingsGroup(
             items =
@@ -360,7 +360,7 @@ fun AccountSettings(
             useLowContrast = true,
         )
 
-        Spacer(modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_account),
@@ -438,6 +438,6 @@ fun AccountSettings(
             useLowContrast = true,
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
