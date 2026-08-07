@@ -80,6 +80,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -721,6 +722,12 @@ class MainActivity : ComponentActivity() {
                             Screens.MainScreens
                         }
                     }
+                val routeTabIndex = navigationTabIndex(navBackStackEntry?.destination?.route, navigationItems)
+                var selectedTabOverride by rememberSaveable { mutableStateOf<Int?>(null) }
+                LaunchedEffect(routeTabIndex) {
+                    if (routeTabIndex != null) selectedTabOverride = routeTabIndex
+                }
+
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val (defaultOpenTabInt) = rememberPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME.name)
@@ -1184,6 +1191,7 @@ class MainActivity : ComponentActivity() {
                                     currentBackStackEntry,
                                 ) {
                                     { screen: Screens, isSelected: Boolean ->
+                                        navigationItems.indexOf(screen).takeIf { it >= 0 }?.let { selectedTabOverride = it }
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
@@ -1254,6 +1262,7 @@ class MainActivity : ComponentActivity() {
                                         onItemClick = onNavItemClick,
                                         pureBlack = pureBlack,
                                         slimNav = slimNav,
+                                        selectedIndexOverride = selectedTabOverride,
                                         onSearchLongClick = onSearchLongClick,
                                         modifier =
                                             Modifier
@@ -1336,6 +1345,7 @@ class MainActivity : ComponentActivity() {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
                                 remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
                                     { screen: Screens, isSelected: Boolean ->
+                                        navigationItems.indexOf(screen).takeIf { it >= 0 }?.let { selectedTabOverride = it }
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
@@ -1387,8 +1397,13 @@ class MainActivity : ComponentActivity() {
                                     onSearchLongClick = onRailSearchLongClick,
                                 )
                             }
-                            Box(Modifier.weight(1f)) {
-                                // NavHost with animations (Material 3 Expressive style)
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(0.dp)),
+                            ) {
+                                // One clipped viewport owns the Home/Search/Library page travel.
+                                // The NavHost and bottom indicator use the same 260 ms trajectory.
                                 NavHost(
                                     navController = navController,
                                     startDestination =

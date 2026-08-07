@@ -66,7 +66,7 @@ fun LibrarySearchHeader(
                 .fillMaxWidth()
                 // End inset keeps the clear button fully on-screen; vertical gap separates
                 // the search row from sticky filter chips above.
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp),
     ) {
         if (isSearchActive) {
             Row(

@@ -5,8 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -156,12 +156,13 @@ fun AppNavigationRail(
         resolvedSelectedIndex?.let { lastSelectedIndex.intValue = it }
     }
     val selectedIndex = resolvedSelectedIndex ?: lastSelectedIndex.intValue
-    val animatedIndex =
-        animateFloatAsState(
+    val animatedIndex = remember { Animatable(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) {
+        animatedIndex.animateTo(
             targetValue = selectedIndex.toFloat(),
             animationSpec = AuraTabTravelSpring,
-            label = "auraRailIndicator",
         )
+    }
 
     Column(
         modifier =
@@ -270,6 +271,7 @@ fun AppNavigationBar(
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
     slimNav: Boolean = false,
+    selectedIndexOverride: Int? = null,
     onSearchLongClick: (() -> Unit)? = null
 ) {
     val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
@@ -282,13 +284,14 @@ fun AppNavigationBar(
     LaunchedEffect(resolvedSelectedIndex) {
         resolvedSelectedIndex?.let { lastSelectedIndex.intValue = it }
     }
-    val selectedIndex = resolvedSelectedIndex ?: lastSelectedIndex.intValue
-    val animatedIndex =
-        animateFloatAsState(
+    val selectedIndex = selectedIndexOverride ?: resolvedSelectedIndex ?: lastSelectedIndex.intValue
+    val animatedIndex = remember { Animatable(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) {
+        animatedIndex.animateTo(
             targetValue = selectedIndex.toFloat(),
             animationSpec = AuraTabTravelSpring,
-            label = "auraNavIndicator",
         )
+    }
 
     Box(
         modifier =
