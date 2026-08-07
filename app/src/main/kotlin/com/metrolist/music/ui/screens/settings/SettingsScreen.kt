@@ -11,6 +11,7 @@ import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
@@ -45,6 +48,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -61,10 +65,12 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.ReleaseNotesCard
 import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
+import com.metrolist.music.ui.component.aura.auraHairlineBorder
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
@@ -109,25 +115,52 @@ fun SettingsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showAccountDialog by remember { mutableStateOf(false) }
     val query = searchQuery.trim()
+    val suggestions = rememberSettingsSearchSuggestions(query)
 
     fun matches(title: String, extra: String? = null): Boolean {
         if (query.isEmpty()) return true
-        return title.contains(query, ignoreCase = true) ||
+        return settingsEntryMatches(query, title, keywords = listOfNotNull(extra)) ||
+            title.contains(query, ignoreCase = true) ||
             (extra?.contains(query, ignoreCase = true) == true)
     }
 
     fun matchesDeep(vararg keywords: String): Boolean {
         if (query.isEmpty()) return true
-        return keywords.any { it.contains(query, ignoreCase = true) }
+        return keywords.any { settingsEntryMatches(query, it) || it.contains(query, ignoreCase = true) }
     }
 
-    val nestedAppearance = listOf("dark theme", "pure black", "dynamic theme", "player background", "theme", "appearance")
-    val nestedContent = listOf("content language", "content country", "explicit", "quick picks", "proxy", "randomize")
-    val nestedPlayer = listOf("audio quality", "persistent queue", "skip silence", "normalization", "lyrics", "player")
-    val nestedPrivacy = listOf("listen history", "search history", "privacy")
+    fun catalogMatchesRoute(routePrefix: String): Boolean {
+        if (query.isEmpty()) return false
+        return SettingsSearchCatalog.entries.any { entry ->
+            entry.route.startsWith(routePrefix) &&
+                settingsEntryMatches(
+                    query,
+                    context.getString(entry.titleRes),
+                    entry.synonyms,
+                    entry.keywords,
+                )
+        }
+    }
+
+    fun openSearchSuggestion(suggestion: SettingsSearchSuggestion) {
+        searchQuery = ""
+        val entry = suggestion.entry
+        when {
+            entry.route == "settings" -> {
+                SettingsSearchHighlightStore.activate(entry.id)
+                showAccountDialog = true
+            }
+            else -> navController.navigateToSettingsSearchResult(entry.route, entry.id)
+        }
+    }
+
+    val nestedAppearance = listOf("dark theme", "pure black", "dynamic theme", "player background", "theme", "appearance", "night mode", "amoled", "material you")
+    val nestedContent = listOf("content language", "content country", "explicit", "quick picks", "proxy", "randomize", "region", "nsfw")
+    val nestedPlayer = listOf("audio quality", "persistent queue", "skip silence", "normalization", "lyrics", "player", "crossfade", "cast", "bitrate", "loudness")
+    val nestedPrivacy = listOf("listen history", "search history", "privacy", "screenshot")
     val nestedDj = listOf("nano dj", "gemini nano", "openai", "anthropic", "openrouter", "groq", "hack club", "dj")
     val nestedAi = listOf("lyrics translation", "ai provider", "deepl", "translate")
-    val nestedIntegrations = listOf("discord", "lastfm", "spotify", "exportify", "taste", "listen together")
+    val nestedIntegrations = listOf("discord", "lastfm", "spotify", "exportify", "taste", "listen together", "scrobble", "rpc")
     val nestedBackup = listOf("backup", "restore", "csv", "exportify", "import")
     val nestedStorage = listOf("cache", "storage", "clear song cache", "image cache")
 
@@ -150,7 +183,6 @@ fun SettingsScreen(
     val backupTitle = stringResource(R.string.backup_restore)
     val defaultLinksTitle = stringResource(R.string.default_links)
     val changelogTitle = stringResource(R.string.changelog)
-    val aboutTitle = stringResource(R.string.about)
     val newVersionTitle = stringResource(R.string.new_version_available)
 
     val accountSectionTitle = stringResource(R.string.settings_section_account)
@@ -176,7 +208,6 @@ fun SettingsScreen(
     val restoreIcon = painterResource(R.drawable.restore)
     val linkIcon = painterResource(R.drawable.link)
     val newspaperIcon = painterResource(R.drawable.newspaper)
-    val infoIcon = painterResource(R.drawable.info)
 
     val accountItems =
         buildList {
@@ -190,7 +221,10 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(integrationsTitle, accountSectionTitle) || matchesDeep(*nestedIntegrations.toTypedArray())) {
+            if (matches(integrationsTitle, accountSectionTitle) ||
+                matchesDeep(*nestedIntegrations.toTypedArray()) ||
+                catalogMatchesRoute("settings/integrations")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = integrationsTitle,
@@ -203,7 +237,10 @@ fun SettingsScreen(
 
     val contentDisplayItems =
         buildList {
-            if (matches(appearanceTitle, contentDisplaySectionTitle) || matchesDeep(*nestedAppearance.toTypedArray())) {
+            if (matches(appearanceTitle, contentDisplaySectionTitle) ||
+                matchesDeep(*nestedAppearance.toTypedArray()) ||
+                catalogMatchesRoute("settings/appearance")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = appearanceTitle,
@@ -212,7 +249,10 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(contentTitle, contentDisplaySectionTitle) || matchesDeep(*nestedContent.toTypedArray())) {
+            if (matches(contentTitle, contentDisplaySectionTitle) ||
+                matchesDeep(*nestedContent.toTypedArray()) ||
+                catalogMatchesRoute("settings/content")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = contentTitle,
@@ -221,7 +261,10 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(aiLyricsTitle, contentDisplaySectionTitle) || matchesDeep(*nestedAi.toTypedArray())) {
+            if (matches(aiLyricsTitle, contentDisplaySectionTitle) ||
+                matchesDeep(*nestedAi.toTypedArray()) ||
+                catalogMatchesRoute("settings/ai")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = aiLyricsTitle,
@@ -230,7 +273,12 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (hasAndroidAuto && matches(androidAutoTitle, contentDisplaySectionTitle)) {
+            if (hasAndroidAuto &&
+                (
+                    matches(androidAutoTitle, contentDisplaySectionTitle) ||
+                        catalogMatchesRoute("settings/android_auto")
+                    )
+            ) {
                 add(
                     SettingsHubEntry(
                         title = androidAutoTitle,
@@ -243,7 +291,10 @@ fun SettingsScreen(
 
     val playbackItems =
         buildList {
-            if (matches(playerTitle, playbackSectionTitle) || matchesDeep(*nestedPlayer.toTypedArray())) {
+            if (matches(playerTitle, playbackSectionTitle) ||
+                matchesDeep(*nestedPlayer.toTypedArray()) ||
+                catalogMatchesRoute("settings/player")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = playerTitle,
@@ -252,7 +303,10 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(nanoDjTitle, playbackSectionTitle) || matchesDeep(*nestedDj.toTypedArray())) {
+            if (matches(nanoDjTitle, playbackSectionTitle) ||
+                matchesDeep(*nestedDj.toTypedArray()) ||
+                catalogMatchesRoute("settings/dj")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = nanoDjTitle,
@@ -262,7 +316,9 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(streamSourcesTitle, playbackSectionTitle)) {
+            if (matches(streamSourcesTitle, playbackSectionTitle) ||
+                catalogMatchesRoute("settings/stream_sources")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = streamSourcesTitle,
@@ -275,7 +331,10 @@ fun SettingsScreen(
 
     val privacyItems =
         buildList {
-            if (matches(privacyTitle, privacySocialSectionTitle) || matchesDeep(*nestedPrivacy.toTypedArray())) {
+            if (matches(privacyTitle, privacySocialSectionTitle) ||
+                matchesDeep(*nestedPrivacy.toTypedArray()) ||
+                catalogMatchesRoute("settings/privacy")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = privacyTitle,
@@ -342,7 +401,10 @@ fun SettingsScreen(
 
     val aboutDataItems =
         buildList {
-            if (matches(storageTitle, aboutDataSectionTitle) || matchesDeep(*nestedStorage.toTypedArray())) {
+            if (matches(storageTitle, aboutDataSectionTitle) ||
+                matchesDeep(*nestedStorage.toTypedArray()) ||
+                catalogMatchesRoute("settings/storage")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = storageTitle,
@@ -351,7 +413,10 @@ fun SettingsScreen(
                     ),
                 )
             }
-            if (matches(backupTitle, aboutDataSectionTitle) || matchesDeep(*nestedBackup.toTypedArray())) {
+            if (matches(backupTitle, aboutDataSectionTitle) ||
+                matchesDeep(*nestedBackup.toTypedArray()) ||
+                catalogMatchesRoute("settings/backup_restore")
+            ) {
                 add(
                     SettingsHubEntry(
                         title = backupTitle,
@@ -406,15 +471,6 @@ fun SettingsScreen(
                         title = changelogTitle,
                         icon = newspaperIcon,
                         onClick = { showChangelog.value = true },
-                    ),
-                )
-            }
-            if (matches(aboutTitle, aboutDataSectionTitle)) {
-                add(
-                    SettingsHubEntry(
-                        title = aboutTitle,
-                        icon = infoIcon,
-                        onClick = { navController.navigate("settings/about") },
                     ),
                 )
             }
@@ -483,18 +539,27 @@ fun SettingsScreen(
         SettingsSearchBar(
             query = searchQuery,
             onQueryChange = { searchQuery = it },
-            modifier = Modifier.padding(bottom = 16.dp),
+            modifier = Modifier.padding(bottom = 12.dp),
         )
 
+        if (suggestions.isNotEmpty()) {
+            SettingsSearchSuggestions(
+                suggestions = suggestions,
+                onSelect = ::openSearchSuggestion,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+        }
+
         val hasAnyResults =
-            accountItems.isNotEmpty() ||
+            suggestions.isNotEmpty() ||
+                accountItems.isNotEmpty() ||
                 contentDisplayItems.isNotEmpty() ||
                 playbackItems.isNotEmpty() ||
                 privacyItems.isNotEmpty() ||
                 notificationItems.isNotEmpty() ||
                 aboutDataItems.isNotEmpty()
 
-        if (!hasAnyResults) {
+        if (query.isNotEmpty() && !hasAnyResults) {
             Text(
                 text = stringResource(R.string.settings_no_results),
                 style = MaterialTheme.typography.bodyMedium,
@@ -627,5 +692,84 @@ private fun SettingsSearchBar(
                 innerTextField()
             },
         )
+    }
+}
+
+@Composable
+private fun SettingsSearchSuggestions(
+    suggestions: List<SettingsSearchSuggestion>,
+    onSelect: (SettingsSearchSuggestion) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.settings_search_suggestions).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            letterSpacing = 1.2.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+        )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AuraElevated)
+                    .auraHairlineBorder(RoundedCornerShape(12.dp)),
+        ) {
+            suggestions.forEachIndexed { index, suggestion ->
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(suggestion) }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.search),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .padding(horizontal = 14.dp),
+                    ) {
+                        Text(
+                            text = suggestion.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        suggestion.sectionLabel?.let { section ->
+                            Text(
+                                text = stringResource(R.string.settings_search_in_section, section),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_forward),
+                        contentDescription = null,
+                        tint = AuraSpotifyGreen,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                if (index < suggestions.lastIndex) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 50.dp)
+                            .height(1.dp)
+                            .background(AuraHairline),
+                    )
+                }
+            }
+        }
     }
 }

@@ -72,7 +72,7 @@ object TasteSummary {
                     }
                 }."
             else ->
-                "Taste seeded from your $sourceLabel — keep listening so Nano DJ can refine it."
+                "Taste seeded from your $sourceLabel — keep listening so Metro DJ can refine it."
         }
     }
 }

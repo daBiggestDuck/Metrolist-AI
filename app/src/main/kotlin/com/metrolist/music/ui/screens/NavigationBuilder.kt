@@ -46,7 +46,6 @@ import com.metrolist.music.ui.screens.recognition.RecognitionHistoryScreen
 import com.metrolist.music.ui.screens.recognition.RecognitionScreen
 import com.metrolist.music.ui.screens.search.OnlineSearchResult
 import com.metrolist.music.ui.screens.search.SearchScreen
-import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
 import com.metrolist.music.ui.screens.settings.AppearanceSettings
@@ -540,16 +539,6 @@ fun NavGraphBuilder.navigationBuilder(
         popExitTransition = { nestedScreenPopExit() },
     ) {
         UpdaterScreen(navController)
-    }
-
-    composable(
-        route = "settings/about",
-        enterTransition = { nestedScreenEnter() },
-        exitTransition = { nestedScreenExit() },
-        popEnterTransition = { nestedScreenPopEnter() },
-        popExitTransition = { nestedScreenPopExit() },
-    ) {
-        AboutScreen(navController)
     }
 
     composable("login") {

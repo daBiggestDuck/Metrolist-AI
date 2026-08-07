@@ -105,7 +105,7 @@ private val AuraDefaultTopBarColors =
 
 /**
  * Full-screen near-black column with top inset + optional scroll. Replaces M3 Scaffold chrome
- * for Spotify / Nano DJ surfaces.
+ * for Spotify / Metro DJ surfaces.
  */
 @Composable
 fun AuraScreen(
@@ -203,6 +203,7 @@ fun AuraHeader(
 @Composable
 fun AuraTopBar(
     title: @Composable () -> Unit,
+    searchKey: String? = null,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
@@ -360,6 +361,7 @@ fun AuraRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    searchKey: String? = null,
     enabled: Boolean = true,
     showChevron: Boolean = false,
     trailingText: String? = null,
@@ -737,7 +739,7 @@ fun AuraDivider(modifier: Modifier = Modifier) {
 
 /**
  * Dark gradient hero with title, subtitle, and a green circular play CTA.
- * Used for Nano DJ entry points.
+ * Used for Metro DJ entry points.
  */
 @Composable
 fun AuraHeroPanel(

@@ -7,8 +7,10 @@ package com.metrolist.music.ai
 
 import android.content.Context
 import com.metrolist.music.constants.DjAiApiKey
+import com.metrolist.music.constants.DjAiApiKeysByProviderKey
 import com.metrolist.music.constants.DjAiBaseUrlKey
 import com.metrolist.music.constants.DjAiModelKey
+import com.metrolist.music.constants.DjAiModelsByProviderKey
 import com.metrolist.music.constants.DjAiProviderKey
 import com.metrolist.music.constants.OpenRouterApiKey
 import com.metrolist.music.constants.OpenRouterBaseUrlKey
@@ -50,18 +52,24 @@ interface GeminiNanoClient {
             val app = context.applicationContext
             val prefs = app.dataStore
             val provider = DjAiProvider.fromId(prefs.get(DjAiProviderKey, DjAiProvider.NANO.id))
-            var apiKey = prefs.get(DjAiApiKey, "")
-            var model = prefs.get(DjAiModelKey, "")
+            val apiKey =
+                DjAiConfig.resolveApiKey(
+                    provider = provider,
+                    keysByProviderJson = prefs.get(DjAiApiKeysByProviderKey, ""),
+                    activeApiKey = prefs.get(DjAiApiKey, ""),
+                    openRouterFallback = prefs.get(OpenRouterApiKey, ""),
+                )
+            var model =
+                DjAiConfig.resolveModel(
+                    provider = provider,
+                    modelsByProviderJson = prefs.get(DjAiModelsByProviderKey, ""),
+                    activeModel = prefs.get(DjAiModelKey, ""),
+                    openRouterFallback = prefs.get(OpenRouterModelKey, OpenRouterDefaultModel),
+                )
             var baseUrl = prefs.get(DjAiBaseUrlKey, "").ifBlank { null }
 
-            if (provider == DjAiProvider.OPENROUTER && apiKey.isBlank()) {
-                apiKey = prefs.get(OpenRouterApiKey, "")
-                if (model.isBlank()) {
-                    model = prefs.get(OpenRouterModelKey, OpenRouterDefaultModel)
-                }
-                if (baseUrl.isNullOrBlank()) {
-                    baseUrl = prefs.get(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
-                }
+            if (provider == DjAiProvider.OPENROUTER && baseUrl.isNullOrBlank()) {
+                baseUrl = prefs.get(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
             }
 
             if (model.isBlank()) {
@@ -111,14 +119,11 @@ interface GeminiNanoClient {
         }
 
         fun defaultModelFor(provider: DjAiProvider): String =
-            when (provider) {
-                DjAiProvider.NANO -> ""
-                DjAiProvider.OPENAI -> "gpt-4o-mini"
-                DjAiProvider.ANTHROPIC -> "claude-haiku-4-5-20251001"
-                DjAiProvider.HUGGINGFACE -> "meta-llama/Meta-Llama-3-8B-Instruct"
-                DjAiProvider.OPENROUTER -> OpenRouterDefaultModel
-                DjAiProvider.GROQ -> "llama-3.3-70b-versatile"
-                DjAiProvider.HACKCLUB -> "qwen/qwen3-32b"
+            DjAiConfig.defaultModel(provider).ifBlank {
+                when (provider) {
+                    DjAiProvider.OPENROUTER -> OpenRouterDefaultModel
+                    else -> ""
+                }
             }
     }
 }

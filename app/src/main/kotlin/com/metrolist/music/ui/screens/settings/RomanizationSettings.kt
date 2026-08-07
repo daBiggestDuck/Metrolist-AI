@@ -107,6 +107,7 @@ fun RomanizationSettings(
             title = stringResource(R.string.options),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "lyrics_romanize_as_main",
                     title = { Text(stringResource(R.string.lyrics_romanize_as_main)) },
                     trailingContent = {
                         Switch(
@@ -126,6 +127,7 @@ fun RomanizationSettings(
                     icon = painterResource(R.drawable.queue_music)
                 ),
                 Material3SettingsItem(
+                    searchKey = "line_by_line_option_title",
                     title = { Text(stringResource(R.string.line_by_line_option_title)) },
                     trailingContent = {
                         Switch(
@@ -184,6 +186,7 @@ fun RomanizationSettings(
 
         Material3SettingsGroup(
             title = stringResource(R.string.content_language),
+            searchKey = "content_language",
             items = checkboxesList
         )
     }

@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
- * Continuous radio queue curated by Nano DJ (Spotify DJ replacement).
+ * Continuous radio queue curated by Metro DJ (Spotify DJ replacement).
  * Each page asks the configured DJ AI backend for the next batch of song queries in the
  * active mood/category lane, then resolves them on YouTube Music.
  */
@@ -32,6 +32,7 @@ class NanoDjQueue(
     private val initialItems: List<MediaItem> = emptyList(),
     private val categories: List<String> = emptyList(),
     private val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
+    private val excludedSongIds: Set<String> = emptySet(),
 ) : Queue {
     override val preloadItem: MediaMetadata? = null
 
@@ -51,7 +52,7 @@ class NanoDjQueue(
                 )
             NanoDjSession.start(opening, usedAi = enableNano)
 
-            val seeded = initialItems.filterNot { it.mediaId in playedIds }
+            val seeded = initialItems.filterNot { it.mediaId in playedIds || it.mediaId in excludedSongIds }
             val items =
                 if (seeded.isNotEmpty()) {
                     seeded.forEach { remember(it) }
@@ -64,7 +65,7 @@ class NanoDjQueue(
                 exhausted = true
                 NanoDjSession.shutdown()
                 throw IllegalStateException(
-                    "Nano DJ could not resolve any playable tracks from your taste profile.",
+                    "Metro DJ could not resolve any playable tracks from your taste profile.",
                 )
             }
 
@@ -102,7 +103,7 @@ class NanoDjQueue(
         for (query in pick.queries) {
             if (resolved.size >= batchSize) break
             val item = searchFirstSong(query) ?: continue
-            if (item.mediaId in playedIds) continue
+            if (item.mediaId in playedIds || item.mediaId in excludedSongIds) continue
             remember(item)
             resolved += item
         }
@@ -112,7 +113,11 @@ class NanoDjQueue(
             runCatching {
                 val next = YouTube.next(com.metrolist.innertube.models.WatchEndpoint(videoId = seedId)).getOrNull()
                 next?.items?.filterIsInstance<SongItem>()?.forEach { song ->
-                    if (song.id !in playedIds && resolved.size < batchSize) {
+                    if (
+                        song.id !in playedIds &&
+                        song.id !in excludedSongIds &&
+                        resolved.size < batchSize
+                    ) {
                         val media = song.toMediaItem()
                         remember(media)
                         resolved += media
@@ -161,7 +166,7 @@ class NanoDjQueue(
 
     companion object {
         private const val TAG = "NanoDJ"
-        const val QUEUE_TITLE = "Nano DJ"
+        const val QUEUE_TITLE = "Metro DJ"
         private const val MAX_PAGES = 40
 
         fun fromTaste(
@@ -173,6 +178,7 @@ class NanoDjQueue(
             seedMediaItems: List<MediaItem> = emptyList(),
             categories: List<String> = emptyList(),
             lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
+            excludedSongIds: Set<String> = emptySet(),
         ): NanoDjQueue =
             NanoDjQueue(
                 tasteSummary = tasteSummary,
@@ -183,6 +189,7 @@ class NanoDjQueue(
                 initialItems = seedMediaItems,
                 categories = categories,
                 lane = lane,
+                excludedSongIds = excludedSongIds,
             )
     }
 }

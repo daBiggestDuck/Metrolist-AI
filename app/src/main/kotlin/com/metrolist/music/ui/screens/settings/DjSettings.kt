@@ -38,12 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.ai.DjAiConfig
 import com.metrolist.music.ai.DjAiProvider
 import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.GeminiNanoStatus
 import com.metrolist.music.constants.DjAiApiKey
+import com.metrolist.music.constants.DjAiApiKeysByProviderKey
 import com.metrolist.music.constants.DjAiBaseUrlKey
 import com.metrolist.music.constants.DjAiModelKey
+import com.metrolist.music.constants.DjAiModelsByProviderKey
 import com.metrolist.music.constants.DjAiProviderKey
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.NanoDjSpeakKey
@@ -72,6 +75,8 @@ fun DjSettings(navController: NavController) {
     var djAiApiKey by rememberPreference(DjAiApiKey, "")
     var djAiModel by rememberPreference(DjAiModelKey, "")
     var djAiBaseUrl by rememberPreference(DjAiBaseUrlKey, "")
+    var djAiApiKeysByProvider by rememberPreference(DjAiApiKeysByProviderKey, "")
+    var djAiModelsByProvider by rememberPreference(DjAiModelsByProviderKey, "")
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val (nanoDjSpeak, onNanoDjSpeakChange) = rememberPreference(NanoDjSpeakKey, true)
     val djAiProvider = DjAiProvider.fromId(djAiProviderId)
@@ -81,10 +86,46 @@ fun DjSettings(navController: NavController) {
     var showDjProviderDialog by rememberSaveable { mutableStateOf(false) }
     var showDjApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDjModelDialog by rememberSaveable { mutableStateOf(false) }
+    var showDjCustomModelInput by rememberSaveable { mutableStateOf(false) }
     var showDjBaseUrlDialog by rememberSaveable { mutableStateOf(false) }
     var showDjProviderSwitchConfirm by rememberSaveable { mutableStateOf(false) }
     var pendingDjProvider by remember { mutableStateOf<DjAiProvider?>(null) }
     var showClearDjApiKeyConfirm by rememberSaveable { mutableStateOf(false) }
+
+    fun persistApiKey(provider: DjAiProvider, key: String) {
+        val trimmed = key.trim()
+        djAiApiKey = trimmed
+        djAiApiKeysByProvider = DjAiConfig.putForProvider(djAiApiKeysByProvider, provider, trimmed)
+        GeminiNanoClient.invalidate()
+    }
+
+    fun persistModel(provider: DjAiProvider, model: String) {
+        val trimmed = model.trim()
+        djAiModel = trimmed
+        djAiModelsByProvider = DjAiConfig.putForProvider(djAiModelsByProvider, provider, trimmed)
+        GeminiNanoClient.invalidate()
+    }
+
+    fun switchToProvider(next: DjAiProvider) {
+        val previous = DjAiProvider.fromId(djAiProviderId)
+        // Keep the outgoing provider's key/model in the per-provider maps.
+        val nextKeys =
+            DjAiConfig.putForProvider(djAiApiKeysByProvider, previous, djAiApiKey)
+        val nextModels =
+            if (djAiModel.isNotBlank()) {
+                DjAiConfig.putForProvider(djAiModelsByProvider, previous, djAiModel)
+            } else {
+                djAiModelsByProvider
+            }
+        djAiApiKeysByProvider = nextKeys
+        djAiModelsByProvider = nextModels
+        djAiProviderId = next.id
+        djAiApiKey = DjAiConfig.getForProvider(nextKeys, next)
+        djAiModel =
+            DjAiConfig.getForProvider(nextModels, next)
+                .ifBlank { GeminiNanoClient.defaultModelFor(next) }
+        GeminiNanoClient.invalidate()
+    }
 
     LaunchedEffect(
         enableGeminiNano,
@@ -93,6 +134,8 @@ fun DjSettings(navController: NavController) {
         djAiModel,
         djAiBaseUrl,
         openRouterApiKey,
+        djAiApiKeysByProvider,
+        djAiModelsByProvider,
     ) {
         GeminiNanoClient.invalidate()
         if (!enableGeminiNano) {
@@ -110,7 +153,14 @@ fun DjSettings(navController: NavController) {
     }
 
     val djDefaultModel = GeminiNanoClient.defaultModelFor(djAiProvider)
-
+    val recommendedModels = remember(djAiProvider) { DjAiConfig.recommendedModels(djAiProvider) }
+    val effectiveModel = djAiModel.ifBlank { djDefaultModel }
+    val modelDialogSelection =
+        if (effectiveModel.isNotBlank() && effectiveModel in recommendedModels) {
+            effectiveModel
+        } else {
+            DjAiConfig.CUSTOM_MODEL_ID
+        }
 
     if (showDjProviderSwitchConfirm) {
         val pending = pendingDjProvider
@@ -139,16 +189,7 @@ fun DjSettings(navController: NavController) {
                 }
                 AuraSecondaryAction(onClick = {
                     showDjProviderSwitchConfirm = false
-                    pending?.let {
-                        djAiProviderId = it.id
-                        if (djAiModel.isBlank() || DjAiProvider.entries.any { p ->
-                                GeminiNanoClient.defaultModelFor(p) == djAiModel
-                            }
-                        ) {
-                            djAiModel = GeminiNanoClient.defaultModelFor(it)
-                        }
-                        GeminiNanoClient.invalidate()
-                    }
+                    pending?.let { switchToProvider(it) }
                     pendingDjProvider = null
                 }) {
                     Text(text = stringResource(android.R.string.ok))
@@ -174,8 +215,7 @@ fun DjSettings(navController: NavController) {
                 }
                 AuraSecondaryAction(onClick = {
                     showClearDjApiKeyConfirm = false
-                    djAiApiKey = ""
-                    GeminiNanoClient.invalidate()
+                    persistApiKey(djAiProvider, "")
                 }) {
                     Text(text = stringResource(R.string.ai_clear_api_key))
                 }
@@ -205,8 +245,7 @@ fun DjSettings(navController: NavController) {
             icon = { Icon(painterResource(R.drawable.key), null) },
             initialTextFieldValue = TextFieldValue(text = djAiApiKey),
             onDone = {
-                djAiApiKey = it.trim()
-                GeminiNanoClient.invalidate()
+                persistApiKey(djAiProvider, it)
                 showDjApiKeyDialog = false
             },
             onDismiss = { showDjApiKeyDialog = false },
@@ -232,17 +271,48 @@ fun DjSettings(navController: NavController) {
     }
 
     if (showDjModelDialog) {
+        EnumDialog(
+            onDismiss = { showDjModelDialog = false },
+            onSelect = {
+                if (it == DjAiConfig.CUSTOM_MODEL_ID) {
+                    showDjModelDialog = false
+                    showDjCustomModelInput = true
+                } else {
+                    persistModel(djAiProvider, it)
+                    showDjModelDialog = false
+                }
+            },
+            title = stringResource(R.string.dj_ai_model),
+            current = modelDialogSelection,
+            values = recommendedModels + DjAiConfig.CUSTOM_MODEL_ID,
+            valueText = {
+                if (it == DjAiConfig.CUSTOM_MODEL_ID) {
+                    stringResource(R.string.dj_ai_model_custom)
+                } else {
+                    it
+                }
+            },
+        )
+    }
+
+    if (showDjCustomModelInput) {
         TextFieldDialog(
             title = { Text(stringResource(R.string.dj_ai_model)) },
             icon = { Icon(painterResource(R.drawable.discover_tune), null) },
             initialTextFieldValue =
-                TextFieldValue(text = djAiModel.ifBlank { djDefaultModel }),
+                TextFieldValue(
+                    text =
+                        if (modelDialogSelection == DjAiConfig.CUSTOM_MODEL_ID) {
+                            effectiveModel
+                        } else {
+                            ""
+                        },
+                ),
             onDone = {
-                djAiModel = it.trim()
-                GeminiNanoClient.invalidate()
-                showDjModelDialog = false
+                persistModel(djAiProvider, it)
+                showDjCustomModelInput = false
             },
-            onDismiss = { showDjModelDialog = false },
+            onDismiss = { showDjCustomModelInput = false },
         )
     }
 
@@ -292,6 +362,7 @@ fun DjSettings(navController: NavController) {
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.discover_tune),
                             title = { Text(stringResource(R.string.gemini_nano_enable)) },
+                            searchKey = "gemini_nano_enable",
                             description = { Text(stringResource(R.string.gemini_nano_enable_desc)) },
                             trailingContent = {
                                 Switch(
@@ -407,7 +478,7 @@ fun DjSettings(navController: NavController) {
                                         ) {
                                             stringResource(R.string.ai_api_key) + " (lyrics)"
                                         } else {
-                                            stringResource(R.string.dj_ai_api_key_desc)
+                                            stringResource(R.string.dj_ai_api_key_per_provider_desc)
                                         },
                                     )
                                 },
@@ -419,7 +490,20 @@ fun DjSettings(navController: NavController) {
                                 icon = painterResource(R.drawable.discover_tune),
                                 title = { Text(stringResource(R.string.dj_ai_model)) },
                                 description = {
-                                    Text(djAiModel.ifBlank { djDefaultModel }.ifBlank { stringResource(R.string.not_set) })
+                                    val label =
+                                        effectiveModel.ifBlank {
+                                            stringResource(R.string.not_set)
+                                        }
+                                    Text(
+                                        if (
+                                            modelDialogSelection == DjAiConfig.CUSTOM_MODEL_ID &&
+                                            effectiveModel.isNotBlank()
+                                        ) {
+                                            "${stringResource(R.string.dj_ai_model_custom)}: $label"
+                                        } else {
+                                            label
+                                        },
+                                    )
                                 },
                                 onClick = { showDjModelDialog = true },
                             ),
@@ -457,6 +541,7 @@ fun DjSettings(navController: NavController) {
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.mic),
                         title = { Text(stringResource(R.string.nano_dj_speak)) },
+                        searchKey = "nano_dj_speak",
                         description = { Text(stringResource(R.string.nano_dj_speak_desc)) },
                         trailingContent = {
                             Switch(

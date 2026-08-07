@@ -136,7 +136,9 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.constants.CropAlbumArtKey
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
@@ -325,6 +327,7 @@ fun BottomSheetPlayer(
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
+    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
     val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
     val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
@@ -1121,22 +1124,82 @@ fun BottomSheetPlayer(
                                 // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                AuraIconButton(onClick = playerConnection::toggleLike,
-                                    shape = favShape, containerColor = textButtonColor,
+                                val isDisliked = !isEpisode && mediaMetadata.id in excludedTasteIds
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    AuraIconButton(
+                                        onClick = {
+                                            if (!isEpisode && isDisliked && !isFavorite) {
+                                                scope.launch(Dispatchers.IO) {
+                                                    ListeningTasteTracker.setExcluded(
+                                                        context = context,
+                                                        songId = mediaMetadata.id,
+                                                        excluded = false,
+                                                    )
+                                                }
+                                            }
+                                            playerConnection.toggleLike()
+                                        },
+                                        shape = if (isEpisode) favShape else middleShape,
+                                        containerColor = textButtonColor,
+                                        contentColor = iconButtonColor,
+                                        modifier = Modifier.size(42.dp),
+                                    ) {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    if (isFavorite) {
+                                                        R.drawable.favorite
+                                                    } else {
+                                                        R.drawable.favorite_border
+                                                    },
+                                                ),
+                                            contentDescription =
+                                                stringResource(if (isFavorite) R.string.unlike_cd else R.string.like_cd),
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+                                    if (!isEpisode) {
+                                        AuraIconButton(
+                                            onClick = {
+                                                val exclude = !isDisliked
+                                                scope.launch(Dispatchers.IO) {
+                                                    ListeningTasteTracker.setExcluded(
+                                                        context = context,
+                                                        songId = mediaMetadata.id,
+                                                        excluded = exclude,
+                                                        title = mediaMetadata.title,
+                                                        artists = mediaMetadata.artists.map { it.name },
+                                                    )
+                                                }
+                                                if (exclude && isFavorite) {
+                                                    playerConnection.toggleLike()
+                                                }
+                                            },
+                                            shape = favShape,
+                                            containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                    modifier = Modifier.size(42.dp)) {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                if (isFavorite) {
-                                                    R.drawable.favorite
-                                                } else {
-                                                    R.drawable.favorite_border
-                                                },
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
+                                            modifier = Modifier.size(42.dp),
+                                        ) {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        if (isDisliked) {
+                                                            R.drawable.media3_icon_thumb_down_filled
+                                                        } else {
+                                                            R.drawable.media3_icon_thumb_down_unfilled
+                                                        },
+                                                    ),
+                                                contentDescription =
+                                                    stringResource(
+                                                        if (isDisliked) R.string.undislike_cd else R.string.dislike_cd,
+                                                    ),
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1410,16 +1473,74 @@ Spacer(Modifier.width(8.dp))
                                 // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                ResizableIconButton(
-                                    icon = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border,
-                                    color = if (isFavorite) MaterialTheme.colorScheme.error else TextBackgroundColor,
-                                    modifier =
-                                        Modifier
-                                            .size(32.dp)
-                                            .padding(4.dp)
-                                            .align(Alignment.Center),
-                                    onClick = playerConnection::toggleLike,
-                                )
+                                val isDisliked = !isEpisode && mediaMetadata.id in excludedTasteIds
+                                Row(
+                                    modifier = Modifier.align(Alignment.Center),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    ResizableIconButton(
+                                        icon = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border,
+                                        color = if (isFavorite) MaterialTheme.colorScheme.error else TextBackgroundColor,
+                                        contentDescription =
+                                            stringResource(if (isFavorite) R.string.unlike_cd else R.string.like_cd),
+                                        modifier =
+                                            Modifier
+                                                .size(32.dp)
+                                                .padding(4.dp),
+                                        onClick = {
+                                            if (!isEpisode && isDisliked && !isFavorite) {
+                                                scope.launch(Dispatchers.IO) {
+                                                    ListeningTasteTracker.setExcluded(
+                                                        context = context,
+                                                        songId = mediaMetadata.id,
+                                                        excluded = false,
+                                                    )
+                                                }
+                                            }
+                                            playerConnection.toggleLike()
+                                        },
+                                    )
+                                    if (!isEpisode) {
+                                        ResizableIconButton(
+                                            icon =
+                                                if (isDisliked) {
+                                                    R.drawable.media3_icon_thumb_down_filled
+                                                } else {
+                                                    R.drawable.media3_icon_thumb_down_unfilled
+                                                },
+                                            color =
+                                                if (isDisliked) {
+                                                    MaterialTheme.colorScheme.tertiary
+                                                } else {
+                                                    TextBackgroundColor
+                                                },
+                                            contentDescription =
+                                                stringResource(
+                                                    if (isDisliked) R.string.undislike_cd else R.string.dislike_cd,
+                                                ),
+                                            modifier =
+                                                Modifier
+                                                    .size(32.dp)
+                                                    .padding(4.dp),
+                                            onClick = {
+                                                val exclude = !isDisliked
+                                                scope.launch(Dispatchers.IO) {
+                                                    ListeningTasteTracker.setExcluded(
+                                                        context = context,
+                                                        songId = mediaMetadata.id,
+                                                        excluded = exclude,
+                                                        title = mediaMetadata.title,
+                                                        artists = mediaMetadata.artists.map { it.name },
+                                                    )
+                                                }
+                                                if (exclude && isFavorite) {
+                                                    playerConnection.toggleLike()
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

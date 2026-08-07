@@ -201,7 +201,7 @@ class SpotifyImportManager(
         }
 
     /**
-     * Builds Nano DJ taste from an in-app Metrolist playlist (local or bookmarked YTM).
+     * Builds Metro DJ taste from an in-app Metrolist playlist (local or bookmarked YTM).
      * Does not rematch or clone the playlist — songs are already in the library.
      */
     suspend fun buildTasteFromLocalPlaylist(
@@ -245,7 +245,7 @@ class SpotifyImportManager(
         }
 
     /**
-     * Premium-free path: analyze pasted/picked track list for Nano DJ taste, then build a local
+     * Premium-free path: analyze pasted/picked track list for Metro DJ taste, then build a local
      * YouTube Music–matched playlist. Does not call the Spotify Web API.
      */
     suspend fun importTasteFromTracks(
@@ -384,7 +384,7 @@ class SpotifyImportManager(
         }
 
     /**
-     * Builds a local “Nano Recommendations” playlist from the **saved taste summary**.
+     * Builds a local “Metro DJ Recommendations” playlist from the **saved taste summary**.
      *
      * Dumb path: load saved SUMMARY → ask DJ AI for HINTS → match on YTM.
      * Does **not** prefer live Spotify tops over imported taste.
@@ -515,15 +515,31 @@ class SpotifyImportManager(
         onProgress: (SpotifyImportProgress) -> Unit,
     ): SpotifyImportResult {
         // Reuse a single local recommendations playlist instead of spawning duplicates.
+        val localPlaylists =
+            database.playlistEntitiesByNameAsc().filter { it.isEditable && it.isLocal }
+        // Prefer the new name if both names exist; this avoids creating or mutating an
+        // unexpected user playlist after a partially completed migration.
         val existing =
-            database.playlistEntitiesByNameAsc().firstOrNull {
-                it.name.equals(playlistName, ignoreCase = true) && it.isEditable && it.isLocal
-            }
+            localPlaylists.firstOrNull { it.name.equals(playlistName, ignoreCase = true) }
+                ?: localPlaylists.firstOrNull {
+                    it.name.equals(LEGACY_RECOMMENDATIONS_PLAYLIST_NAME, ignoreCase = true)
+                }
         val entity =
             if (existing != null) {
-                database.clearPlaylist(existing.id)
-                database.updatePlaylistLastUpdated(existing.id)
-                existing
+                // Migrate the old visible name in place so existing installs do not gain a
+                // duplicate playlist when the Metro DJ branding changes.
+                val migrated =
+                    if (existing.name.equals(LEGACY_RECOMMENDATIONS_PLAYLIST_NAME, ignoreCase = true)) {
+                        existing.copy(name = playlistName)
+                    } else {
+                        existing
+                    }
+                database.transaction {
+                    if (migrated !== existing) update(migrated)
+                    clearPlaylist(migrated.id)
+                    updatePlaylistLastUpdated(migrated.id)
+                }
+                migrated
             } else {
                 PlaylistEntity(
                     name = playlistName,
@@ -742,7 +758,8 @@ class SpotifyImportManager(
     companion object {
         private const val TAG = "SpotifyImport"
         const val TASTE_PLAYLIST_NAME = "Spotify Taste Import"
-        const val RECOMMENDATIONS_PLAYLIST_NAME = "Nano Recommendations"
+        const val RECOMMENDATIONS_PLAYLIST_NAME = "Metro DJ Recommendations"
+        private const val LEGACY_RECOMMENDATIONS_PLAYLIST_NAME = "Nano Recommendations"
 
         fun deriveTopArtists(tracks: List<Pair<String, String>>, limit: Int = 20): List<String> =
             tracks

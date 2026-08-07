@@ -402,7 +402,7 @@ fun LibrarySongsScreen(
                         viewModel.updateSearchQuery("")
                     },
                     keyboardController = keyboardController,
-                    modifier = Modifier.padding(start = 16.dp),
+                    modifier = Modifier,
                 ) {
                     SortHeader(
                         sortType = sortType,

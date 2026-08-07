@@ -817,7 +817,7 @@ fun SpotifyTasteScreen(
             onClick = { showLocalPlaylistPicker = true },
         )
 
-        // —— Nano DJ (playback), not recommendations generate ——
+        // —— Metro DJ (playback), not recommendations generate ——
         AuraSectionLabel(stringResource(R.string.nano_dj_section))
         Text(
             text = stringResource(R.string.spotify_taste_dj_from_here),
@@ -833,7 +833,7 @@ fun SpotifyTasteScreen(
                 scope.launch {
                     isBusy = true
                     statusMessage = null
-                    progress = SpotifyImportProgress(phase = "Starting Nano DJ")
+                    progress = SpotifyImportProgress(phase = "Starting Metro DJ")
                     val result =
                         NanoDjLauncher.start(
                             context = context,

@@ -72,6 +72,7 @@ fun DefaultDialog(
     modifier: Modifier = Modifier,
     icon: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
+    searchKey: String? = null,
     buttons: (@Composable RowScope.() -> Unit)? = null,
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: @Composable ColumnScope.() -> Unit,
@@ -159,6 +160,7 @@ fun AccountSettingsDialog(
 @Composable
 fun ActionPromptDialog(
     title: String? = null,
+    searchKey: String? = null,
     titleBar: @Composable (RowScope.() -> Unit)? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -258,6 +260,7 @@ fun TextFieldDialog(
     modifier: Modifier = Modifier,
     icon: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
+    searchKey: String? = null,
     initialTextFieldValue: TextFieldValue = TextFieldValue(),
     placeholder: @Composable (() -> Unit)? = null,
     singleLine: Boolean = true,

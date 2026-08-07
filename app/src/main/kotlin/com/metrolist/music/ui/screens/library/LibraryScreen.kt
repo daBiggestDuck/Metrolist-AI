@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.R
@@ -39,7 +41,8 @@ fun LibraryScreen() {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .auraStickyChromeBackground(AuraPlayerCanvas),
+                    .auraStickyChromeBackground(AuraPlayerCanvas)
+                    .padding(bottom = 6.dp),
         ) {
             ChipsRow(
                 chips = listOf(

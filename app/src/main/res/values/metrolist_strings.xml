@@ -76,6 +76,11 @@
     <string name="select">Select all</string>
     <string name="like_all">Like all</string>
     <string name="dislike_all">Dislike all</string>
+    <string name="add_selection_to_liked_desc">Like or unlike all songs in the selected playlists</string>
+    <string name="add_to_bad_taste">Add to bad taste</string>
+    <string name="add_to_bad_taste_desc">Exclude songs from the selected playlists from listening taste</string>
+    <string name="delete_playlists_confirm">Do you really want to delete %1$d playlists?</string>
+    <string name="remove_download_playlists_confirm">Remove downloads for %1$d playlists?</string>
     <string name="sort_by_last_updated">Date updated</string>
     <string name="link_copied">Link copied to clipboard</string>
     <string name="starting_radio">Starting radio…</string>
@@ -253,7 +258,7 @@
     <string name="release_notes">Release notes</string>
     <string name="changelog">Changelog</string>
     <string name="changelog_empty">No changelogs available</string>
-    <string name="github_releases_url">https://github.com/MetrolistGroup/Metrolist/releases</string>
+    <string name="github_releases_url">https://github.com/daBiggestDuck/Metrolist-AI/releases</string>
     <string name="list_bullet">•</string>
     <string name="view_on_github">View on GitHub</string>
     <string name="current_version">Current version</string>
@@ -390,13 +395,13 @@
     <string name="settings_section_privacy">Privacy &amp; Security</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_section_storage">Storage &amp; Data</string>
-    <string name="settings_section_system">System &amp; About</string>
+    <string name="settings_section_system">System</string>
     <string name="settings_section_account">Account</string>
     <string name="settings_section_content_display">Content and display</string>
     <string name="settings_section_playback">Playback</string>
     <string name="settings_section_privacy_social">Privacy and social</string>
     <string name="settings_section_notifications">Notifications</string>
-    <string name="settings_section_about_data">About and data</string>
+    <string name="settings_section_about_data">Data</string>
     <string name="search_settings">Search settings</string>
     <string name="your_profile">Your profile</string>
     <string name="whats_new">What\'s new</string>
@@ -825,7 +830,7 @@
     <string name="listen_on_metrolist">Listen on Metrolist</string>
 
     <!-- CSV Import Strings -->
-    <string name="import_csv_desc">Import playlists from Spotify via Exportify (exportify.net). Export your playlist → download CSV → import here. Taste and Nano DJ seeds update automatically; you can optionally add tracks to a playlist.</string>
+    <string name="import_csv_desc">Import playlists from Spotify via Exportify (exportify.net). Export your playlist → download CSV → import here. Taste and Metro DJ seeds update automatically; you can optionally add tracks to a playlist.</string>
     <string name="csv_import_help">Exportify CSV (recommended): Track URI, Track Name, Album Name, Artist Name(s), Release Date, Duration (ms), and more. Two-column title/artist CSV also works. Map columns below if auto-detect missed.</string>
     <string name="csv_import_exportify_url">https://exportify.net</string>
     <string name="csv_import_exportify_link">exportify.net</string>
@@ -1007,7 +1012,12 @@
     <!-- Android Auto settings -->
     <string name="android_auto">Android Auto</string>
     <string name="android_auto_visible_sections">Visible sections</string>
-    <string name="android_auto_reorder_hint">Tap a section to enable or disable it.\nLong-press the drag handle to reorder. The first section will be shown by default</string>
+    <string name="android_auto_reorder_hint">Turn sections on or off with the switch. Drag the handle to change browse order — #1 opens first in Android Auto.</string>
+    <string name="android_auto_section_shown">Shown</string>
+    <string name="android_auto_section_hidden">Hidden</string>
+    <string name="android_auto_section_position">#%1$d</string>
+    <string name="settings_search_suggestions">Settings</string>
+    <string name="settings_search_in_section">In %1$s</string>
     <string name="android_auto_youtube_playlists">Show YouTube suggested playlists</string>
     <string name="android_auto_youtube_playlists_desc">Show YouTube Music recommended playlists in the playlists section while browsing with Android Auto</string>
     <string name="android_auto_target_playlist">Quick-add destination</string>
@@ -1077,17 +1087,17 @@
     <string name="stream_source_android_creator">ANDROID_CREATOR</string>
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
 
-    <!-- Nano DJ AI (multi-provider) -->
-    <string name="dj_settings_title">Nano DJ</string>
+    <!-- Metro DJ AI (multi-provider) -->
+    <string name="dj_settings_title">Metro DJ</string>
     <string name="dj_settings_desc">AI radio host, provider, and voice</string>
-    <string name="dj_settings_intro">Configure Nano DJ — the on-device AI radio host. Uses Gemini Nano on supported phones, or a cloud provider with your API key. This is separate from lyrics translation AI.</string>
+    <string name="dj_settings_intro">Configure Metro DJ — the on-device AI radio host. Uses Gemini Nano on supported phones, or a cloud provider with your API key. This is separate from lyrics translation AI.</string>
     <string name="dj_settings_section_ai">AI provider</string>
     <string name="dj_settings_section_playback">Playback</string>
     <string name="dj_settings_spotify_link">Provider, model download, and DJ voice settings</string>
     <string name="ai_provider_help_generic">Choose a lyrics translation provider above, then add your API key in the setup section.</string>
-    <string name="gemini_nano_section">Nano DJ AI</string>
-    <string name="gemini_nano_enable">Enable Nano DJ AI</string>
-    <string name="gemini_nano_enable_desc">Power Nano DJ commentary/picks and taste analysis with on-device Gemini Nano or a cloud provider</string>
+    <string name="gemini_nano_section">Metro DJ AI</string>
+    <string name="gemini_nano_enable">Enable Metro DJ AI</string>
+    <string name="gemini_nano_enable_desc">Power Metro DJ commentary/picks and taste analysis with on-device Gemini Nano or a cloud provider</string>
     <string name="gemini_nano_status">Model status</string>
     <string name="gemini_nano_status_unavailable">Unavailable on this device</string>
     <string name="gemini_nano_status_downloadable">Downloadable</string>
@@ -1097,28 +1107,31 @@
     <string name="gemini_nano_download">Download model</string>
     <string name="gemini_nano_privacy">Gemini Nano runs on-device through Android AICore — commentary and picks stay on this device. Cloud providers send prompts to the selected API using your key.</string>
     <string name="dj_ai_provider">DJ provider</string>
-    <string name="dj_ai_provider_desc">Backend for Nano DJ commentary, song picks, and taste analysis</string>
+    <string name="dj_ai_provider_desc">Backend for Metro DJ commentary, song picks, and taste analysis</string>
     <string name="dj_ai_api_key">DJ API key</string>
     <string name="dj_ai_api_key_desc">Stored on this device like lyrics AI keys. Cloud requests leave the device.</string>
+    <string name="dj_ai_api_key_per_provider_desc">Saved for this provider. Switching providers restores each provider’s key.</string>
     <string name="dj_ai_model">DJ model</string>
+    <string name="dj_ai_model_custom">Custom</string>
+    <string name="dj_ai_model_custom_desc">Type any model id supported by this provider</string>
     <string name="dj_ai_base_url">DJ base URL (optional)</string>
     <string name="dj_ai_base_url_desc">Override the provider endpoint if needed</string>
     <string name="dj_ai_cloud_help">Cloud DJ keys are stored in app preferences on this device. Prompts and taste context are sent to the selected provider over the network.</string>
     <string name="dj_ai_status_ready">Ready (cloud)</string>
     <string name="dj_ai_status_needs_key">Add an API key to use this provider</string>
 
-    <!-- Nano DJ (Spotify DJ replacement) -->
-    <string name="nano_dj_section">Nano DJ</string>
-    <string name="nano_dj_start">Start Nano DJ</string>
+    <!-- Metro DJ (Spotify DJ replacement) -->
+    <string name="nano_dj_section">Metro DJ</string>
+    <string name="nano_dj_start">Start Metro DJ</string>
     <string name="nano_dj_start_desc">On-device AI radio host that replaces Spotify DJ — Gemini Nano curates mood/category lanes from your live listening taste and talks between songs</string>
-    <string name="nano_dj_started">Nano DJ is on air</string>
+    <string name="nano_dj_started">Metro DJ is on air</string>
     <string name="nano_dj_speak">DJ voice</string>
-    <string name="nano_dj_speak_desc">Speak Nano DJ commentary aloud with on-device text-to-speech</string>
-    <string name="nano_dj_badge">Nano DJ</string>
-    <string name="nano_dj_home_start">Nano DJ</string>
+    <string name="nano_dj_speak_desc">Speak Metro DJ commentary aloud with on-device text-to-speech</string>
+    <string name="nano_dj_badge">Metro DJ</string>
+    <string name="nano_dj_home_start">Metro DJ</string>
     <string name="nano_recommendations_generate">Update recommendations playlist</string>
-    <string name="nano_recommendations_generate_desc">Rebuilds the single “Nano Recommendations” playlist from your taste (imported CSV, listening, or Spotify). Does not create duplicates.</string>
-    <string name="nano_recommendations_result">Updated Nano Recommendations: %1$d matched, %2$d missed</string>
+    <string name="nano_recommendations_generate_desc">Rebuilds the single “Metro DJ Recommendations” playlist from your taste (imported CSV, listening, or Spotify). Does not create duplicates.</string>
+    <string name="nano_recommendations_result">Updated Metro DJ Recommendations: %1$d matched, %2$d missed</string>
 
     <!-- Spotify integration -->
     <string name="spotify_integration">Spotify</string>
@@ -1133,33 +1146,33 @@
     <string name="spotify_disconnect">Disconnect</string>
     <string name="spotify_disconnect_confirm_title">Disconnect Spotify?</string>
     <string name="spotify_disconnect_confirm_message">You\'ll need to sign in again to import playlists or refresh Spotify taste. Local taste from playlists or files is kept.</string>
-    <string name="spotify_connect_description">Sign in with Spotify so Nano DJ can learn your taste and import playlists into Metrolist</string>
+    <string name="spotify_connect_description">Sign in with Spotify so Metro DJ can learn your taste and import playlists into Metrolist</string>
     <string name="spotify_connected_as">Connected as %1$s</string>
     <string name="spotify_not_connected">Not connected</string>
-    <string name="spotify_easy_import_section">Get taste into Nano DJ</string>
+    <string name="spotify_easy_import_section">Get taste into Metro DJ</string>
     <string name="spotify_export_guide_title">How to get a Spotify playlist file</string>
     <string name="spotify_export_guide_steps">1. On Spotify (app or web), open a playlist that matches your taste.\n2. Go to exportify.net, log in with Spotify, export the playlist, and download the CSV (Track Name + Artist Name(s) columns).\n3. In Metrolist: Settings → Backup &amp; restore → Import a CSV playlist, or tap Import playlist file below.\n\nOr skip Spotify entirely: choose a Metrolist playlist you already like.</string>
     <string name="spotify_import_file_cta">Import playlist file</string>
     <string name="spotify_file_import_section">Import from file (no Premium)</string>
     <string name="spotify_file_import_choose">Choose file</string>
     <string name="spotify_choose_file">@string/spotify_file_import_choose</string>
-    <string name="spotify_file_import_desc">Exportify CSV from exportify.net (Track Name / Artist Name(s)), simple two-column CSV, plain “Title - Artist” lines, or StreamingHistory JSON. Builds your Nano DJ taste and a matched local playlist — no Premium required.</string>
+    <string name="spotify_file_import_desc">Exportify CSV from exportify.net (Track Name / Artist Name(s)), simple two-column CSV, plain “Title - Artist” lines, or StreamingHistory JSON. Builds your Metro DJ taste and a matched local playlist — no Premium required.</string>
     <string name="spotify_choose_file_desc">@string/spotify_file_import_desc</string>
-    <string name="spotify_file_import_result">File import finished: %1$d matched, %2$d missed. Taste profile saved for Nano DJ.</string>
+    <string name="spotify_file_import_result">File import finished: %1$d matched, %2$d missed. Taste profile saved for Metro DJ.</string>
     <string name="spotify_file_import_empty">No tracks found in that file.</string>
     <string name="spotify_file_import_playlist_name_title">Playlist name</string>
     <string name="spotify_playlist_taste_section">Use a playlist for taste</string>
     <string name="spotify_playlist_taste_pick">Use Metrolist playlist for taste</string>
-    <string name="spotify_playlist_taste_pick_desc">Pick any in-app playlist — Nano DJ learns from its tracks and artists</string>
+    <string name="spotify_playlist_taste_pick_desc">Pick any in-app playlist — Metro DJ learns from its tracks and artists</string>
     <string name="spotify_playlist_taste_pick_title">Choose a playlist</string>
     <string name="spotify_playlist_taste_empty">No playlists yet. Create or import a playlist first, or use Import playlist file.</string>
-    <string name="spotify_playlist_taste_result">Taste updated from “%1$s” (%2$d tracks). Nano DJ will use this profile.</string>
+    <string name="spotify_playlist_taste_result">Taste updated from “%1$s” (%2$d tracks). Metro DJ will use this profile.</string>
     <string name="spotify_playlist_taste_use">Use for taste</string>
-    <string name="spotify_playlist_taste_use_desc">Analyze this Spotify playlist for Nano DJ without re-importing songs</string>
+    <string name="spotify_playlist_taste_use_desc">Analyze this Spotify playlist for Metro DJ without re-importing songs</string>
     <string name="spotify_import">Import</string>
     <string name="nano_dj_home_subtitle">On-device AI radio that replaces Spotify DJ</string>
     <string name="spotify_import_taste">Import taste (top tracks)</string>
-    <string name="spotify_import_taste_desc">Creates a “Spotify Taste Import” playlist and feeds Nano DJ (Gemini Nano) your listening profile</string>
+    <string name="spotify_import_taste_desc">Creates a “Spotify Taste Import” playlist and feeds Metro DJ (Gemini Nano) your listening profile</string>
     <string name="spotify_taste_summary">Taste summary</string>
     <string name="spotify_playlists">Your playlists</string>
     <string name="spotify_no_playlists">No playlists found</string>
@@ -1167,7 +1180,7 @@
     <string name="spotify_playlist_tracks_owner">%1$d tracks • %2$s</string>
     <string name="spotify_import_action">Import</string>
     <string name="spotify_import_result">Import finished: %1$d matched, %2$d missed</string>
-    <string name="spotify_nano_note">Gemini Nano powers Nano DJ — an on-device replacement for Spotify DJ. Easiest path: use a Metrolist playlist for taste or Import a playlist file, enable Nano DJ in Settings → Nano DJ, then tap Start Nano DJ. On devices without AICore, Nano DJ still runs with heuristic picks.</string>
+    <string name="spotify_nano_note">Gemini Nano powers Metro DJ — an on-device replacement for Spotify DJ. Easiest path: use a Metrolist playlist for taste or Import a playlist file, enable Metro DJ in Settings → Metro DJ, then tap Start Metro DJ. On devices without AICore, Metro DJ still runs with heuristic picks.</string>
     <string name="spotify_view_taste">Your music taste</string>
     <string name="spotify_view_taste_desc">See your summary, top artists &amp; tracks, and import an Exportify CSV</string>
     <string name="spotify_import_all_playlists">Import all playlists</string>
@@ -1177,18 +1190,18 @@
 
     <!-- Spotify taste profile screen -->
     <string name="spotify_taste_title">Your music taste</string>
-    <string name="spotify_taste_screen_subtitle">Summary and seeds Nano DJ uses — import here, generate recommendations on the previous screen</string>
+    <string name="spotify_taste_screen_subtitle">Summary and seeds Metro DJ uses — import here, generate recommendations on the previous screen</string>
     <string name="spotify_taste_my_section">My taste</string>
     <string name="spotify_taste_import_section">Import taste</string>
     <string name="spotify_taste_seeds_section">DJ seeds &amp; hints</string>
     <string name="spotify_taste_empty_friendly">No taste yet — import an Exportify CSV or play songs for a while</string>
-    <string name="spotify_taste_dj_from_here">Start Nano DJ using the taste shown above</string>
+    <string name="spotify_taste_dj_from_here">Start Metro DJ using the taste shown above</string>
     <string name="spotify_taste_go_recommendations">Recommendations playlist</string>
-    <string name="spotify_taste_go_recommendations_desc">Go back to update the single Nano Recommendations playlist</string>
+    <string name="spotify_taste_go_recommendations_desc">Go back to update the single Metro DJ Recommendations playlist</string>
     <string name="spotify_taste_import_failed_summary">Import finished but taste summary could not be saved. Try again.</string>
     <string name="spotify_taste_top_artists">Top artists</string>
     <string name="spotify_taste_top_tracks">Top tracks</string>
-    <string name="spotify_taste_hints">Nano DJ recommendation ideas</string>
+    <string name="spotify_taste_hints">Metro DJ recommendation ideas</string>
     <string name="spotify_taste_no_data">No taste data yet. Pick a Metrolist playlist for taste, import a playlist file (no Premium), keep listening in Metrolist, or connect Spotify and refresh below.</string>
     <string name="spotify_taste_no_artists">No top artists yet</string>
     <string name="spotify_taste_no_tracks">No top tracks yet</string>
@@ -1199,10 +1212,10 @@
     <string name="spotify_taste_loading">Loading your latest Spotify taste…</string>
     <string name="spotify_taste_connect_note">Taste updates from songs you listen to, Metrolist playlists you pick for taste, or a playlist file. Connect Spotify only if you have Premium/allowlisting for live tops.</string>
     <string name="listening_taste_live_section">From your listening</string>
-    <string name="listening_taste_live_desc">Nano DJ learns from every song you play for at least the history threshold (default 30 seconds), unless you mark a song as “Don’t use for taste.”</string>
+    <string name="listening_taste_live_desc">Metro DJ learns from every song you play for at least the history threshold (default 30 seconds), unless you mark a song as “Don’t use for taste.”</string>
     <string name="listening_taste_categories">Mood &amp; categories</string>
     <string name="listening_taste_no_categories">No category signals yet — keep listening</string>
-    <string name="listening_taste_active_lane">Active Nano DJ lane: %1$s</string>
+    <string name="listening_taste_active_lane">Active Metro DJ lane: %1$s</string>
     <string name="listening_taste_excluded_count">Excluded from taste: %1$d songs</string>
     <string name="listening_taste_excluded_section">Excluded songs</string>
     <string name="listening_taste_clear_exclusions">Clear all exclusions</string>
@@ -1213,7 +1226,7 @@
     <string name="listening_taste_reset_confirm_title">Reset listening taste?</string>
     <string name="listening_taste_reset_confirm_message">This clears taste learned from songs you’ve played. Imported Spotify taste and exclusions are kept.</string>
     <string name="taste_overwrite_confirm_title">Overwrite music taste?</string>
-    <string name="taste_overwrite_confirm_message">This will replace your current taste profile used by Nano DJ with the imported data.</string>
+    <string name="taste_overwrite_confirm_message">This will replace your current taste profile used by Metro DJ with the imported data.</string>
     <string name="taste_overwrite_confirm">Overwrite</string>
     <string name="spotify_import_all_playlists_confirm_title">Import all playlists?</string>
     <string name="spotify_import_all_playlists_confirm_message">This imports every Spotify playlist into Metrolist and may take a long time. Continue?</string>
@@ -1225,7 +1238,7 @@
     <string name="ai_clear_api_key_confirm_title">Clear API key?</string>
     <string name="ai_clear_api_key_confirm_message">Cloud AI features that use this key will stop working until you enter a new key.</string>
     <string name="dj_ai_provider_switch_confirm_title">Switch DJ AI provider?</string>
-    <string name="dj_ai_provider_switch_confirm_message">Nano DJ will use %1$s. Cloud requests may leave the device when not using on-device Nano.</string>
+    <string name="dj_ai_provider_switch_confirm_message">Metro DJ will use %1$s. API keys and models are saved per provider and restored when you switch back. Cloud requests may leave the device when not using on-device Nano.</string>
     <string name="leave_room_confirm_title">Leave room?</string>
     <string name="leave_room_confirm_message">You will disconnect from this Listen Together session.</string>
     <string name="listen_together_disconnect_confirm_title">Disconnect?</string>
@@ -1239,7 +1252,13 @@
     <string name="player_dismiss_clear_queue_confirm">Clear queue</string>
     <string name="dont_use_for_taste">Don’t use for taste</string>
     <string name="use_for_taste">Use for taste</string>
-    <string name="dont_use_for_taste_desc">Skip this song when updating Nano DJ’s listening taste</string>
+    <string name="dont_use_for_taste_desc">Skip this song when updating Metro DJ’s listening taste</string>
+    <string name="action_dislike">Dislike</string>
+    <string name="action_undislike">Remove dislike</string>
+    <string name="dislike_cd">Dislike song</string>
+    <string name="undislike_cd">Remove dislike</string>
+    <string name="like_cd">Like song</string>
+    <string name="unlike_cd">Remove like</string>
 
     <!-- Aura floating home header greetings (Spotify-style) -->
     <string name="aura_greeting_morning">Good morning</string>

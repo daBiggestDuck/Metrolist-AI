@@ -54,19 +54,31 @@ import com.metrolist.music.ui.component.aura.AuraFloatingPillShape
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.screens.Screens
+import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 private val AuraNavUnselected = Color(0xFFB3B3B3)
 private val AuraNavSelected = Color(0xFFFFFFFF)
 /** Higher-contrast bubble so travel between tabs reads clearly. */
-private val AuraNavIndicator = Color.White.copy(alpha = 0.62f)
+private val AuraNavIndicator = Color.White.copy(alpha = 0.72f)
 private val AuraNavPillBg = AuraElevated
-/** Soft overshoot so the bubble visibly “bounces” into the selected icon. */
-private val AuraNavIndicatorTravel =
+
+/**
+ * Shared spring for the nav bubble and main-tab content slides.
+ * Medium stiffness keeps travel snappy; light overshoot matches the pill bounce.
+ */
+val AuraTabTravelSpring =
     spring<Float>(
-        dampingRatio = 0.55f,
-        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = 0.68f,
+        stiffness = Spring.StiffnessMedium,
+    )
+
+/** Same travel feel as [AuraTabTravelSpring], for NavHost slide offsets. */
+val AuraTabTravelOffsetSpring =
+    spring<androidx.compose.ui.unit.IntOffset>(
+        dampingRatio = 0.68f,
+        stiffness = Spring.StiffnessMedium,
     )
 
 @Stable
@@ -144,7 +156,7 @@ fun AppNavigationRail(
     val animatedIndex =
         animateFloatAsState(
             targetValue = (selectedIndex ?: 0).toFloat(),
-            animationSpec = AuraNavIndicatorTravel,
+            animationSpec = AuraTabTravelSpring,
             label = "auraRailIndicator",
         )
     val showIndicator = selectedIndex != null
@@ -189,7 +201,7 @@ fun AppNavigationRail(
                 )
             }
             Column(modifier = Modifier.fillMaxSize()) {
-                navigationItems.forEach { screen ->
+                navigationItems.forEachIndexed { index, screen ->
                     val isSelected =
                         remember(currentRoute, screen.route) {
                             isRouteSelected(currentRoute, screen.route, navigationItems)
@@ -230,7 +242,17 @@ fun AppNavigationRail(
                             painter = painterResource(id = iconRes),
                             contentDescription = stringResource(screen.titleId),
                             tint = tint,
-                            modifier = Modifier.size(24.dp),
+                            modifier =
+                                Modifier
+                                    .size(24.dp)
+                                    .graphicsLayer {
+                                        // Track bubble travel — one spring drives icon scale (no per-tab springs).
+                                        val proximity =
+                                            (1f - abs(animatedIndex.value - index)).coerceIn(0f, 1f)
+                                        val scale = 1f + 0.10f * proximity
+                                        scaleX = scale
+                                        scaleY = scale
+                                    },
                         )
                     }
                 }
@@ -265,7 +287,7 @@ fun AppNavigationBar(
     val animatedIndex =
         animateFloatAsState(
             targetValue = (selectedIndex ?: 0).toFloat(),
-            animationSpec = AuraNavIndicatorTravel,
+            animationSpec = AuraTabTravelSpring,
             label = "auraNavIndicator",
         )
     val showIndicator = selectedIndex != null
@@ -294,9 +316,9 @@ fun AppNavigationBar(
             val tabCount = navigationItems.size.coerceAtLeast(1)
             val tabWidth = maxWidth / tabCount
             val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
-            // Narrower bubble under the icon reads as a clear sliding pill, not a full-tab wash.
-            val indicatorInset = 14.dp
-            val indicatorWidth = (tabWidth - indicatorInset * 2).coerceAtLeast(32.dp)
+            // Narrower bubble under the icon — clear sliding pill without washing the whole tab.
+            val indicatorInset = 12.dp
+            val indicatorWidth = (tabWidth - indicatorInset * 2).coerceAtLeast(36.dp)
             val indicatorOffsetPx = with(LocalDensity.current) { indicatorInset.toPx() }
 
             // Sliding indicator — read State.value only inside graphicsLayer (no tab recomposition).
@@ -322,7 +344,7 @@ fun AppNavigationBar(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                navigationItems.forEach { screen ->
+                navigationItems.forEachIndexed { index, screen ->
                     val isSelected =
                         remember(currentRoute, screen.route) {
                             isRouteSelected(currentRoute, screen.route, navigationItems)
@@ -342,16 +364,6 @@ fun AppNavigationBar(
                         )
                     val iconTint = if (isSelected) AuraNavSelected else AuraNavUnselected
                     val labelTint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
-                    val selectedProgress =
-                        animateFloatAsState(
-                            targetValue = if (isSelected) 1f else 0f,
-                            animationSpec =
-                                spring(
-                                    dampingRatio = 0.55f,
-                                    stiffness = Spring.StiffnessMediumLow,
-                                ),
-                            label = "auraNavTabSelect",
-                        )
 
                     Column(
                         modifier =
@@ -379,8 +391,10 @@ fun AppNavigationBar(
                                 Modifier
                                     .size(if (slimNav) 22.dp else 24.dp)
                                     .graphicsLayer {
-                                        val p = selectedProgress.value
-                                        val scale = 1f + 0.12f * p
+                                        // Same spring as the bubble — icons light up as it travels.
+                                        val proximity =
+                                            (1f - abs(animatedIndex.value - index)).coerceIn(0f, 1f)
+                                        val scale = 1f + 0.12f * proximity
                                         scaleX = scale
                                         scaleY = scale
                                     },
@@ -397,7 +411,9 @@ fun AppNavigationBar(
                                 lineHeight = 12.sp,
                                 modifier =
                                     Modifier.graphicsLayer {
-                                        alpha = 0.72f + 0.28f * selectedProgress.value
+                                        val proximity =
+                                            (1f - abs(animatedIndex.value - index)).coerceIn(0f, 1f)
+                                        alpha = 0.72f + 0.28f * proximity
                                     },
                             )
                         }

@@ -388,6 +388,7 @@ fun AccountSettings(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "more_content",
                         title = { Text(stringResource(R.string.more_content)) },
                         icon = painterResource(R.drawable.cached),
                         trailingContent = {
@@ -413,6 +414,7 @@ fun AccountSettings(
                         enabled = isLoggedIn,
                     ),
                     Material3SettingsItem(
+                        searchKey = "yt_sync",
                         title = { Text(stringResource(R.string.yt_sync)) },
                         icon = painterResource(R.drawable.cached),
                         trailingContent = {

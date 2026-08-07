@@ -4012,7 +4012,7 @@ class MusicService :
                 }
             }
 
-            // Continuous listening taste for Nano DJ (DataStore; respects exclusions).
+            // Continuous listening taste for Metro DJ (DataStore; respects exclusions).
             val meta = mediaItem.metadata
             if (meta != null) {
                 val enableNano = cachedEnableGeminiNano

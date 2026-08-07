@@ -31,7 +31,7 @@ data class CsvTasteImportResult(
 )
 
 /**
- * Applies parsed CSV / playlist tracks to Nano DJ taste (listening tracker + Spotify taste prefs).
+ * Applies parsed CSV / playlist tracks to Metro DJ taste (listening tracker + Spotify taste prefs).
  *
  * Dumb flow: paste songs into DJ AI → get SUMMARY → save permanently to both
  * [ListeningTasteSummaryKey] and [SpotifyTasteSummaryKey]. AI runs *before* seeding so a failed

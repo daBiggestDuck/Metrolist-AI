@@ -170,6 +170,7 @@ fun ThemeScreen(
 
     AuraTopBar(
         title = { Text(stringResource(R.string.theme_colors)) },
+        searchKey = "theme",
         navigationIcon = {
             IconButton(onClick = { navController.navigateUp() }) {
                 Icon(

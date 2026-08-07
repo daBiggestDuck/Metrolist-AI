@@ -158,6 +158,7 @@ fun PrivacySettings(
             title = stringResource(R.string.listen_history),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "pause_listen_history",
                     icon = painterResource(R.drawable.history),
                     title = { Text(stringResource(R.string.pause_listen_history)) },
                     trailingContent = {
@@ -178,6 +179,7 @@ fun PrivacySettings(
                     onClick = { onPauseListenHistoryChange(!pauseListenHistory) }
                 ),
                 Material3SettingsItem(
+                    searchKey = "clear_listen_history",
                     icon = painterResource(R.drawable.delete_history),
                     title = { Text(stringResource(R.string.clear_listen_history)) },
                     onClick = { showClearListenHistoryDialog = true }
@@ -191,6 +193,7 @@ fun PrivacySettings(
             title = stringResource(R.string.search_history),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "pause_search_history",
                     icon = painterResource(R.drawable.search_off),
                     title = { Text(stringResource(R.string.pause_search_history)) },
                     trailingContent = {
@@ -211,6 +214,7 @@ fun PrivacySettings(
                     onClick = { onPauseSearchHistoryChange(!pauseSearchHistory) }
                 ),
                 Material3SettingsItem(
+                    searchKey = "clear_search_history",
                     icon = painterResource(R.drawable.clear_all),
                     title = { Text(stringResource(R.string.clear_search_history)) },
                     onClick = { showClearSearchHistoryDialog = true }
@@ -224,6 +228,7 @@ fun PrivacySettings(
             title = stringResource(R.string.misc),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "disable_screenshot",
                     icon = painterResource(R.drawable.screenshot),
                     title = { Text(stringResource(R.string.disable_screenshot)) },
                     description = { Text(stringResource(R.string.disable_screenshot_desc)) },

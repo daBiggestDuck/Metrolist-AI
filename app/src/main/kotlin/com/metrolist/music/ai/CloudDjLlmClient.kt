@@ -17,7 +17,7 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
- * Cloud chat backends for Nano DJ (OpenAI-compatible including Groq / Hack Club / HF / OpenRouter,
+ * Cloud chat backends for Metro DJ (OpenAI-compatible including Groq / Hack Club / HF / OpenRouter,
  * plus Anthropic Messages). Implements [GeminiNanoClient] so DJ / taste call sites stay unchanged.
  */
 class CloudDjLlmClient(
@@ -53,7 +53,7 @@ class CloudDjLlmClient(
             if (apiKey.isBlank() && provider.requiresApiKey()) {
                 throw DjAiException(
                     DjAiException.Kind.NO_API_KEY,
-                    "No API key for ${provider.displayName}. Set it in Settings → Playback → Nano DJ.",
+                    "No API key for ${provider.displayName}. Set it in Settings → Playback → Metro DJ.",
                 )
             }
             try {
@@ -87,7 +87,7 @@ class CloudDjLlmClient(
                                 .put("role", "system")
                                 .put(
                                     "content",
-                                    "You are Nano DJ, a concise music radio host. Follow the user's format exactly.",
+                                    "You are Metro DJ, a concise music radio host. Follow the user's format exactly.",
                                 ),
                         ).put(
                             JSONObject()
@@ -107,7 +107,7 @@ class CloudDjLlmClient(
                     }
                     if (provider == DjAiProvider.OPENROUTER) {
                         header("HTTP-Referer", "https://github.com/daBiggestDuck/Metrolist-AI")
-                        header("X-Title", "Metrolist AI Nano DJ")
+                        header("X-Title", "Metrolist AI Metro DJ")
                     }
                 }.post(body.toString().toRequestBody(jsonMedia))
                 .build()
@@ -147,7 +147,7 @@ class CloudDjLlmClient(
                 .put("max_tokens", 512)
                 .put(
                     "system",
-                    "You are Nano DJ, a concise music radio host. Follow the user's format exactly.",
+                    "You are Metro DJ, a concise music radio host. Follow the user's format exactly.",
                 ).put(
                     "messages",
                     JSONArray().put(

@@ -44,7 +44,7 @@ class NanoDjEngineTest {
             )
         assertFalse(pick.usedAi)
         assertTrue(pick.queries.isNotEmpty())
-        assertTrue(pick.commentary.contains("Phoebe Bridgers") || pick.commentary.contains("Nano DJ"))
+        assertTrue(pick.commentary.contains("Phoebe Bridgers") || pick.commentary.contains("Metro DJ"))
     }
 
     @Test
@@ -67,7 +67,7 @@ class NanoDjEngineTest {
 
     @Test
     fun interstitialOnly_keepsDrAbbreviation() {
-        val line = "Keeping the Dr. Dre vibe going — Nano DJ's got more like this coming up."
+        val line = "Keeping the Dr. Dre vibe going — Metro DJ's got more like this coming up."
         val spoken = NanoDjEngine.interstitialOnly(line)
         assertTrue(spoken.contains("Dr. Dre"))
         assertFalse(spoken.trim() == "Keeping the Dr.")

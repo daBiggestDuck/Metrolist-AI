@@ -41,6 +41,8 @@ object ListeningTasteTracker {
     private const val LISTEN_BOOST = 1f
     /** Stronger weight for bulk playlist/taste imports (e.g. Exportify CSV). */
     private const val IMPORT_BOOST = 2.5f
+    /** Weight demoted from artists/categories when the user dislikes a song. */
+    private const val DISLIKE_PENALTY = 1.25f
     private const val NANO_REFRESH_EVERY = 8
     /** Persist at most every N listens (in-memory cache fills the gaps). */
     private const val PERSIST_EVERY = 4
@@ -113,7 +115,7 @@ object ListeningTasteTracker {
             categories.entries.sortedByDescending { it.value }.take(n).map { it.key }
     }
 
-    /** Merged Spotify import + continuous listening signals for Nano DJ. */
+    /** Merged Spotify import + continuous listening signals for Metro DJ. */
     data class MergedTaste(
         val summary: String,
         val seedArtists: List<String>,
@@ -125,7 +127,7 @@ object ListeningTasteTracker {
 
     /**
      * Bulk-seed continuous listening taste from an imported track list (Exportify CSV, etc.).
-     * Returns the number of tracks applied. Persists immediately so Nano DJ sees new seeds.
+     * Returns the number of tracks applied. Persists immediately so Metro DJ sees new seeds.
      */
     suspend fun importFromTracks(
         context: Context,
@@ -283,13 +285,72 @@ object ListeningTasteTracker {
         return songId in prefs.getOr(ListeningTasteExcludedSongIdsKey, emptySet())
     }
 
-    suspend fun setExcluded(context: Context, songId: String, excluded: Boolean) {
+    /** In-memory excluded IDs for DJ queue filtering (empty until loadProfile/setExcluded). */
+    fun snapshotExcludedSongIds(): Set<String> = memoryProfile?.excludedSongIds.orEmpty()
+
+    /**
+     * Mark a song as disliked / excluded from Metro DJ taste and recommendations.
+     * Persists under [ListeningTasteExcludedSongIdsKey] (same pref as "Don't use for taste").
+     * When [excluded] is true and metadata is provided, demotes matching artists/categories
+     * and drops the track from listening seeds so DJ treats it as bad taste.
+     */
+    suspend fun setExcluded(
+        context: Context,
+        songId: String,
+        excluded: Boolean,
+        title: String = "",
+        artists: List<String> = emptyList(),
+    ) {
         if (songId.isBlank()) return
         context.safeDataStoreEdit { prefs ->
             val current = prefs[ListeningTasteExcludedSongIdsKey]?.toMutableSet() ?: mutableSetOf()
             if (excluded) current += songId else current -= songId
             prefs[ListeningTasteExcludedSongIdsKey] = current
         }
+
+        if (excluded && (title.isNotBlank() || artists.isNotEmpty())) {
+            if (memoryProfile == null) {
+                loadProfile(context)
+            }
+            val demoted =
+                mutex.withLock {
+                    val cached = memoryProfile ?: return@withLock null
+                    val artistNames = artists.map { it.trim() }.filter { it.isNotBlank() }
+                    val trackKey =
+                        if (artistNames.isNotEmpty()) {
+                            "$title — ${artistNames.joinToString(", ")}"
+                        } else {
+                            title
+                        }
+                    val tracksNext =
+                        cached.tracks.filterKeys { key ->
+                            key != trackKey &&
+                                key != title &&
+                                !key.startsWith("$title —") &&
+                                !key.startsWith("$title -")
+                        }
+                    val artistsNext = demoteKeys(cached.artists, artistNames, DISLIKE_PENALTY)
+                    val categoriesNext =
+                        demoteKeys(
+                            cached.categories,
+                            inferCategories(title, artistNames),
+                            DISLIKE_PENALTY * 0.5f,
+                        )
+                    cached
+                        .copy(
+                            artists = artistsNext,
+                            tracks = tracksNext,
+                            categories = categoriesNext,
+                            excludedSongIds = cached.excludedSongIds + songId,
+                            lastUpdatedMs = System.currentTimeMillis(),
+                        ).also { memoryProfile = it }
+                }
+            if (demoted != null) {
+                persistProfile(context, demoted)
+            }
+            return
+        }
+
         mutex.withLock {
             val cached = memoryProfile ?: return@withLock
             memoryProfile =
@@ -514,7 +575,7 @@ object ListeningTasteTracker {
     }
 
     /**
-     * Merge continuous listening taste with optional Spotify import prefs for Nano DJ.
+     * Merge continuous listening taste with optional Spotify import prefs for Metro DJ.
      */
     suspend fun loadMergedTaste(context: Context): MergedTaste {
         val profile = loadProfile(context)
@@ -675,6 +736,23 @@ object ListeningTasteTracker {
             .associate { it.key to it.value }
     }
 
+    private fun demoteKeys(
+        current: Map<String, Float>,
+        keys: List<String>,
+        penalty: Float,
+    ): Map<String, Float> {
+        if (keys.isEmpty()) return current
+        val next = current.toMutableMap()
+        keys.forEach { key ->
+            if (key.isBlank()) return@forEach
+            val nextWeight = (next[key] ?: 0f) - penalty
+            if (nextWeight <= 0.05f) next.remove(key) else next[key] = nextWeight
+        }
+        return next.entries
+            .sortedByDescending { it.value }
+            .associate { it.key to it.value }
+    }
+
     private fun mergeCategoryHints(
         current: Map<String, Float>,
         hints: List<String>,
@@ -719,7 +797,7 @@ object ListeningTasteTracker {
             append("Live listening taste")
             if (topA.isNotEmpty()) append(" leans toward ${topA.joinToString(", ")}")
             if (topC.isNotEmpty()) append(", with ${topC.joinToString("/")} energy")
-            append(". Current Nano DJ lane: ${lane.displayName}")
+            append(". Current Metro DJ lane: ${lane.displayName}")
             if (topT.isNotEmpty()) append(" — recent favorites include ${topT.joinToString(", ")}")
             append(".")
         }
@@ -749,7 +827,7 @@ object ListeningTasteTracker {
 
         val prompt =
             """
-            You are Nano DJ's on-device taste tracker (Gemini Nano). Update the listener's live
+            You are Metro DJ's on-device taste tracker (Gemini Nano). Update the listener's live
             music taste from recent plays. Reply with EXACTLY this format (no markdown):
             SUMMARY: <2 short sentences for a DJ host>
             CATEGORIES:

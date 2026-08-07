@@ -947,6 +947,7 @@ fun AppearanceSettings(
                 buildList {
                     add(
                         Material3SettingsItem(
+                            searchKey = "enable_high_refresh_rate",
                             icon = painterResource(R.drawable.speed),
                             title = { Text(stringResource(R.string.enable_high_refresh_rate)) },
                             description = { Text(stringResource(R.string.enable_high_refresh_rate_desc)) },
@@ -971,6 +972,7 @@ fun AppearanceSettings(
                     )
                     add(
                         Material3SettingsItem(
+                            searchKey = "enable_landscape_scaling",
                             icon = painterResource(R.drawable.fullscreen),
                             title = { Text(stringResource(R.string.enable_landscape_scaling)) },
                             description = { Text(stringResource(R.string.enable_landscape_scaling_desc)) },
@@ -998,6 +1000,7 @@ fun AppearanceSettings(
                     if (!isUsingCustomColor) {
                         add(
                             Material3SettingsItem(
+                                searchKey = "enable_dynamic_theme",
                                 icon = painterResource(R.drawable.palette),
                                 title = { Text(stringResource(R.string.enable_dynamic_theme)) },
                                 trailingContent = {
@@ -1022,6 +1025,7 @@ fun AppearanceSettings(
                     }
                     add(
                         Material3SettingsItem(
+                            searchKey = "enable_dynamic_icon",
                             icon = painterResource(R.drawable.palette),
                             title = { Text(stringResource(R.string.enable_dynamic_icon)) },
                             description = { Text(stringResource(R.string.enable_dynamic_icon_desc)) },
@@ -1046,6 +1050,7 @@ fun AppearanceSettings(
                     )
                     add(
                         Material3SettingsItem(
+                            searchKey = "theme",
                             icon = painterResource(R.drawable.palette),
                             title = { Text(stringResource(R.string.theme)) },
                             description = { Text(stringResource(R.string.theme_desc)) },
@@ -1069,6 +1074,7 @@ fun AppearanceSettings(
                 buildList {
                     add(
                         Material3SettingsItem(
+                            searchKey = "new_mini_player_design",
                             icon = painterResource(R.drawable.nav_bar),
                             title = { Text(stringResource(R.string.new_mini_player_design)) },
                             trailingContent = {
@@ -1141,6 +1147,7 @@ fun AppearanceSettings(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "new_player_design",
                         icon = painterResource(R.drawable.palette),
                         title = { Text(stringResource(R.string.new_player_design)) },
                         trailingContent = {
@@ -1162,6 +1169,7 @@ fun AppearanceSettings(
                         onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "player_background_style",
                         icon = painterResource(R.drawable.gradient),
                         title = { Text(stringResource(R.string.player_background_style)) },
                         description = {
@@ -1176,6 +1184,7 @@ fun AppearanceSettings(
                         onClick = { showPlayerBackgroundDialog = true },
                     ),
                     Material3SettingsItem(
+                        searchKey = "hide_player_thumbnail",
                         icon = painterResource(R.drawable.hide_image),
                         title = { Text(stringResource(R.string.hide_player_thumbnail)) },
                         description = { Text(stringResource(R.string.hide_player_thumbnail_desc)) },
@@ -1198,6 +1207,7 @@ fun AppearanceSettings(
                         onClick = { onHidePlayerThumbnailChange(!hidePlayerThumbnail) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "crop_album_art",
                         icon = painterResource(R.drawable.crop),
                         title = { Text(stringResource(R.string.crop_album_art)) },
                         description = { Text(stringResource(R.string.crop_album_art_desc)) },
@@ -1220,6 +1230,7 @@ fun AppearanceSettings(
                         onClick = { onCropAlbumArtChange(!cropAlbumArt) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "player_buttons_style",
                         icon = painterResource(R.drawable.palette),
                         title = { Text(stringResource(R.string.player_buttons_style)) },
                         description = {
@@ -1234,6 +1245,7 @@ fun AppearanceSettings(
                         onClick = { showPlayerButtonsStyleDialog = true },
                     ),
                     Material3SettingsItem(
+                        searchKey = "player_slider_style",
                         icon = painterResource(R.drawable.sliders),
                         title = { Text(stringResource(R.string.player_slider_style)) },
                         description = {
@@ -1262,6 +1274,7 @@ fun AppearanceSettings(
                         onClick = { showSliderOptionDialog = true },
                     ),
                     Material3SettingsItem(
+                        searchKey = "enable_swipe_thumbnail",
                         icon = painterResource(R.drawable.swipe),
                         title = { Text(stringResource(R.string.enable_swipe_thumbnail)) },
                         trailingContent = {
@@ -1286,6 +1299,7 @@ fun AppearanceSettings(
                     if (swipeThumbnail) {
                         listOf(
                             Material3SettingsItem(
+                                searchKey = "swipe_sensitivity",
                                 icon = painterResource(R.drawable.tune),
                                 title = { Text(stringResource(R.string.swipe_sensitivity)) },
                                 description = {
@@ -1373,6 +1387,7 @@ fun AppearanceSettings(
                 buildList {
                     add(
                         Material3SettingsItem(
+                            searchKey = "experimental_lyrics",
                             icon = painterResource(R.drawable.lyrics),
                             title = { Text(stringResource(R.string.experimental_lyrics)) },
                             description = { Text(stringResource(R.string.experimental_lyrics_desc)) },
@@ -1412,6 +1427,7 @@ fun AppearanceSettings(
                     if (!experimentalLyrics) {
                         add(
                             Material3SettingsItem(
+                                searchKey = "lyrics_glow_effect",
                                 icon = painterResource(R.drawable.lyrics),
                                 title = { Text(stringResource(R.string.lyrics_glow_effect)) },
                                 description = { Text(stringResource(R.string.lyrics_glow_effect_desc)) },
@@ -1436,6 +1452,7 @@ fun AppearanceSettings(
                         )
                         add(
                             Material3SettingsItem(
+                                searchKey = "lyrics_animation_style_title",
                                 icon = painterResource(R.drawable.lyrics),
                                 title = { Text(stringResource(R.string.lyrics_animation_style_title)) },
                                 description = {
@@ -1455,6 +1472,7 @@ fun AppearanceSettings(
                         )
                         add(
                             Material3SettingsItem(
+                                searchKey = "lyrics_text_size",
                                 icon = painterResource(R.drawable.lyrics),
                                 title = { Text(stringResource(R.string.lyrics_text_size)) },
                                 description = { Text("${lyricsTextSize.roundToInt()} sp") },
@@ -1463,6 +1481,7 @@ fun AppearanceSettings(
                         )
                         add(
                             Material3SettingsItem(
+                                searchKey = "lyrics_line_spacing",
                                 icon = painterResource(R.drawable.lyrics),
                                 title = { Text(stringResource(R.string.lyrics_line_spacing)) },
                                 description = { Text(String.format(Locale.US, "%.1f", lyricsLineSpacing)) },
@@ -1473,6 +1492,7 @@ fun AppearanceSettings(
 
                     add(
                         Material3SettingsItem(
+                            searchKey = "lyrics_text_position",
                             icon = painterResource(R.drawable.lyrics),
                             title = { Text(stringResource(R.string.lyrics_text_position)) },
                             description = {
@@ -1489,6 +1509,7 @@ fun AppearanceSettings(
                     )
                     add(
                         Material3SettingsItem(
+                            searchKey = "respect_agent_positioning",
                             icon = painterResource(R.drawable.lyrics),
                             title = { Text(stringResource(R.string.respect_agent_positioning)) },
                             description = { Text(stringResource(R.string.respect_agent_positioning_desc)) },
@@ -1513,6 +1534,7 @@ fun AppearanceSettings(
                     )
                     add(
                         Material3SettingsItem(
+                            searchKey = "lyrics_click_change",
                             icon = painterResource(R.drawable.lyrics),
                             title = { Text(stringResource(R.string.lyrics_click_change)) },
                             trailingContent = {
@@ -1536,6 +1558,7 @@ fun AppearanceSettings(
                     )
                     add(
                         Material3SettingsItem(
+                            searchKey = "lyrics_auto_scroll",
                             icon = painterResource(R.drawable.lyrics),
                             title = { Text(stringResource(R.string.lyrics_auto_scroll)) },
                             trailingContent = {
@@ -1559,6 +1582,7 @@ fun AppearanceSettings(
                     )
                     add(
                         Material3SettingsItem(
+                            searchKey = "hide_status_bar_fullscreen",
                             icon = painterResource(R.drawable.lyrics),
                             title = { Text(stringResource(R.string.hide_status_bar_fullscreen)) },
                             description = { Text(stringResource(R.string.hide_status_bar_fullscreen_desc)) },
@@ -1591,6 +1615,7 @@ fun AppearanceSettings(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "default_open_tab",
                         icon = painterResource(R.drawable.nav_bar),
                         title = { Text(stringResource(R.string.default_open_tab)) },
                         description = {
@@ -1605,6 +1630,7 @@ fun AppearanceSettings(
                         onClick = { showDefaultOpenTabDialog = true },
                     ),
                     Material3SettingsItem(
+                        searchKey = "default_lib_chips",
                         icon = painterResource(R.drawable.tab),
                         title = { Text(stringResource(R.string.default_lib_chips)) },
                         description = {
@@ -1622,6 +1648,7 @@ fun AppearanceSettings(
                         onClick = { showDefaultChipDialog = true },
                     ),
                     Material3SettingsItem(
+                        searchKey = "swipe_song_to_add",
                         icon = painterResource(R.drawable.swipe),
                         title = { Text(stringResource(R.string.swipe_song_to_add)) },
                         trailingContent = {
@@ -1643,6 +1670,7 @@ fun AppearanceSettings(
                         onClick = { onSwipeToSongChange(!swipeToSong) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "swipe_song_to_remove",
                         icon = painterResource(R.drawable.swipe),
                         title = { Text(stringResource(R.string.swipe_song_to_remove)) },
                         trailingContent = {
@@ -1664,6 +1692,7 @@ fun AppearanceSettings(
                         onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "slim_navbar",
                         icon = painterResource(R.drawable.nav_bar),
                         title = { Text(stringResource(R.string.slim_navbar)) },
                         trailingContent = {
@@ -1685,6 +1714,7 @@ fun AppearanceSettings(
                         onClick = { onSlimNavChange(!slimNav) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "listen_together_in_top_bar",
                         icon = painterResource(R.drawable.group_outlined),
                         title = { Text(stringResource(R.string.listen_together_in_top_bar)) },
                         description = { Text(stringResource(R.string.listen_together_in_top_bar_desc)) },
@@ -1707,6 +1737,7 @@ fun AppearanceSettings(
                         onClick = { onListenTogetherInTopBarChange(!listenTogetherInTopBar) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "grid_cell_size",
                         icon = painterResource(R.drawable.grid_view),
                         title = { Text(stringResource(R.string.grid_cell_size)) },
                         description = {
@@ -1720,6 +1751,7 @@ fun AppearanceSettings(
                         onClick = { showGridSizeDialog = true },
                     ),
                     Material3SettingsItem(
+                        searchKey = "display_density",
                         icon = painterResource(R.drawable.grid_view),
                         title = { Text(stringResource(R.string.display_density)) },
                         description = {
@@ -1737,6 +1769,7 @@ fun AppearanceSettings(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "show_liked_playlist",
                         icon = painterResource(R.drawable.favorite),
                         title = { Text(stringResource(R.string.show_liked_playlist)) },
                         trailingContent = {
@@ -1758,6 +1791,7 @@ fun AppearanceSettings(
                         onClick = { onShowLikedPlaylistChange(!showLikedPlaylist) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "show_downloaded_playlist",
                         icon = painterResource(R.drawable.offline),
                         title = { Text(stringResource(R.string.show_downloaded_playlist)) },
                         trailingContent = {
@@ -1779,6 +1813,7 @@ fun AppearanceSettings(
                         onClick = { onShowDownloadedPlaylistChange(!showDownloadedPlaylist) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "show_top_playlist",
                         icon = painterResource(R.drawable.trending_up),
                         title = { Text(stringResource(R.string.show_top_playlist)) },
                         trailingContent = {
@@ -1800,6 +1835,7 @@ fun AppearanceSettings(
                         onClick = { onShowTopPlaylistChange(!showTopPlaylist) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "show_cached_playlist",
                         icon = painterResource(R.drawable.cached),
                         title = { Text(stringResource(R.string.show_cached_playlist)) },
                         trailingContent = {
@@ -1821,6 +1857,7 @@ fun AppearanceSettings(
                         onClick = { onShowCachedPlaylistChange(!showCachedPlaylist) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "show_uploaded_playlist",
                         icon = painterResource(R.drawable.backup),
                         title = { Text(stringResource(R.string.show_uploaded_playlist)) },
                         trailingContent = {

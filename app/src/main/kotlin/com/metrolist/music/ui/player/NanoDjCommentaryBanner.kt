@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.ai.NanoDjSession
 
-/** Shows the latest Nano DJ host line while Nano DJ is on air. */
+/** Shows the latest Metro DJ host line while Metro DJ is on air. */
 @Composable
 fun NanoDjCommentaryBanner(modifier: Modifier = Modifier) {
     val active by NanoDjSession.active.collectAsState()

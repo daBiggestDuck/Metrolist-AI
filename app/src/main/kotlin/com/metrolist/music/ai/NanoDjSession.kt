@@ -15,7 +15,7 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Shared Nano DJ session state: active flag, latest host line, optional TTS (Spotify DJ-style talk).
+ * Shared Metro DJ session state: active flag, latest host line, optional TTS (Spotify DJ-style talk).
  */
 object NanoDjSession {
     private const val TAG = "NanoDJ"

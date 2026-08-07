@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,6 +51,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -56,6 +60,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
+import com.metrolist.music.ui.menu.SelectionPlaylistMenu
 import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
 import com.metrolist.music.constants.AlbumViewTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_ALBUM
@@ -297,6 +304,27 @@ fun LibraryMixScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
+    val mixPlaylists = remember(filteredItems) {
+        filteredItems.filterIsInstance<Playlist>()
+    }
+    var inSelectMode by remember { mutableStateOf(false) }
+    val selection = remember { mutableStateListOf<String>() }
+    val onExitSelectionMode = {
+        inSelectMode = false
+        selection.clear()
+    }
+    if (inSelectMode) {
+        BackHandler(onBack = onExitSelectionMode)
+    }
+    LaunchedEffect(mixPlaylists, inSelectMode) {
+        if (!inSelectMode) return@LaunchedEffect
+        val validIds = mixPlaylists.map { it.id }.toSet()
+        selection.removeAll { it !in validIds }
+        if (selection.isEmpty() && mixPlaylists.isEmpty()) {
+            onExitSelectionMode()
+        }
+    }
+
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -342,7 +370,7 @@ fun LibraryMixScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 16.dp),
+            modifier = Modifier,
         ) {
             SortHeader(
                 sortType = sortType,
@@ -388,6 +416,57 @@ fun LibraryMixScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
 
+    val selectionBarContent = @Composable {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .auraStickyChromeBackground(AuraPlayerCanvas)
+                    .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onExitSelectionMode) {
+                Icon(
+                    painter = painterResource(R.drawable.close),
+                    contentDescription = null,
+                )
+            }
+            Text(
+                text = pluralStringResource(R.plurals.n_selected, selection.size, selection.size),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Checkbox(
+                checked = selection.size == mixPlaylists.size && selection.isNotEmpty(),
+                onCheckedChange = {
+                    if (selection.size == mixPlaylists.size) {
+                        selection.clear()
+                    } else {
+                        selection.clear()
+                        selection.addAll(mixPlaylists.map { it.id })
+                    }
+                },
+            )
+            IconButton(
+                onClick = {
+                    menuState.show {
+                        SelectionPlaylistMenu(
+                            playlists = mixPlaylists.filter { it.id in selection },
+                            onDismiss = menuState::dismiss,
+                            clearAction = onExitSelectionMode,
+                        )
+                    }
+                },
+                enabled = selection.isNotEmpty(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = null,
+                )
+            }
+        }
+    }
+
     Box(
         modifier =
             Modifier
@@ -408,14 +487,20 @@ fun LibraryMixScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        if (inSelectMode) {
+                            selectionBarContent()
+                        } else {
+                            filterContent()
+                        }
                     }
 
                     item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        headerContent()
+                        if (!inSelectMode) {
+                            headerContent()
+                        }
                     }
 
                     if (showLikedPlaylist) {
@@ -525,24 +610,39 @@ fun LibraryMixScreen(
                     ) { item ->
                         when (item) {
                             is Playlist -> {
+                                val selected = item.id in selection
                                 PlaylistListItem(
                                     playlist = item,
+                                    isSelected = selected,
                                     trailingContent = {
-                                        IconButton(
-                                            onClick = {
-                                                menuState.show {
-                                                    PlaylistMenu(
-                                                        playlist = item,
-                                                        coroutineScope = coroutineScope,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                }
-                                            },
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
+                                        if (inSelectMode) {
+                                            Checkbox(
+                                                checked = selected,
+                                                onCheckedChange = { checked ->
+                                                    if (checked) {
+                                                        selection.add(item.id)
+                                                    } else {
+                                                        selection.remove(item.id)
+                                                    }
+                                                },
                                             )
+                                        } else {
+                                            IconButton(
+                                                onClick = {
+                                                    menuState.show {
+                                                        PlaylistMenu(
+                                                            playlist = item,
+                                                            coroutineScope = coroutineScope,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    }
+                                                },
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.more_vert),
+                                                    contentDescription = null,
+                                                )
+                                            }
                                         }
                                     },
                                     modifier =
@@ -550,7 +650,13 @@ fun LibraryMixScreen(
                                             .fillMaxWidth()
                                             .combinedClickable(
                                                 onClick = {
-                                                    if (!item.playlist.isEditable && item.songCount == 0 &&
+                                                    if (inSelectMode) {
+                                                        if (selected) {
+                                                            selection.remove(item.id)
+                                                        } else {
+                                                            selection.add(item.id)
+                                                        }
+                                                    } else if (!item.playlist.isEditable && item.songCount == 0 &&
                                                         item.playlist.browseId != null
                                                     ) {
                                                         navController.navigate("online_playlist/${item.playlist.browseId}")
@@ -560,12 +666,10 @@ fun LibraryMixScreen(
                                                 },
                                                 onLongClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        PlaylistMenu(
-                                                            playlist = item,
-                                                            coroutineScope = coroutineScope,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
+                                                    if (!inSelectMode) {
+                                                        inSelectMode = true
+                                                        selection.clear()
+                                                        selection.add(item.id)
                                                     }
                                                 },
                                             ).animateItem(),
@@ -744,7 +848,11 @@ fun LibraryMixScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        if (inSelectMode) {
+                            selectionBarContent()
+                        } else {
+                            filterContent()
+                        }
                     }
 
                     item(
@@ -752,7 +860,9 @@ fun LibraryMixScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        headerContent()
+                        if (!inSelectMode) {
+                            headerContent()
+                        }
                     }
 
                     if (showLikedPlaylist) {
@@ -875,15 +985,23 @@ fun LibraryMixScreen(
                     ) { item ->
                         when (item) {
                             is Playlist -> {
+                                val selected = item.id in selection
                                 PlaylistGridItem(
                                     playlist = item,
                                     fillMaxWidth = true,
+                                    isSelected = selected,
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
                                             .combinedClickable(
                                                 onClick = {
-                                                    if (!item.playlist.isEditable && item.songCount == 0 &&
+                                                    if (inSelectMode) {
+                                                        if (selected) {
+                                                            selection.remove(item.id)
+                                                        } else {
+                                                            selection.add(item.id)
+                                                        }
+                                                    } else if (!item.playlist.isEditable && item.songCount == 0 &&
                                                         item.playlist.browseId != null
                                                     ) {
                                                         navController.navigate("online_playlist/${item.playlist.browseId}")
@@ -893,12 +1011,10 @@ fun LibraryMixScreen(
                                                 },
                                                 onLongClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        PlaylistMenu(
-                                                            playlist = item,
-                                                            coroutineScope = coroutineScope,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
+                                                    if (!inSelectMode) {
+                                                        inSelectMode = true
+                                                        selection.clear()
+                                                        selection.add(item.id)
                                                     }
                                                 },
                                             ).animateItem(),

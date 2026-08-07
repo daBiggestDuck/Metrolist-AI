@@ -23,7 +23,7 @@ data class SpotifyFileParseResult(
 
 /**
  * Parses a user-picked playlist / taste export (plain text, CSV, or JSON) into
- * title–artist pairs for Nano DJ without requiring Spotify Premium or OAuth.
+ * title–artist pairs for Metro DJ without requiring Spotify Premium or OAuth.
  */
 object SpotifyFileTasteImporter {
     private const val TAG = "SpotifyFileImport"

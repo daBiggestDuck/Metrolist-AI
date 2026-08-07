@@ -24,6 +24,7 @@ fun <T> EnumDialog(
     onDismiss: () -> Unit,
     onSelect: (T) -> Unit,
     title: String,
+    searchKey: String? = null,
     current: T,
     values: List<T>,
     valueText: @Composable (T) -> String,

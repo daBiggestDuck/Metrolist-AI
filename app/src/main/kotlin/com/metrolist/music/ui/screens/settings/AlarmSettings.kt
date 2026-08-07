@@ -102,6 +102,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExact) {
             add(
                 Material3SettingsItem(
+                    searchKey = "alarm_exact_permission_title",
                     icon = painterResource(R.drawable.warning),
                     title = { Text(stringResource(R.string.alarm_exact_permission_title)) },
                     description = { Text(stringResource(R.string.alarm_exact_permission_desc)) },
@@ -119,6 +120,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
         if (!ignoringBatteryOptimization) {
             add(
                 Material3SettingsItem(
+                    searchKey = "alarm_battery_optimization_title",
                     icon = painterResource(R.drawable.warning),
                     title = { Text(stringResource(R.string.alarm_battery_optimization_title)) },
                     description = { Text(stringResource(R.string.alarm_battery_optimization_desc)) },
@@ -209,6 +211,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
         items = buildList {
             add(
                 Material3SettingsItem(
+                    searchKey = "alarm_add",
                     icon = painterResource(R.drawable.add_circle),
                     title = { Text(stringResource(R.string.alarm_add)) },
                     onClick = {
@@ -221,6 +224,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
             if (alarms.isEmpty()) {
                 add(
                     Material3SettingsItem(
+                        searchKey = "alarm_empty",
                         icon = painterResource(R.drawable.bedtime),
                         title = { Text(stringResource(R.string.alarm_empty)) }
                     )

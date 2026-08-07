@@ -147,8 +147,12 @@ fun SearchScreen(
     val scrollToTopCount by savedStateHandle
         .getStateFlow("scrollToTopCount", 0)
         .collectAsStateWithLifecycle(initialValue = 0)
+    val focusSearchFieldCount by savedStateHandle
+        .getStateFlow("focusSearchField", 0)
+        .collectAsStateWithLifecycle(initialValue = 0)
 
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
+    var lastFocusSearchCount by rememberSaveable { mutableIntStateOf(0) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -182,6 +186,20 @@ fun SearchScreen(
                 exitSearchMode()
             } else {
                 hubListState.animateScrollToItem(0)
+            }
+        }
+    }
+
+    // Bottom-nav Search reselect (double-tap when already on Search) → focus the bar.
+    LaunchedEffect(focusSearchFieldCount) {
+        if (focusSearchFieldCount > lastFocusSearchCount) {
+            lastFocusSearchCount = focusSearchFieldCount
+            isSearchActive = true
+            kotlinx.coroutines.delay(50)
+            try {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            } catch (_: Exception) {
             }
         }
     }

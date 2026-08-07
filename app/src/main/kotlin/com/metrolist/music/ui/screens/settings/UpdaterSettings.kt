@@ -138,6 +138,7 @@ fun UpdaterScreen(
                 buildList {
                     add(
                         Material3SettingsItem(
+                            searchKey = "check_for_updates",
                             title = { Text(stringResource(R.string.check_for_updates)) },
                             icon = painterResource(R.drawable.update),
                             trailingContent = {
@@ -153,6 +154,7 @@ fun UpdaterScreen(
                     if (checkForUpdates) {
                         add(
                             Material3SettingsItem(
+                                searchKey = "update_notifications",
                                 title = { Text(stringResource(R.string.update_notifications)) },
                                 icon = painterResource(R.drawable.notification),
                                 trailingContent = {
@@ -172,6 +174,7 @@ fun UpdaterScreen(
 
         Material3SettingsGroup(
             title = stringResource(R.string.check_for_updates_title),
+            searchKey = "check_for_updates",
             items =
                 listOf(
                     Material3SettingsItem(

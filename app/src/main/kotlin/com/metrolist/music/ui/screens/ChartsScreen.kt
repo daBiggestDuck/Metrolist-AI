@@ -8,7 +8,6 @@ package com.metrolist.music.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,8 +29,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
@@ -68,16 +65,17 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.ui.component.HorizontalPagedLazyGrid
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.horizontalPagedItemWidthFactor
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.ui.menu.YouTubeSongMenu
-import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.viewmodels.ChartsViewModel
 
@@ -147,8 +145,8 @@ fun ChartsScreen(
                             val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
                             val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
 
-                            LazyHorizontalGrid(
-                                rows = GridCells.Fixed(4),
+                            HorizontalPagedLazyGrid(
+                                rows = 4,
                                 contentPadding = PaddingValues(start = 4.dp),
                                 modifier =
                                     Modifier
@@ -230,19 +228,14 @@ fun ChartsScreen(
                         }
                         item(key = "section_content_${section.title}") {
                             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                                val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
+                                val horizontalLazyGridItemWidthFactor = horizontalPagedItemWidthFactor(maxWidth)
                                 val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
 
                                 val lazyGridState = rememberLazyGridState()
-                                val snapLayoutInfoProvider =
-                                    remember(lazyGridState) {
-                                        SnapLayoutInfoProvider(lazyGridState = lazyGridState)
-                                    }
 
-                                LazyHorizontalGrid(
+                                HorizontalPagedLazyGrid(
                                     state = lazyGridState,
-                                    rows = GridCells.Fixed(4),
-                                    flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
+                                    rows = 4,
                                     contentPadding =
                                         WindowInsets.systemBars
                                             .only(WindowInsetsSides.Horizontal)

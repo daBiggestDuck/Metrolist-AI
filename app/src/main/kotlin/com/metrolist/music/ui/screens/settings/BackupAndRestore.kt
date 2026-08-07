@@ -304,6 +304,7 @@ fun BackupAndRestore(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "action_backup",
                         title = { Text(stringResource(R.string.action_backup)) },
                         icon = painterResource(R.drawable.backup),
                         onClick = {
@@ -316,6 +317,7 @@ fun BackupAndRestore(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "action_restore",
                         title = { Text(stringResource(R.string.action_restore)) },
                         icon = painterResource(R.drawable.restore),
                         onClick = {
@@ -323,6 +325,7 @@ fun BackupAndRestore(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "import_online",
                         title = { Text(stringResource(R.string.import_online)) },
                         icon = painterResource(R.drawable.playlist_add),
                         onClick = {
@@ -330,6 +333,7 @@ fun BackupAndRestore(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "import_csv",
                         title = { Text(stringResource(R.string.import_csv)) },
                         description = { Text(stringResource(R.string.import_csv_desc)) },
                         icon = painterResource(R.drawable.playlist_add),

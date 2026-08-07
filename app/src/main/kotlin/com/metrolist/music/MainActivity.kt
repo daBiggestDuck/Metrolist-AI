@@ -26,8 +26,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -181,9 +179,10 @@ import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
+import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.AuraTabTravelOffsetSpring
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CreatePlaylistDialog
-import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.DefaultDialog
@@ -836,21 +835,25 @@ class MainActivity : ComponentActivity() {
                 val playerReady by playerReadyState
                 val activePlayerConnection = if (playerReady) playerConnection else null
 
+                val isHomeRouteForInsets =
+                    navBackStackEntry?.destination?.route == Screens.Home.route
                 val playerAwareWindowInsets =
                     remember(
                         bottomInset,
                         shouldShowNavigationBar,
                         playerBottomSheetState.anchor,
                         showRail,
+                        isHomeRouteForInsets,
                     ) {
                         var bottom = bottomInset
                         if (shouldShowNavigationBar && !showRail) {
                             bottom += NavigationBarHeight
                         }
                         if (playerBottomSheetState.anchor != dismissedAnchor) bottom += MiniPlayerHeight
+                        val topChrome = if (isHomeRouteForInsets) 0.dp else AppBarHeight
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-                            .add(WindowInsets(top = AppBarHeight, bottom = bottom))
+                            .add(WindowInsets(top = topChrome, bottom = bottom))
                     }
                 val topAppBarScrollBehavior =
                     appBarScrollBehavior(
@@ -953,6 +956,7 @@ class MainActivity : ComponentActivity() {
                         currentRoute == Screens.Search.route && searchActive
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
+                        currentRoute != Screens.Home.route &&
                         !isSearchTyping &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
@@ -1193,10 +1197,11 @@ class MainActivity : ComponentActivity() {
                                                     null
                                                 }
 
-                                            // Use appropriate key based on screen type
+                                            // Search reselect → focus the search field; others scroll to top.
                                             if (screen == Screens.Search) {
-                                                val current = targetEntry?.savedStateHandle?.get<Int>("scrollToTopCount") ?: 0
-                                                targetEntry?.savedStateHandle?.set("scrollToTopCount", current + 1)
+                                                val current =
+                                                    targetEntry?.savedStateHandle?.get<Int>("focusSearchField") ?: 0
+                                                targetEntry?.savedStateHandle?.set("focusSearchField", current + 1)
                                             } else {
                                                 targetEntry?.savedStateHandle?.set("scrollToTop", true)
                                             }
@@ -1331,7 +1336,19 @@ class MainActivity : ComponentActivity() {
                                         }
 
                                         if (isSelected) {
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                            if (screen == Screens.Search) {
+                                                val entry =
+                                                    try {
+                                                        navController.getBackStackEntry("search_input")
+                                                    } catch (_: Exception) {
+                                                        navController.currentBackStackEntry
+                                                    }
+                                                val current =
+                                                    entry?.savedStateHandle?.get<Int>("focusSearchField") ?: 0
+                                                entry?.savedStateHandle?.set("focusSearchField", current + 1)
+                                            } else {
+                                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                            }
                                             coroutineScope.launch {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
@@ -1379,11 +1396,12 @@ class MainActivity : ComponentActivity() {
                                         val toTab = routeIndexMap[targetState.destination.route]
                                         val fromTab = routeIndexMap[initialState.destination.route]
                                         if (fromTab != null && toTab != null) {
-                                            fadeIn(tween(220)) +
-                                                scaleIn(
-                                                    initialScale = 0.985f,
-                                                    animationSpec = tween(220),
-                                                )
+                                            // Distance matches bubble travel so Home→Library slides past Search.
+                                            val tabs = toTab - fromTab
+                                            slideInHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                initialOffsetX = { fullWidth -> tabs * fullWidth },
+                                            )
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1395,11 +1413,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = routeIndexMap[targetState.destination.route]
                                         val fromTab = routeIndexMap[initialState.destination.route]
                                         if (fromTab != null && toTab != null) {
-                                            fadeOut(tween(180)) +
-                                                scaleOut(
-                                                    targetScale = 0.985f,
-                                                    animationSpec = tween(180),
-                                                )
+                                            val tabs = toTab - fromTab
+                                            slideOutHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                targetOffsetX = { fullWidth -> -tabs * fullWidth },
+                                            )
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1411,11 +1429,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = routeIndexMap[targetState.destination.route]
                                         val fromTab = routeIndexMap[initialState.destination.route]
                                         if (fromTab != null && toTab != null) {
-                                            fadeIn(tween(220)) +
-                                                scaleIn(
-                                                    initialScale = 0.985f,
-                                                    animationSpec = tween(220),
-                                                )
+                                            val tabs = toTab - fromTab
+                                            slideInHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                initialOffsetX = { fullWidth -> tabs * fullWidth },
+                                            )
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1427,11 +1445,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = routeIndexMap[targetState.destination.route]
                                         val fromTab = routeIndexMap[initialState.destination.route]
                                         if (fromTab != null && toTab != null) {
-                                            fadeOut(tween(180)) +
-                                                scaleOut(
-                                                    targetScale = 0.985f,
-                                                    animationSpec = tween(180),
-                                                )
+                                            val tabs = toTab - fromTab
+                                            slideOutHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                targetOffsetX = { fullWidth -> -tabs * fullWidth },
+                                            )
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),

@@ -7,6 +7,7 @@ package com.metrolist.music.ai
 
 import android.content.Context
 import com.metrolist.music.constants.DjAiApiKey
+import com.metrolist.music.constants.DjAiApiKeysByProviderKey
 import com.metrolist.music.constants.DjAiProviderKey
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.OpenRouterApiKey
@@ -36,7 +37,7 @@ object TasteImportAi {
                 }
 
         return """
-            You are analyzing a listener's music taste for Nano DJ.
+            You are analyzing a listener's music taste for Metro DJ.
             Given these songs:
             $lines
 
@@ -78,9 +79,12 @@ object TasteImportAi {
         val aiEnabled = prefs[EnableGeminiNanoKey] ?: true
         val provider = DjAiProvider.fromId(prefs[DjAiProviderKey])
         val apiKey =
-            prefs[DjAiApiKey]
-                ?.takeIf { it.isNotBlank() }
-                ?: prefs[OpenRouterApiKey]?.takeIf { it.isNotBlank() }.orEmpty()
+            DjAiConfig.resolveApiKey(
+                provider = provider,
+                keysByProviderJson = prefs[DjAiApiKeysByProviderKey],
+                activeApiKey = prefs[DjAiApiKey],
+                openRouterFallback = prefs[OpenRouterApiKey],
+            )
 
         if (!aiEnabled) {
             Timber.tag(TAG).i(
@@ -101,7 +105,7 @@ object TasteImportAi {
         if (provider != DjAiProvider.NANO && provider.requiresApiKey() && apiKey.isBlank()) {
             throw TasteImportException(
                 TasteImportFailReason.NO_API_KEY,
-                "No API key for ${provider.displayName}. Set it in Settings → Playback → Nano DJ.",
+                "No API key for ${provider.displayName}. Set it in Settings → Playback → Metro DJ.",
             )
         }
 
@@ -115,19 +119,19 @@ object TasteImportAi {
             GeminiNanoStatus.Downloadable ->
                 throw TasteImportException(
                     TasteImportFailReason.NANO_DOWNLOADABLE,
-                    "Gemini Nano model is not downloaded. Download it in Settings → Playback → Nano DJ, or switch DJ provider.",
+                    "Gemini Nano model is not downloaded. Download it in Settings → Playback → Metro DJ, or switch DJ provider.",
                 )
             GeminiNanoStatus.Downloading ->
                 throw TasteImportException(
                     TasteImportFailReason.NANO_UNAVAILABLE,
-                    "Gemini Nano is still downloading. Wait, or switch DJ provider in Settings → Playback → Nano DJ.",
+                    "Gemini Nano is still downloading. Wait, or switch DJ provider in Settings → Playback → Metro DJ.",
                 )
             GeminiNanoStatus.Unavailable, GeminiNanoStatus.Error -> {
                 val detail =
                     if (provider == DjAiProvider.NANO) {
                         "Gemini Nano unavailable (status=$status). Switch DJ provider or enable AICore."
                     } else if (provider.requiresApiKey() && apiKey.isBlank()) {
-                        "No API key for ${provider.displayName}. Set it in Settings → Playback → Nano DJ."
+                        "No API key for ${provider.displayName}. Set it in Settings → Playback → Metro DJ."
                     } else {
                         "${provider.displayName} is not ready (status=$status)."
                     }
@@ -174,7 +178,7 @@ object TasteImportAi {
         if (raw.isBlank()) {
             throw TasteImportException(
                 TasteImportFailReason.EMPTY_RESPONSE,
-                "DJ AI returned empty — check API key/provider in Settings → Playback → Nano DJ.",
+                "DJ AI returned empty — check API key/provider in Settings → Playback → Metro DJ.",
             )
         }
 
@@ -209,7 +213,7 @@ object TasteImportAi {
     }
 
     /**
-     * Load-path for Nano Recommendations / find-more: ask DJ AI for HINTS from the
+     * Load-path for Metro DJ Recommendations / find-more: ask DJ AI for HINTS from the
      * **saved taste summary string** — never from random Spotify tops.
      */
     suspend fun recommendFromSavedTaste(
@@ -233,14 +237,17 @@ object TasteImportAi {
 
         val provider = DjAiProvider.fromId(prefs[DjAiProviderKey])
         val apiKey =
-            prefs[DjAiApiKey]
-                ?.takeIf { it.isNotBlank() }
-                ?: prefs[OpenRouterApiKey]?.takeIf { it.isNotBlank() }.orEmpty()
+            DjAiConfig.resolveApiKey(
+                provider = provider,
+                keysByProviderJson = prefs[DjAiApiKeysByProviderKey],
+                activeApiKey = prefs[DjAiApiKey],
+                openRouterFallback = prefs[OpenRouterApiKey],
+            )
 
         if (provider != DjAiProvider.NANO && provider.requiresApiKey() && apiKey.isBlank()) {
             throw TasteImportException(
                 TasteImportFailReason.NO_API_KEY,
-                "No API key for ${provider.displayName}. Set it in Settings → Playback → Nano DJ.",
+                "No API key for ${provider.displayName}. Set it in Settings → Playback → Metro DJ.",
             )
         }
 

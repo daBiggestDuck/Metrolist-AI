@@ -39,8 +39,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 
-private val AuraMenuDivider = Color(0xFF282828)
-
 data class AuraProfileMenuItem(
     val titleRes: Int,
     val icon: Painter,
@@ -127,13 +125,6 @@ fun AuraProfileMenuSheet(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(AuraMenuDivider),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
 
             items.filter { it.visible }.forEach { item ->
                 AuraProfileMenuRow(

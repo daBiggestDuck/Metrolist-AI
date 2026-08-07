@@ -159,11 +159,11 @@ val EnableSongCacheKey = booleanPreferencesKey("enableSongCache")
 
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
-/** JSON list of rich recent search entities (songs/artists/�); DataStore only � no Room. */
+/** JSON list of rich recent search entities (songs/artists/?); DataStore only ? no Room. */
 val RecentSearchEntitiesKey = stringPreferencesKey("recentSearchEntities")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
-// Stream sources — which innertube clients are used for stream resolution (Settings → Stream sources).
+// Stream sources ? which innertube clients are used for stream resolution (Settings ? Stream sources).
 val StreamSourceWebRemixKey = booleanPreferencesKey("streamSourceWebRemix")
 val StreamSourceTVHTML5Key = booleanPreferencesKey("streamSourceTVHTML5")
 val StreamSourceAndroidVRKey = booleanPreferencesKey("streamSourceAndroidVR")
@@ -475,9 +475,15 @@ val AiSystemPromptKey = stringPreferencesKey("aiSystemPrompt")
 val EnableGeminiNanoKey = booleanPreferencesKey("enableGeminiNano")
 /** DJ / taste LLM backend: nano | openai | anthropic | huggingface | openrouter | groq | hackclub */
 val DjAiProviderKey = stringPreferencesKey("djAiProvider")
+/** Active DJ API key for the currently selected provider (kept in sync with [DjAiApiKeysByProviderKey]). */
 val DjAiApiKey = stringPreferencesKey("djAiApiKey")
+/** Active DJ model for the currently selected provider (kept in sync with [DjAiModelsByProviderKey]). */
 val DjAiModelKey = stringPreferencesKey("djAiModel")
 val DjAiBaseUrlKey = stringPreferencesKey("djAiBaseUrl")
+/** JSON object of provider id → API key so switching providers restores each key. */
+val DjAiApiKeysByProviderKey = stringPreferencesKey("djAiApiKeysByProvider")
+/** JSON object of provider id → model id/name so switching providers restores each model. */
+val DjAiModelsByProviderKey = stringPreferencesKey("djAiModelsByProvider")
 val NanoDjSpeakKey = booleanPreferencesKey("nanoDjSpeak")
 val SpotifyClientIdKey = stringPreferencesKey("spotifyClientId")
 val SpotifyDisplayNameKey = stringPreferencesKey("spotifyDisplayName")
@@ -488,7 +494,7 @@ val SpotifyTopTracksKey = stringPreferencesKey("spotifyTopTracks")
 
 /** Weighted artist listens: "Artist\tweight" per line (continuous listening taste). */
 val ListeningTasteArtistsKey = stringPreferencesKey("listeningTasteArtists")
-/** Weighted tracks: "Title — Artist\tweight" per line. */
+/** Weighted tracks: "Title ? Artist\tweight" per line. */
 val ListeningTasteTracksKey = stringPreferencesKey("listeningTasteTracks")
 /** Mood/category weights: "chill\tweight" per line. */
 val ListeningTasteCategoriesKey = stringPreferencesKey("listeningTasteCategories")
@@ -497,7 +503,7 @@ val ListeningTasteLastUpdatedKey = longPreferencesKey("listeningTasteLastUpdated
 val ListeningTasteListenCountKey = intPreferencesKey("listeningTasteListenCount")
 /** Song IDs excluded from continuous taste updates ("Don't use for taste"). */
 val ListeningTasteExcludedSongIdsKey = stringSetPreferencesKey("listeningTasteExcludedSongIds")
-/** Last active Nano DJ lane id (chill/hype/focus/nostalgia/artist_radio). */
+/** Last active Metro DJ lane id (chill/hype/focus/nostalgia/artist_radio). */
 val ListeningTasteActiveLaneKey = stringPreferencesKey("listeningTasteActiveLane")
 
 const val DEFAULT_AI_SYSTEM_PROMPT = """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON array of strings.
@@ -572,82 +578,82 @@ val UseLoginForBrowse = booleanPreferencesKey("useLoginForBrowse")
 val LanguageCodeToName =
     mapOf(
         "af" to "Afrikaans",
-        "az" to "Azərbaycan",
+        "az" to "Az?rbaycan",
         "id" to "Bahasa Indonesia",
         "ms" to "Bahasa Malaysia",
-        "ca" to "Català",
-        "cs" to "Čeština",
+        "ca" to "Catal?",
+        "cs" to "?e?tina",
         "da" to "Dansk",
         "de" to "Deutsch",
         "et" to "Eesti",
         "en-GB" to "English (UK)",
         "en" to "English (US)",
-        "es" to "Español (España)",
-        "es-419" to "Español (Latinoamérica)",
+        "es" to "Espa?ol (Espa?a)",
+        "es-419" to "Espa?ol (Latinoam?rica)",
         "eu" to "Euskara",
         "fil" to "Filipino",
-        "fr" to "Français",
-        "fr-CA" to "Français (Canada)",
+        "fr" to "Fran?ais",
+        "fr-CA" to "Fran?ais (Canada)",
         "gl" to "Galego",
         "hr" to "Hrvatski",
         "zu" to "IsiZulu",
-        "is" to "Íslenska",
+        "is" to "?slenska",
         "it" to "Italiano",
         "sw" to "Kiswahili",
-        "lt" to "Lietuvių",
+        "lt" to "Lietuvi?",
         "hu" to "Magyar",
         "nl" to "Nederlands",
         "no" to "Norsk",
         "or" to "Odia",
-        "uz" to "O‘zbe",
+        "uz" to "O?zbe",
         "pl" to "Polski",
-        "pt-PT" to "Português",
-        "pt" to "Português (Brasil)",
-        "ro" to "Română",
+        "pt-PT" to "Portugu?s",
+        "pt" to "Portugu?s (Brasil)",
+        "ro" to "Rom?n?",
         "sq" to "Shqip",
-        "sk" to "Slovenčina",
-        "sl" to "Slovenščina",
+        "sk" to "Sloven?ina",
+        "sl" to "Sloven??ina",
         "fi" to "Suomi",
         "sv" to "Svenska",
-        "bo" to "Tibetan བོད་སྐད།",
-        "vi" to "Tiếng Việt",
-        "tr" to "Türkçe",
-        "bg" to "Български",
-        "ky" to "Кыргызча",
-        "kk" to "Қазақ Тілі",
-        "mk" to "Македонски",
-        "mn" to "Монгол",
-        "ru" to "Русский",
-        "sr" to "Српски",
-        "uk" to "Українська",
-        "el" to "Ελληνικά",
-        "hy" to "Հայերեն",
-        "iw" to "עברית",
-        "ur" to "اردو",
-        "ar" to "العربية",
-        "fa" to "فارسی",
-        "ne" to "नेपाली",
-        "mr" to "मराठी",
-        "hi" to "हिन्दी",
-        "bn" to "বাংলা",
-        "pa" to "ਪੰਜਾਬੀ",
-        "gu" to "ગુજરાતી",
-        "ta" to "தமிழ்",
-        "te" to "తెలుగు",
-        "kn" to "ಕನ್ನಡ",
-        "ml" to "മലയാളം",
-        "si" to "සිංහල",
-        "th" to "ภาษาไทย",
-        "lo" to "ລາວ",
-        "my" to "ဗမာ",
-        "ka" to "ქართული",
-        "am" to "አማርኛ",
-        "km" to "ខ្មែរ",
-        "zh-CN" to "中文 (简体)",
-        "zh-TW" to "中文 (繁體)",
-        "zh-HK" to "中文 (香港)",
-        "ja" to "日本語",
-        "ko" to "한국어",
+        "bo" to "Tibetan ????????",
+        "vi" to "Ti?ng Vi?t",
+        "tr" to "T?rk?e",
+        "bg" to "?????????",
+        "ky" to "????????",
+        "kk" to "????? ????",
+        "mk" to "??????????",
+        "mn" to "??????",
+        "ru" to "???????",
+        "sr" to "??????",
+        "uk" to "??????????",
+        "el" to "????????",
+        "hy" to "???????",
+        "iw" to "?????",
+        "ur" to "????",
+        "ar" to "???????",
+        "fa" to "?????",
+        "ne" to "??????",
+        "mr" to "?????",
+        "hi" to "??????",
+        "bn" to "?????",
+        "pa" to "??????",
+        "gu" to "???????",
+        "ta" to "?????",
+        "te" to "??????",
+        "kn" to "?????",
+        "ml" to "??????",
+        "si" to "?????",
+        "th" to "???????",
+        "lo" to "???",
+        "my" to "???",
+        "ka" to "???????",
+        "am" to "????",
+        "km" to "?????",
+        "zh-CN" to "?? (??)",
+        "zh-TW" to "?? (??)",
+        "zh-HK" to "?? (??)",
+        "ja" to "???",
+        "ko" to "???",
     )
 
 val CountryCodeToName =

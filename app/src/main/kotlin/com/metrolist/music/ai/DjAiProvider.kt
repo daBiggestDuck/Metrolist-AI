@@ -6,14 +6,14 @@
 package com.metrolist.music.ai
 
 /**
- * Backend used for Nano DJ commentary / picks and live taste refresh.
+ * Backend used for Metro DJ commentary / picks and live taste refresh.
  * Cloud providers need an API key; [NANO] uses on-device Gemini Nano (GMS + AICore).
  */
 enum class DjAiProvider(
     val id: String,
     val displayName: String,
 ) {
-    NANO("nano", "Gemini Nano"),
+    NANO("nano", "Metro DJ (on-device)"),
     OPENAI("openai", "OpenAI"),
     ANTHROPIC("anthropic", "Anthropic"),
     HUGGINGFACE("huggingface", "Hugging Face"),

@@ -30,7 +30,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
- * Starts Nano DJ from continuous listening taste (merged with Spotify import when present).
+ * Starts Metro DJ from continuous listening taste (merged with Spotify import when present).
  */
 object NanoDjLauncher {
     private const val TAG = "NanoDJ"
@@ -82,6 +82,7 @@ object NanoDjLauncher {
             }
 
             val merged = ListeningTasteTracker.loadMergedTaste(context)
+            val excludedSongIds = ListeningTasteTracker.snapshotExcludedSongIds()
 
             if (
                 merged.seedTracks.isEmpty() &&
@@ -90,7 +91,7 @@ object NanoDjLauncher {
                 merged.summary.isBlank()
             ) {
                 error(
-                    "Nano DJ needs listening history or Spotify taste first. Play some songs " +
+                    "Metro DJ needs listening history or Spotify taste first. Play some songs " +
                         "(or import Spotify taste), then try again.",
                 )
             }
@@ -99,7 +100,7 @@ object NanoDjLauncher {
                 withContext(Dispatchers.IO) {
                     resolveSeedItems(
                         (merged.seedTracks + merged.hints).distinct().take(5),
-                    )
+                    ).filter { it.mediaId !in excludedSongIds }
                 }
 
             val queue =
@@ -112,6 +113,7 @@ object NanoDjLauncher {
                     seedMediaItems = seedItems,
                     categories = merged.categories,
                     lane = merged.lane,
+                    excludedSongIds = excludedSongIds,
                 )
             playerConnection.playQueue(queue)
         }

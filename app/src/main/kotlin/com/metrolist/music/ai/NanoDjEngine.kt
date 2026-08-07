@@ -51,7 +51,7 @@ object NanoDjEngine {
         val lane = context.lane
         val prompt =
             """
-            You are Nano DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
+            You are Metro DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
             You are NOT a corporate assistant — you're a laid-back music nerd hyped to be hanging
             out with the listener between songs. Talk like a real person: casual, warm, first
             person ("I", "I'm loving", "let's..."), with personality and a bit of energy that
@@ -104,14 +104,14 @@ object NanoDjEngine {
         val fallback =
             when {
                 context.seedArtists.isNotEmpty() && lane == ListeningTasteTracker.DjLane.ARTIST_RADIO ->
-                    "Hey — it's Nano DJ, locking into your " +
+                    "Hey — it's Metro DJ, locking into your " +
                         "${context.seedArtists.take(2).joinToString(" & ")} lane, let's get into it."
                 context.seedArtists.isNotEmpty() ->
-                    "Hey — it's Nano DJ, sliding into a ${lane.displayName} set with your " +
+                    "Hey — it's Metro DJ, sliding into a ${lane.displayName} set with your " +
                         "${context.seedArtists.take(2).joinToString(" & ")} energy."
                 context.tasteSummary.isNotBlank() ->
-                    "Hey — it's Nano DJ. I read your live taste and I'm running a ${lane.displayName} station for you."
-                else -> "Hey — it's Nano DJ, on-device and ready to build you a ${lane.displayName} station."
+                    "Hey — it's Metro DJ. I read your live taste and I'm running a ${lane.displayName} station for you."
+                else -> "Hey — it's Metro DJ, on-device and ready to build you a ${lane.displayName} station."
             }
         if (!enableNano) return fallback
         val status = runCatching { client.checkStatus() }.getOrDefault(GeminiNanoStatus.Unavailable)
@@ -119,9 +119,9 @@ object NanoDjEngine {
 
         val prompt =
             """
-            You are Nano DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
+            You are Metro DJ, an on-device AI radio host modeled directly on Spotify's AI DJ.
             Write ONE short, warm, casual spoken intro (max 25 words) opening a personalized
-            radio session in the "${lane.displayName}" lane, in the style of "Hey — it's Nano DJ...".
+            radio session in the "${lane.displayName}" lane, in the style of "Hey — it's Metro DJ...".
             Sound like a real music-nerd friend, first person, excited but relaxed, referencing
             the listener's taste and the active category/lane.
             No quotes, no markdown, no bullet points, no emoji.
@@ -207,10 +207,10 @@ object NanoDjEngine {
         val commentary =
             when {
                 lane != ListeningTasteTracker.DjLane.ARTIST_RADIO ->
-                    "Keeping this ${lane.displayName} set rolling — Nano DJ's got more in that lane coming up."
+                    "Keeping this ${lane.displayName} set rolling — Metro DJ's got more in that lane coming up."
                 context.seedArtists.isNotEmpty() ->
-                    "Keeping the ${context.seedArtists.first()} vibe going — Nano DJ's got more like this coming up."
-                else -> "Nano DJ mixing your station live — fresh picks coming up right after this."
+                    "Keeping the ${context.seedArtists.first()} vibe going — Metro DJ's got more like this coming up."
+                else -> "Metro DJ mixing your station live — fresh picks coming up right after this."
             }
         return DjPick(
             commentary = interstitialOnly(commentary),

@@ -61,7 +61,12 @@ fun LibrarySearchHeader(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth(),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                // End inset keeps the clear button fully on-screen; vertical gap separates
+                // the search row from sticky filter chips above.
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
     ) {
         if (isSearchActive) {
             Row(
@@ -74,7 +79,7 @@ fun LibrarySearchHeader(
                             color = AuraElevated,
                             elevation = 0.dp,
                         )
-                        .padding(horizontal = 12.dp),
+                        .padding(start = 12.dp, end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -119,7 +124,7 @@ fun LibrarySearchHeader(
                 onClick = onBack,
                 size = 36.dp,
                 contentDescription = stringResource(R.string.close),
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = 10.dp),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.close),

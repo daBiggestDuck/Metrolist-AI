@@ -173,6 +173,7 @@ fun StorageSettings(
     if (clearDownloads) {
         ActionPromptDialog(
             title = stringResource(R.string.clear_all_downloads),
+            searchKey = "clear_all_downloads",
             onDismiss = { clearDownloads = false },
             onConfirm = {
                 coroutineScope.launch(Dispatchers.IO) {
@@ -191,6 +192,7 @@ fun StorageSettings(
     if (clearCacheDialog) {
         ActionPromptDialog(
             title = stringResource(R.string.clear_song_cache),
+            searchKey = "clear_song_cache",
             onDismiss = { clearCacheDialog = false },
             onConfirm = {
                 coroutineScope.launch(Dispatchers.IO) {
@@ -209,6 +211,7 @@ fun StorageSettings(
     if (clearImageCacheDialog) {
         ActionPromptDialog(
             title = stringResource(R.string.clear_image_cache),
+            searchKey = "clear_image_cache",
             onDismiss = { clearImageCacheDialog = false },
             onConfirm = {
                 coroutineScope.launch(Dispatchers.IO) {
@@ -299,6 +302,7 @@ fun StorageSettings(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "downloaded_songs",
                         icon = painterResource(R.drawable.storage),
                         title = { Text(stringResource(R.string.downloaded_songs)) },
                         description = {
@@ -306,6 +310,7 @@ fun StorageSettings(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "clear_all_downloads",
                         icon = painterResource(R.drawable.clear_all),
                         title = { Text(stringResource(R.string.clear_all_downloads)) },
                         onClick = {
@@ -319,6 +324,7 @@ fun StorageSettings(
             title = stringResource(R.string.song_cache),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "enable_song_cache",
                     icon = painterResource(R.drawable.cached),
                     title = { Text(stringResource(R.string.enable_song_cache)) },
                     description = { Text(stringResource(R.string.enable_song_cache_desc)) },
@@ -340,6 +346,7 @@ fun StorageSettings(
                     onClick = { onEnableSongCacheChange(!enableSongCache) }
                 ),
                 Material3SettingsItem(
+                    searchKey = "max_song_cache_size",
                     icon = painterResource(R.drawable.cached),
                     title = { Text(stringResource(R.string.max_song_cache_size)) },
                     enabled = enableSongCache,
@@ -400,6 +407,7 @@ fun StorageSettings(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "clear_song_cache",
                         icon = painterResource(R.drawable.clear_all),
                         title = { Text(stringResource(R.string.clear_song_cache)) },
                         onClick = {
@@ -414,6 +422,7 @@ fun StorageSettings(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "max_image_cache_size",
                         icon = painterResource(R.drawable.manage_search),
                         title = { Text(stringResource(R.string.max_image_cache_size)) },
                         description = {
@@ -463,6 +472,7 @@ fun StorageSettings(
                         },
                     ),
                     Material3SettingsItem(
+                        searchKey = "clear_image_cache",
                         icon = painterResource(R.drawable.clear_all),
                         title = { Text(stringResource(R.string.clear_image_cache)) },
                         onClick = {

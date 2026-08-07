@@ -23,7 +23,7 @@ class TasteImportAiTest {
     @Test
     fun `buildPrompt pastes Exportify songs as title by artist lines`() {
         val prompt = TasteImportAi.buildPrompt(sampleExportifyRows)
-        assertTrue(prompt.contains("You are analyzing a listener's music taste for Nano DJ."))
+        assertTrue(prompt.contains("You are analyzing a listener's music taste for Metro DJ."))
         assertTrue(prompt.contains("けっかおーらい - Kekka Orai by Kocchi no Kento"))
         assertTrue(prompt.contains("Last Dance by Eve"))
         assertTrue(prompt.contains("Tek It by Cafuné"))

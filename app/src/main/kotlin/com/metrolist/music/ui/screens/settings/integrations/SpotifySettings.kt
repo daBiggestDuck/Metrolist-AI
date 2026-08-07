@@ -892,7 +892,7 @@ fun SpotifySettings(
                 scope.launch {
                     isBusy = true
                     statusMessage = null
-                    progress = SpotifyImportProgress(phase = "Starting Nano DJ")
+                    progress = SpotifyImportProgress(phase = "Starting Metro DJ")
                     val result =
                         NanoDjLauncher.start(
                             context = context,

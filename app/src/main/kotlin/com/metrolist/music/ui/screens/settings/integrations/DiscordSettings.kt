@@ -479,6 +479,7 @@ fun DiscordSettings(
             items =
                 listOf(
                     Material3SettingsItem(
+                        searchKey = "enable_discord_rpc",
                         title = { Text(stringResource(R.string.enable_discord_rpc)) },
                         trailingContent = {
                             Switch(
@@ -500,6 +501,7 @@ fun DiscordSettings(
                         onClick = { if (isLoggedIn) onDiscordRPCChange(!discordRPC) },
                     ),
                     Material3SettingsItem(
+                        searchKey = "discord_advanced_mode",
                         title = { Text(stringResource(R.string.discord_advanced_mode)) },
                         description = { Text(stringResource(R.string.discord_advanced_mode_description)) },
                         trailingContent = {
@@ -545,21 +547,25 @@ fun DiscordSettings(
                     items =
                         listOf(
                             Material3SettingsItem(
+                                searchKey = "discord_activity_type",
                                 title = { Text(stringResource(R.string.discord_activity_type)) },
                                 description = { Text(activityTypeLabel) },
                                 onClick = { showActivityTypeDialog = true },
                             ),
                             Material3SettingsItem(
+                                searchKey = "discord_activity_name",
                                 title = { Text(stringResource(R.string.discord_activity_name)) },
                                 description = { Text(activityName.ifEmpty { "(default)" }) },
                                 onClick = { showActivityNameDialog = true },
                             ),
                             Material3SettingsItem(
+                                searchKey = "discord_state",
                                 title = { Text(stringResource(R.string.discord_state)) },
                                 description = { Text(stateTemplate) },
                                 onClick = { showStateDialog = true },
                             ),
                             Material3SettingsItem(
+                                searchKey = "discord_details",
                                 title = { Text(stringResource(R.string.discord_details)) },
                                 description = { Text(detailsTemplate) },
                                 onClick = { showDetailsDialog = true },
@@ -575,6 +581,7 @@ fun DiscordSettings(
                         buildList {
                             add(
                                 Material3SettingsItem(
+                                    searchKey = "discord_enable_button_1",
                                     title = { Text(stringResource(R.string.discord_enable_button_1)) },
                                     trailingContent = {
                                         Switch(
@@ -618,6 +625,7 @@ fun DiscordSettings(
                             }
                             add(
                                 Material3SettingsItem(
+                                    searchKey = "discord_enable_button_2",
                                     title = { Text(stringResource(R.string.discord_enable_button_2)) },
                                     trailingContent = {
                                         Switch(
@@ -669,6 +677,7 @@ fun DiscordSettings(
                     items =
                         listOf(
                             Material3SettingsItem(
+                                searchKey = "discord_status",
                                 title = { Text(stringResource(R.string.discord_status)) },
                                 description = { Text(userStatusLabel) },
                                 onClick = { showUserStatusDialog = true },

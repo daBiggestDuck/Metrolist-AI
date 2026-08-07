@@ -10,7 +10,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,15 +27,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -103,6 +102,8 @@ import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.utils.completed
 import com.metrolist.innertube.utils.parseCookieString
+import com.metrolist.music.BuildConfig
+import com.metrolist.music.LocalChangelogState
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -117,13 +118,19 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.ui.component.aura.AuraPrimaryPill
+import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.ui.component.aura.AuraCircleButton
 import com.metrolist.music.ui.component.aura.AuraFab
+import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
 import com.metrolist.music.ui.component.aura.AuraHomeShortcutGrid
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import com.metrolist.music.ui.component.aura.AuraPrimaryPill
+import com.metrolist.music.ui.component.aura.AuraProfileMenuItem
+import com.metrolist.music.ui.component.aura.AuraProfileMenuSheet
 import com.metrolist.music.ui.component.aura.AuraShortcutItem
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
+import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -142,9 +149,12 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ArtistGridItem
+import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
+import com.metrolist.music.ui.component.HorizontalPagedLazyGrid
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -152,6 +162,7 @@ import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.horizontalPagedItemWidthFactor
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
@@ -163,7 +174,6 @@ import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.theme.bbhBartle
-import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.joinToArtistString
@@ -678,6 +688,9 @@ fun HomeScreen(
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, true)
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
+    val showChangelog = LocalChangelogState.current
+    var showProfileMenu by remember { mutableStateOf(false) }
+    var showAccountDialog by remember { mutableStateOf(false) }
 
     // Defer heavy shelves until after first frames — Spotify-like brief warm-up then smooth scroll.
     var shelvesReady by remember { mutableStateOf(false) }
@@ -1143,29 +1156,66 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopStart,
         ) {
-            val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
+            val horizontalLazyGridItemWidthFactor = horizontalPagedItemWidthFactor(maxWidth)
             val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
-            // Snap each column flush to the content start (one page of picks per settle).
-            val quickPicksSnapLayoutInfoProvider =
-                remember(quickPicksLazyGridState) {
-                    SnapLayoutInfoProvider(lazyGridState = quickPicksLazyGridState)
-                }
-            val forgottenFavoritesSnapLayoutInfoProvider =
-                remember(forgottenFavoritesLazyGridState) {
-                    SnapLayoutInfoProvider(lazyGridState = forgottenFavoritesLazyGridState)
-                }
             val distinctQuickPicks =
                 remember(quickPicks) { quickPicks?.distinctBy { it.id }.orEmpty() }
             val distinctForgottenFavorites =
                 remember(forgottenFavorites) { forgottenFavorites?.distinctBy { it.id }.orEmpty() }
+            val homeChips =
+                remember(homePage?.chips) {
+                    homePage?.chips?.map { it to it.title }.orEmpty()
+                }
 
             LazyColumn(
                 state = lazylistState,
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                contentPadding = auraContentPaddingBelowChrome(),
             ) {
-                // Filters stick in the top chrome next to profile (MainActivity AuraTopBar).
+                // Solid sticky chrome: profile + filters (Library-style), no floating greeting.
+                stickyHeader(
+                    key = "home_chrome",
+                    contentType = CONTENT_TYPE_HEADER,
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(AuraPlayerCanvas)
+                                .windowInsetsPadding(WindowInsets.statusBars)
+                                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AuraFloatingChromeButton(
+                            onClick = { showProfileMenu = true },
+                            contentDescription = stringResource(R.string.your_profile),
+                        ) {
+                            if (url != null) {
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    modifier =
+                                        Modifier
+                                            .size(22.dp)
+                                            .clip(CircleShape),
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(R.drawable.account),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                        ChipsRow(
+                            chips = homeChips,
+                            currentValue = selectedChip,
+                            onValueUpdate = { viewModel.toggleChip(it) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
 
-                // Spotify Home: fixed 4×2 shortcuts under chips (no title / no pager).
+                // Spotify Home: fixed 2×4 shortcuts under chips (no title / no pager).
                 if (selectedChip == null && speedDialItems.isNotEmpty()) {
                     item(key = "home_shortcuts", contentType = CONTENT_TYPE_LIST) {
                         val shortcutItems =
@@ -1281,7 +1331,7 @@ fun HomeScreen(
                                         )
                                     result.onFailure {
                                         snackbarHostState.showSnackbar(
-                                            it.message ?: "Nano DJ failed to start",
+                                            it.message ?: "Metro DJ failed to start",
                                         )
                                     }
                                     result.onSuccess {
@@ -1580,10 +1630,9 @@ fun HomeScreen(
                                 }
 
                                 item(key = "quick_picks_list", contentType = CONTENT_TYPE_SONG) {
-                                    LazyHorizontalGrid(
+                                    HorizontalPagedLazyGrid(
+                                        rows = 4,
                                         state = quickPicksLazyGridState,
-                                        rows = GridCells.Fixed(4),
-                                        flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
                                         contentPadding =
                                             WindowInsets.systemBars
                                                 .only(WindowInsetsSides.Horizontal)
@@ -1787,9 +1836,9 @@ fun HomeScreen(
 
                                 item(key = "keep_listening_list", contentType = CONTENT_TYPE_LIST) {
                                     val rows = if (keepListening.size > 6) 2 else 1
-                                    LazyHorizontalGrid(
+                                    HorizontalPagedLazyGrid(
                                         state = remember("keep_listening_grid") { LazyGridState() },
-                                        rows = GridCells.Fixed(rows),
+                                        rows = rows,
                                         contentPadding =
                                             WindowInsets.systemBars
                                                 .only(WindowInsetsSides.Horizontal)
@@ -1850,17 +1899,13 @@ fun HomeScreen(
                                 item(key = "forgotten_favorites_list", contentType = CONTENT_TYPE_SONG) {
                                     // take min in case list size is less than 4
                                     val rows = min(4, favorites.size)
-                                    LazyHorizontalGrid(
+                                    HorizontalPagedLazyGrid(
+                                        rows = rows,
                                         state = forgottenFavoritesLazyGridState,
-                                        rows = GridCells.Fixed(rows),
                                         contentPadding =
                                             WindowInsets.systemBars
                                                 .only(WindowInsetsSides.Horizontal)
                                                 .asPaddingValues(),
-                                        flingBehavior =
-                                            rememberSnapFlingBehavior(
-                                                forgottenFavoritesSnapLayoutInfoProvider,
-                                            ),
                                         modifier =
                                             Modifier
                                                 .fillMaxWidth()
@@ -2089,9 +2134,9 @@ fun HomeScreen(
                                 if (isSongsOnlySection) {
                                     // Render songs as a horizontal scrollable list (like Quick picks in YouTube Music)
                                     item(key = "home_section_list_${section.index}", contentType = CONTENT_TYPE_LIST) {
-                                        LazyHorizontalGrid(
-                                            state = remember("section_${section.index}_grid") { LazyGridState() },
-                                            rows = GridCells.Fixed(4),
+                                        HorizontalPagedLazyGrid(
+                                            state = rememberLazyGridState(),
+                                            rows = 4,
                                             contentPadding =
                                                 WindowInsets.systemBars
                                                     .only(WindowInsetsSides.Horizontal)
@@ -2200,8 +2245,8 @@ fun HomeScreen(
                                     )
                                 }
                                 item(key = "mood_and_genres_list", contentType = CONTENT_TYPE_LIST) {
-                                    LazyHorizontalGrid(
-                                        rows = GridCells.Fixed(4),
+                                    HorizontalPagedLazyGrid(
+                                        rows = 4,
                                         contentPadding = PaddingValues(6.dp),
                                         modifier =
                                             Modifier
@@ -2285,5 +2330,70 @@ fun HomeScreen(
             }
 
         }
+    }
+
+    if (showProfileMenu) {
+        val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
+        val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
+        val showHistory = !(pauseListenHistory && eventCount == 0)
+        AuraProfileMenuSheet(
+            accountName = accountName,
+            accountImageUrl = url,
+            onDismiss = { showProfileMenu = false },
+            items =
+                listOf(
+                    AuraProfileMenuItem(
+                        titleRes = R.string.account,
+                        icon = painterResource(R.drawable.account),
+                        onClick = { showAccountDialog = true },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.history,
+                        icon = painterResource(R.drawable.history),
+                        onClick = { navController.navigate("history") },
+                        visible = showHistory,
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.stats,
+                        icon = painterResource(R.drawable.stats),
+                        onClick = { navController.navigate("stats") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.settings,
+                        icon = painterResource(R.drawable.settings),
+                        onClick = { navController.navigate("settings") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.integrations,
+                        icon = painterResource(R.drawable.integration),
+                        onClick = { navController.navigate("settings/integrations") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.listen_together,
+                        icon = painterResource(R.drawable.group_outlined),
+                        onClick = { navController.navigate("listen_together_from_topbar") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.recognize_music,
+                        icon = painterResource(R.drawable.mic),
+                        onClick = { navController.navigate("recognition") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.whats_new,
+                        icon = painterResource(R.drawable.newspaper),
+                        onClick = { showChangelog.value = true },
+                    ),
+                ),
+        )
+    }
+
+    if (showAccountDialog) {
+        AccountSettingsDialog(
+            onDismiss = {
+                showAccountDialog = false
+                viewModel.refresh()
+            },
+            latestVersionName = BuildConfig.VERSION_NAME,
+        )
     }
 }

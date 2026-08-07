@@ -347,6 +347,7 @@ fun LastFMSettings(
             title = stringResource(R.string.options),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "enable_scrobbling",
                     title = { Text(stringResource(R.string.enable_scrobbling)) },
                     trailingContent = {
                         Switch(
@@ -368,6 +369,7 @@ fun LastFMSettings(
                     icon = painterResource(R.drawable.queue_music)
                 ),
                 Material3SettingsItem(
+                    searchKey = "lastfm_now_playing",
                     title = { Text(stringResource(R.string.lastfm_now_playing)) },
                     trailingContent = {
                         Switch(
@@ -389,6 +391,7 @@ fun LastFMSettings(
                     icon = painterResource(R.drawable.play)
                 ),
                 Material3SettingsItem(
+                    searchKey = "last_fm_send_likes",
                     title = { Text(stringResource(R.string.last_fm_send_likes)) },
                     description = { stringResource(R.string.last_fm_send_likes_description) },
                     trailingContent = {
@@ -596,18 +599,21 @@ fun LastFMSettings(
             title = stringResource(R.string.scrobbling_configuration),
             items = listOf(
                 Material3SettingsItem(
+                    searchKey = "scrobble_min_track_duration",
                     title = { Text(stringResource(R.string.scrobble_min_track_duration)) },
                     description = { Text(makeTimeString((minTrackDuration * 1000).toLong())) },
                     onClick = { showMinTrackDurationDialog = true },
                     icon = painterResource(R.drawable.timer)
                 ),
                 Material3SettingsItem(
+                    searchKey = "scrobble_delay_percent",
                     title = { Text(stringResource(R.string.scrobble_delay_percent)) },
                     description = { Text(stringResource(R.string.sensitivity_percentage, (scrobbleDelayPercent * 100).roundToInt())) },
                     onClick = { showScrobbleDelayPercentDialog = true },
                     icon = painterResource(R.drawable.timer)
                 ),
                 Material3SettingsItem(
+                    searchKey = "scrobble_delay_minutes",
                     title = { Text(stringResource(R.string.scrobble_delay_minutes)) },
                     description = { Text(makeTimeString((scrobbleDelaySeconds * 1000).toLong())) },
                     onClick = { showScrobbleDelaySecondsDialog = true },

@@ -38,6 +38,9 @@ import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraHairline
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraHairlineBorder
+import com.metrolist.music.ui.screens.settings.rememberActiveSettingsHighlightId
+import com.metrolist.music.ui.screens.settings.settingsSearchAnchor
+import com.metrolist.music.ui.screens.settings.settingsSearchHighlightColor
 
 private val AuraDividerColor = AuraHairline
 
@@ -47,6 +50,7 @@ private val AuraDividerColor = AuraHairline
 @Composable
 fun Material3SettingsGroup(
     title: String? = null,
+    searchKey: String? = null,
     items: List<Material3SettingsItem>,
     useLowContrast: Boolean = false,
 ) {
@@ -99,10 +103,18 @@ fun Material3SettingsGroup(
 private fun Material3SettingsItemRow(
     item: Material3SettingsItem,
 ) {
+    val activeHighlight = rememberActiveSettingsHighlightId()
+    val searchHighlighted =
+        !item.searchKey.isNullOrBlank() && item.searchKey == activeHighlight
+    val highlighted = item.isHighlighted || searchHighlighted
+    val highlightBg = settingsSearchHighlightColor(item.searchKey)
+
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .settingsSearchAnchor(item.searchKey)
+                .background(highlightBg, RoundedCornerShape(8.dp))
                 .clickable(
                     enabled = item.enabled && item.onClick != null,
                     onClick = { item.onClick?.invoke() },
@@ -120,7 +132,7 @@ private fun Material3SettingsItemRow(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(
-                            if (item.isHighlighted) {
+                            if (highlighted) {
                                 AuraSpotifyGreen.copy(alpha = 0.2f)
                             } else {
                                 AuraDividerColor
@@ -142,7 +154,7 @@ private fun Material3SettingsItemRow(
                             tint =
                                 if (!item.enabled) {
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                } else if (item.isHighlighted) {
+                                } else if (highlighted) {
                                     AuraSpotifyGreen
                                 } else {
                                     MaterialTheme.colorScheme.onBackground
@@ -157,7 +169,7 @@ private fun Material3SettingsItemRow(
                         tint =
                             if (!item.enabled) {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            } else if (item.isHighlighted) {
+                            } else if (highlighted) {
                                 AuraSpotifyGreen
                             } else {
                                 MaterialTheme.colorScheme.onBackground
@@ -222,6 +234,8 @@ data class Material3SettingsItem(
     val trailingContent: (@Composable () -> Unit)? = null,
     val showBadge: Boolean = false,
     val isHighlighted: Boolean = false,
+    /** Matches [com.metrolist.music.ui.screens.settings.SettingsSearchEntry.id] for search highlight. */
+    val searchKey: String? = null,
     val enabled: Boolean = true,
     val onClick: (() -> Unit)? = null,
 )
