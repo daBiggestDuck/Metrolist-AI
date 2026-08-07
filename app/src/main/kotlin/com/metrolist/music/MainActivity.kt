@@ -805,10 +805,21 @@ class MainActivity : ComponentActivity() {
                         else -> null
                     }
                 var mainTabTarget by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
+                var mainTabSettled by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
                 val mainTabPosition = remember { Animatable(initialMainTabIndex.toFloat()) }
                 // The pager's Search page is not the NavHost's duplicate root destination;
                 // keep its focus/reselect state stable for the lifetime of the activity.
                 val mainSearchSavedStateHandle = remember { SavedStateHandle() }
+                // Keep the NavHost visible while an overlay/detail destination is still part of
+                // the transition. Looking only at currentRoute hides Settings too early when its
+                // pop animation is moving back to a main tab.
+                val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
+                val navHostShowsOverlay =
+                    currentRoute != null &&
+                        (currentMainTabIndex == null ||
+                            visibleEntries.any { entry ->
+                                navigationTabIndex(entry.destination.route, navigationItems) == null
+                            })
                 // One animation owner: taps and route changes only update the target. This avoids
                 // competing animateTo coroutines cancelling each other mid-travel.
                 LaunchedEffect(currentMainTabIndex) {
@@ -816,16 +827,23 @@ class MainActivity : ComponentActivity() {
                 }
                 LaunchedEffect(mainTabTarget) {
                     mainTabPosition.animateTo(mainTabTarget.toFloat(), AuraTabTravelSpring)
+                    // The container uses this completion signal to release the old page. This
+                    // stays synchronized even when a second tap cancels the first animation.
+                    mainTabSettled = mainTabTarget
                 }
 
-                // The strip has three pages. When Listen Together is shown in the bar it adds
-                // one slot before Library, so only the Library-side indicator position shifts.
+                // The strip uses page-space indices 0/1/2. If Listen Together is in the bar,
+                // Library occupies nav index 3; interpolate between mapped endpoints so the
+                // bubble never follows page-space and then teleports at the end.
                 val bottomIndicatorPosition: () -> Float = {
-                    val position = mainTabPosition.value
-                    if (!listenTogetherInTopBar && position >= 2f) {
-                        position + 1f
+                    val pagePosition = mainTabPosition.value
+                    if (listenTogetherInTopBar) {
+                        pagePosition
                     } else {
-                        position
+                        // Preserve continuity at Search while giving Library its real nav slot.
+                        // This is a piecewise linear map: 0→1 stays 0→1, then 1→2 becomes
+                        // 1→3 without a threshold jump.
+                        if (pagePosition <= 1f) pagePosition else 2f * pagePosition - 1f
                     }
                 }
                 val inSearchScreen by remember {
@@ -1434,20 +1452,23 @@ class MainActivity : ComponentActivity() {
                                     .weight(1f)
                                     .clip(RoundedCornerShape(0.dp)),
                             ) {
-                                // The primary pages are one real horizontal strip. Its position is
-                                // the same Animatable value consumed by the bottom-nav indicator.
-                                if (currentMainTabIndex != null) {
-                                    MainTabContainer(
-                                        position = { mainTabPosition.value },
-                                        pureBlack = pureBlack,
-                                        snackbarHostState = snackbarHostState,
-                                        searchSavedStateHandle = mainSearchSavedStateHandle,
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                }
+                                // The primary pages are one real horizontal strip. Keep it mounted
+                                // while Settings/detail routes are on top so their return does not
+                                // destroy and recreate the expensive tab trees.
+                                MainTabContainer(
+                                    position = { mainTabPosition.value },
+                                    targetPage = mainTabTarget,
+                                    settledPage = mainTabSettled,
+                                    playerConnectionAvailable = playerConnection != null,
+                                    pureBlack = pureBlack,
+                                    snackbarHostState = snackbarHostState,
+                                    searchSavedStateHandle = mainSearchSavedStateHandle,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
 
                                 // Keep the root NavHost mounted so nested routes/back stacks remain
-                                // registered, but hide its main-page rendering behind the shared strip.
+                                // registered. Its main destinations are empty anchors; overlay
+                                // destinations stay visible for the whole NavHost transition.
                                 NavHost(
                                     navController = navController,
                                     startDestination =
@@ -1525,7 +1546,7 @@ class MainActivity : ComponentActivity() {
                                         Modifier
                                             .fillMaxSize()
                                             .graphicsLayer {
-                                                alpha = if (currentMainTabIndex == null) 1f else 0f
+                                                alpha = if (navHostShowsOverlay) 1f else 0f
                                             },
                                 ) {
                                     navigationBuilder(
