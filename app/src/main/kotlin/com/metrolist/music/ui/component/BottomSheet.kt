@@ -253,9 +253,11 @@ class BottomSheetState(
     }
 
     fun collapse(animationSpec: AnimationSpec<Dp>) {
+        // Mark the sheet collapsed before the motion starts so the mini-player can mount
+        // immediately instead of waiting for the full travel animation to finish.
+        updateAnchor(collapsedAnchor)
         coroutineScope.launch {
             animatable.animateTo(collapsedBound, animationSpec)
-            updateAnchor(collapsedAnchor)
         }
     }
 

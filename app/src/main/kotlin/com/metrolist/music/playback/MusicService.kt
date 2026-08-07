@@ -2131,6 +2131,57 @@ class MusicService :
         automixItems.value = emptyList()
     }
 
+    /**
+     * Apply a player dislike to the active Metro DJ queue immediately. The preference write
+     * happens in the UI; this method prevents the item from being played from the already
+     * resolved Media3 playlist and updates the queue's in-memory exclusion set.
+     */
+    fun onSongDisliked(songId: String) {
+        if (songId.isBlank()) return
+        scope.launch {
+            if (!::player.isInitialized) return@launch
+            val activeQueue = currentQueue as? com.metrolist.music.playback.queues.NanoDjQueue
+                ?: return@launch
+            activeQueue.excludeSong(songId)
+
+            val currentIndex = player.currentMediaItemIndex
+            if (currentIndex == C.INDEX_UNSET) return@launch
+            val isCurrent = player.currentMediaItem?.mediaId == songId
+
+            // Remove all matching items from the queue first, then continue from the
+            // post-removal current index. This avoids Media3 index shifts during iteration.
+            val matchingIndices =
+                (0 until player.mediaItemCount)
+                    .filter { index -> player.getMediaItemAt(index).mediaId == songId }
+                    .sortedDescending()
+            val removedBeforeCurrent = matchingIndices.count { it < currentIndex }
+            val currentWasDisliked = isCurrent
+            matchingIndices.forEach { index -> player.removeMediaItem(index) }
+
+            if (currentWasDisliked) {
+                if (player.mediaItemCount > 0) {
+                    // Removing an item before the current window shifts the next item left.
+                    val nextIndex =
+                        (currentIndex - removedBeforeCurrent)
+                            .coerceAtMost(player.mediaItemCount - 1)
+                    player.seekTo(nextIndex, 0L)
+                    player.playWhenReady = true
+                } else {
+                    val replacementItems =
+                        runCatching { withContext(Dispatchers.IO) { activeQueue.nextPage() } }
+                            .getOrDefault(emptyList())
+                    if (replacementItems.isNotEmpty()) {
+                        player.setMediaItems(replacementItems, 0, 0L)
+                        player.prepare()
+                        player.playWhenReady = true
+                    } else {
+                        player.stop()
+                    }
+                }
+            }
+        }
+    }
+
     fun playNext(items: List<MediaItem>) {
         // If queue is empty or player is idle, play immediately instead
         if (player.mediaItemCount == 0 || player.playbackState == STATE_IDLE) {

@@ -1044,16 +1044,6 @@ fun BottomSheetPlayer(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        mediaMetadata.artists.firstOrNull()?.id?.let { artistId ->
-                            PlayerSubscribeButton(
-                                artistId = artistId,
-                                metadata = mediaMetadata,
-                                primaryColor = textButtonColor,
-                                outlineColor = iconButtonColor.copy(alpha = 0.45f),
-                                onSurfaceColor = iconButtonColor,
-                            )
-                        }
-
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                             if (showLyrics) {
                                 AuraIconButton(onClick = { isFullScreen = !isFullScreen },
@@ -1173,6 +1163,9 @@ fun BottomSheetPlayer(
                                                         title = mediaMetadata.title,
                                                         artists = mediaMetadata.artists.map { it.name },
                                                     )
+                                                    if (exclude) {
+                                                        playerConnection.service.onSongDisliked(mediaMetadata.id)
+                                                    }
                                                 }
                                                 if (exclude && isFavorite) {
                                                     playerConnection.toggleLike()
@@ -1533,6 +1526,9 @@ Spacer(Modifier.width(8.dp))
                                                         title = mediaMetadata.title,
                                                         artists = mediaMetadata.artists.map { it.name },
                                                     )
+                                                    if (exclude) {
+                                                        playerConnection.service.onSongDisliked(mediaMetadata.id)
+                                                    }
                                                 }
                                                 if (exclude && isFavorite) {
                                                     playerConnection.toggleLike()

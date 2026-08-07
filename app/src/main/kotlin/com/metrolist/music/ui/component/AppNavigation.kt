@@ -5,9 +5,9 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -66,21 +66,15 @@ private val AuraNavIndicator = Color.White.copy(alpha = 0.72f)
 private val AuraNavPillBg = AuraElevated
 
 /**
- * Shared spring for the nav bubble and main-tab content slides.
- * Medium stiffness keeps travel snappy; light overshoot matches the pill bounce.
+ * Short, deterministic travel specs keep the selected bubble and page movement visible
+ * without the long spring tail that used to get lost during heavy screen recomposition.
  */
 val AuraTabTravelSpring =
-    spring<Float>(
-        dampingRatio = 0.68f,
-        stiffness = Spring.StiffnessMedium,
-    )
+    tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
 
 /** Same travel feel as [AuraTabTravelSpring], for NavHost slide offsets. */
 val AuraTabTravelOffsetSpring =
-    spring<androidx.compose.ui.unit.IntOffset>(
-        dampingRatio = 0.68f,
-        stiffness = Spring.StiffnessMedium,
-    )
+    tween<androidx.compose.ui.unit.IntOffset>(durationMillis = 260, easing = FastOutSlowInEasing)
 
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {

@@ -16,6 +16,7 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import timber.log.Timber
 
 /**
@@ -36,6 +37,7 @@ class NanoDjQueue(
 ) : Queue {
     override val preloadItem: MediaMetadata? = null
 
+    private val excludedIds = ConcurrentHashMap.newKeySet<String>().apply { addAll(excludedSongIds) }
     private val playedIds = LinkedHashSet<String>()
     private val playedTitles = ArrayDeque<String>()
     private var exhausted = false
@@ -52,7 +54,7 @@ class NanoDjQueue(
                 )
             NanoDjSession.start(opening, usedAi = enableNano)
 
-            val seeded = initialItems.filterNot { it.mediaId in playedIds || it.mediaId in excludedSongIds }
+            val seeded = initialItems.filterNot { it.mediaId in playedIds || it.mediaId in excludedIds }
             val items =
                 if (seeded.isNotEmpty()) {
                     seeded.forEach { remember(it) }
@@ -103,7 +105,7 @@ class NanoDjQueue(
         for (query in pick.queries) {
             if (resolved.size >= batchSize) break
             val item = searchFirstSong(query) ?: continue
-            if (item.mediaId in playedIds || item.mediaId in excludedSongIds) continue
+            if (item.mediaId in playedIds || item.mediaId in excludedIds) continue
             remember(item)
             resolved += item
         }
@@ -115,7 +117,7 @@ class NanoDjQueue(
                 next?.items?.filterIsInstance<SongItem>()?.forEach { song ->
                     if (
                         song.id !in playedIds &&
-                        song.id !in excludedSongIds &&
+                        song.id !in excludedIds &&
                         resolved.size < batchSize
                     ) {
                         val media = song.toMediaItem()
@@ -136,6 +138,11 @@ class NanoDjQueue(
             pick.usedAi,
         )
         return resolved
+    }
+
+    /** Exclude a song after the listener presses dislike during this DJ session. */
+    fun excludeSong(songId: String) {
+        if (songId.isNotBlank()) excludedIds += songId
     }
 
     private suspend fun searchFirstSong(query: String): MediaItem? {

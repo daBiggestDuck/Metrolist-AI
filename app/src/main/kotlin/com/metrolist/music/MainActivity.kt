@@ -831,7 +831,14 @@ class MainActivity : ComponentActivity() {
                     playerConnection?.service?.isPlayerReady?.collectAsStateWithLifecycle()
                         ?: remember { mutableStateOf(false) }
                 val playerReady by playerReadyState
-                val activePlayerConnection = if (playerReady) playerConnection else null
+                val playerMetadataState =
+                    playerConnection?.service?.currentMediaMetadata?.collectAsStateWithLifecycle()
+                        ?: remember { mutableStateOf(null) }
+                val playerMetadata by playerMetadataState
+                // Mount as soon as the active media item is published, without waiting for
+                // buffering; this keeps the collapsed mini-player responsive.
+                val activePlayerConnection =
+                    if (playerReady && playerMetadata != null) playerConnection else null
 
                 val isHomeRouteForInsets =
                     navBackStackEntry?.destination?.route == Screens.Home.route
@@ -1393,12 +1400,11 @@ class MainActivity : ComponentActivity() {
                                     enterTransition = {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null) {
-                                            // Distance matches bubble travel so Home→Library slides past Search.
-                                            val tabs = toTab - fromTab
+                                        if (fromTab != null && toTab != null && fromTab != toTab) {
+                                            val direction = if (toTab > fromTab) 1 else -1
                                             slideInHorizontally(
                                                 animationSpec = AuraTabTravelOffsetSpring,
-                                                initialOffsetX = { fullWidth -> tabs * fullWidth },
+                                                initialOffsetX = { fullWidth -> direction * fullWidth },
                                             )
                                         } else {
                                             slideInHorizontally(
@@ -1410,11 +1416,11 @@ class MainActivity : ComponentActivity() {
                                     exitTransition = {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null) {
-                                            val tabs = toTab - fromTab
+                                        if (fromTab != null && toTab != null && fromTab != toTab) {
+                                            val direction = if (toTab > fromTab) 1 else -1
                                             slideOutHorizontally(
                                                 animationSpec = AuraTabTravelOffsetSpring,
-                                                targetOffsetX = { fullWidth -> -tabs * fullWidth },
+                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
                                             )
                                         } else {
                                             slideOutHorizontally(
@@ -1426,11 +1432,11 @@ class MainActivity : ComponentActivity() {
                                     popEnterTransition = {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null) {
-                                            val tabs = toTab - fromTab
+                                        if (fromTab != null && toTab != null && fromTab != toTab) {
+                                            val direction = if (toTab > fromTab) 1 else -1
                                             slideInHorizontally(
                                                 animationSpec = AuraTabTravelOffsetSpring,
-                                                initialOffsetX = { fullWidth -> tabs * fullWidth },
+                                                initialOffsetX = { fullWidth -> direction * fullWidth },
                                             )
                                         } else {
                                             slideInHorizontally(
@@ -1442,11 +1448,11 @@ class MainActivity : ComponentActivity() {
                                     popExitTransition = {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null) {
-                                            val tabs = toTab - fromTab
+                                        if (fromTab != null && toTab != null && fromTab != toTab) {
+                                            val direction = if (toTab > fromTab) 1 else -1
                                             slideOutHorizontally(
                                                 animationSpec = AuraTabTravelOffsetSpring,
-                                                targetOffsetX = { fullWidth -> -tabs * fullWidth },
+                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
                                             )
                                         } else {
                                             slideOutHorizontally(
