@@ -13,14 +13,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
@@ -33,11 +29,15 @@ import com.metrolist.music.ui.screens.HomeScreen
 import com.metrolist.music.ui.screens.library.LibraryScreen
 import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import kotlin.math.ceil
+import kotlin.math.floor
 
 /**
- * The primary pages live in one moving strip. Only the settled page and the destination page are
- * composed while travelling; the other slots remain part of the same strip but do not keep their
- * expensive ViewModels, image shelves, and database collectors active on every frame.
+ * The primary pages live in one moving strip. Every page whose slot can appear on screen during a
+ * travel stays composed — from the settled page through the destination, extended by the live
+ * animated position so a cancelled multi-page travel cannot expose an unmounted slot. At rest this
+ * collapses back to a single page, so the other slots do not keep their expensive ViewModels,
+ * image shelves, and database collectors active.
  */
 @Composable
 fun MainTabContainer(
@@ -50,20 +50,18 @@ fun MainTabContainer(
     searchSavedStateHandle: SavedStateHandle,
     modifier: Modifier = Modifier,
 ) {
-    // MainActivity updates settledPage only after the same Animatable completes. Wait one frame
-    // before mounting a destination so the first animation frame is not spent composing its full
-    // ViewModel/database tree.
-    var readyPage by rememberSaveable { mutableIntStateOf(settledPage) }
-    LaunchedEffect(targetPage) {
-        if (targetPage != settledPage) {
-            withFrameNanos { }
-            readyPage = targetPage
-        } else {
-            readyPage = targetPage
+    // Mount the whole page range that can be visible during this travel. Mounting only the two
+    // travel endpoints left the middle slot unmounted (alpha = 0), so a Home<->Library slide
+    // dragged a black gap across the screen. Extending the range with the live position keeps the
+    // middle page mounted even when a second tap cancels the first animation mid-flight. The range
+    // only changes on integer boundaries, so this does not recompose on every animation frame.
+    val mountedPages by remember(settledPage, targetPage) {
+        derivedStateOf {
+            val pos = position().coerceIn(0f, 2f)
+            val low = minOf(settledPage, targetPage, floor(pos).toInt())
+            val high = maxOf(settledPage, targetPage, ceil(pos).toInt())
+            low..high
         }
-    }
-    val mountedPages = remember(settledPage, readyPage) {
-        setOf(settledPage, readyPage)
     }
     val saveableStateHolder = rememberSaveableStateHolder()
 
@@ -90,7 +88,8 @@ fun MainTabContainer(
                         .width(pageWidth)
                         .fillMaxHeight()
                         // An omitted page remains a stable slot in the strip. At rest, only the
-                        // settled/active page is drawn; during travel, exactly two pages are drawn.
+                        // settled/active page is drawn; during travel, every page whose slot can
+                        // appear on screen stays drawn so no black gap crosses the viewport.
                         .graphicsLayer {
                             alpha = if (index in mountedPages) 1f else 0f
                         },

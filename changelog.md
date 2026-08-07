@@ -1,3 +1,9 @@
+---v13.6.9
+# What's new
+- Fixed black screen during slide transitions between Home, Search, and Library.
+- The horizontal page strip now keeps every on-screen page composed while travelling, so a Home ↔ Library slide no longer drags a black gap through the middle page.
+- The bottom navigation bubble stays synchronized with the page slide (shared animation value).
+
 ---v13.6.1
 # THE FUTURE OF METROLIST
 The new Kotlin Multiplatform version of Metrolist is now in a good state, and we are aiming to release it within the next month. Until then, the current app will remain in maintenance mode and receive bug fixes and minor improvements.
