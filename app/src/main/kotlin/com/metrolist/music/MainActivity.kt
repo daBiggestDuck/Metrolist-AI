@@ -181,6 +181,7 @@ import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.AuraTabTravelOffsetSpring
+import com.metrolist.music.ui.component.navigationTabIndex
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.BottomSheetMenu
@@ -720,9 +721,6 @@ class MainActivity : ComponentActivity() {
                             Screens.MainScreens
                         }
                     }
-                val routeIndexMap = remember(navigationItems) {
-                    navigationItems.mapIndexed { i, s -> s.route to i }.toMap()
-                }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val (defaultOpenTabInt) = rememberPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME.name)
@@ -1393,8 +1391,8 @@ class MainActivity : ComponentActivity() {
                                             else -> Screens.Home
                                         }.route,
                                     enterTransition = {
-                                        val toTab = routeIndexMap[targetState.destination.route]
-                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
+                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null) {
                                             // Distance matches bubble travel so Home→Library slides past Search.
                                             val tabs = toTab - fromTab
@@ -1410,8 +1408,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     exitTransition = {
-                                        val toTab = routeIndexMap[targetState.destination.route]
-                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
+                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null) {
                                             val tabs = toTab - fromTab
                                             slideOutHorizontally(
@@ -1426,8 +1424,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     popEnterTransition = {
-                                        val toTab = routeIndexMap[targetState.destination.route]
-                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
+                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null) {
                                             val tabs = toTab - fromTab
                                             slideInHorizontally(
@@ -1442,8 +1440,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     popExitTransition = {
-                                        val toTab = routeIndexMap[targetState.destination.route]
-                                        val fromTab = routeIndexMap[initialState.destination.route]
+                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
+                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null) {
                                             val tabs = toTab - fromTab
                                             slideOutHorizontally(

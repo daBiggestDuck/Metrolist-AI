@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
@@ -95,6 +96,12 @@ private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigati
     return false
 }
 
+/** Returns the top-level tab represented by a route, including nested/search routes. */
+fun navigationTabIndex(currentRoute: String?, navigationItems: List<Screens>): Int? =
+    navigationItems
+        .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
+        .takeIf { it >= 0 }
+
 @Composable
 private fun rememberNavItemInteraction(
     isSearchItem: Boolean,
@@ -146,20 +153,21 @@ fun AppNavigationRail(
     onSearchLongClick: (() -> Unit)? = null
 ) {
     val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
-    val selectedIndex =
-        remember(currentRoute, navigationItems) {
-            navigationItems
-                .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
-                .takeIf { it >= 0 }
-        }
-    // Keep State — do NOT use `by` or spring frames recompose every tab icon.
+    val resolvedSelectedIndex = remember(currentRoute, navigationItems) {
+        navigationTabIndex(currentRoute, navigationItems)
+    }
+    // Keep the indicator visible while entering nested routes or while NavController settles.
+    val lastSelectedIndex = remember { mutableIntStateOf(0) }
+    LaunchedEffect(resolvedSelectedIndex) {
+        resolvedSelectedIndex?.let { lastSelectedIndex.intValue = it }
+    }
+    val selectedIndex = resolvedSelectedIndex ?: lastSelectedIndex.intValue
     val animatedIndex =
         animateFloatAsState(
-            targetValue = (selectedIndex ?: 0).toFloat(),
+            targetValue = selectedIndex.toFloat(),
             animationSpec = AuraTabTravelSpring,
             label = "auraRailIndicator",
         )
-    val showIndicator = selectedIndex != null
 
     Column(
         modifier =
@@ -185,11 +193,10 @@ fun AppNavigationRail(
             val tabCount = navigationItems.size.coerceAtLeast(1)
             val itemHeight = maxHeight / tabCount
             val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
-            if (showIndicator) {
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopCenter)
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
                             .width(48.dp)
                             .height(itemHeight)
                             .padding(4.dp)
@@ -197,15 +204,11 @@ fun AppNavigationRail(
                                 translationY = animatedIndex.value * itemHeightPx
                             }
                             .clip(AuraFloatingPillShape)
-                            .background(AuraNavIndicator),
-                )
-            }
+                        .background(AuraNavIndicator),
+            )
             Column(modifier = Modifier.fillMaxSize()) {
                 navigationItems.forEachIndexed { index, screen ->
-                    val isSelected =
-                        remember(currentRoute, screen.route) {
-                            isRouteSelected(currentRoute, screen.route, navigationItems)
-                        }
+                    val isSelected = selectedIndex == index
                     val iconRes =
                         remember(isSelected, screen) {
                             if (isSelected) screen.iconIdActive else screen.iconIdInactive
@@ -277,20 +280,21 @@ fun AppNavigationBar(
 ) {
     val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
     val pillHeight = if (slimNav) 52.dp else 56.dp
-    val selectedIndex =
-        remember(currentRoute, navigationItems) {
-            navigationItems
-                .indexOfFirst { isRouteSelected(currentRoute, it.route, navigationItems) }
-                .takeIf { it >= 0 }
-        }
-    // Keep State — reading `by animateFloatAsState` in composition recomposes all tabs every spring frame.
+    val resolvedSelectedIndex = remember(currentRoute, navigationItems) {
+        navigationTabIndex(currentRoute, navigationItems)
+    }
+    // Keep the indicator visible while entering nested routes or while NavController settles.
+    val lastSelectedIndex = remember { mutableIntStateOf(0) }
+    LaunchedEffect(resolvedSelectedIndex) {
+        resolvedSelectedIndex?.let { lastSelectedIndex.intValue = it }
+    }
+    val selectedIndex = resolvedSelectedIndex ?: lastSelectedIndex.intValue
     val animatedIndex =
         animateFloatAsState(
-            targetValue = (selectedIndex ?: 0).toFloat(),
+            targetValue = selectedIndex.toFloat(),
             animationSpec = AuraTabTravelSpring,
             label = "auraNavIndicator",
         )
-    val showIndicator = selectedIndex != null
 
     Box(
         modifier =
@@ -322,11 +326,10 @@ fun AppNavigationBar(
             val indicatorOffsetPx = with(LocalDensity.current) { indicatorInset.toPx() }
 
             // Sliding indicator — read State.value only inside graphicsLayer (no tab recomposition).
-            if (showIndicator) {
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterStart)
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
                             .width(indicatorWidth)
                             .fillMaxHeight()
                             .padding(vertical = 7.dp)
@@ -335,9 +338,8 @@ fun AppNavigationBar(
                                     indicatorOffsetPx + animatedIndex.value * tabWidthPx
                             }
                             .clip(AuraFloatingPillShape)
-                            .background(AuraNavIndicator),
-                )
-            }
+                        .background(AuraNavIndicator),
+            )
 
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -345,10 +347,7 @@ fun AppNavigationBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 navigationItems.forEachIndexed { index, screen ->
-                    val isSelected =
-                        remember(currentRoute, screen.route) {
-                            isRouteSelected(currentRoute, screen.route, navigationItems)
-                        }
+                    val isSelected = selectedIndex == index
                     val iconRes =
                         remember(isSelected, screen) {
                             if (isSelected) screen.iconIdActive else screen.iconIdInactive
