@@ -80,31 +80,13 @@ fun NavGraphBuilder.navigationBuilder(
     activity: Activity,
     snackbarHostState: SnackbarHostState,
 ) {
-    composable(Screens.Home.route) {
-        HomeScreen(snackbarHostState = snackbarHostState)
-    }
+    // The main tab strip owns the primary page rendering. These destinations remain as
+    // navigation anchors for nested/detail routes without composing duplicate page trees.
+    composable(Screens.Home.route) { }
 
-    composable(Screens.Search.route) { backStackEntry ->
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
-        val isSystemInDarkTheme = isSystemInDarkTheme()
-        val useDarkTheme =
-            remember(darkTheme, isSystemInDarkTheme) {
-                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
-            }
-        val pureBlack =
-            remember(pureBlackEnabled, useDarkTheme) {
-                pureBlackEnabled && useDarkTheme
-            }
-        SearchScreen(
-            pureBlack = pureBlack,
-            savedStateHandle = backStackEntry.savedStateHandle
-        )
-    }
+    composable(Screens.Search.route) { }
 
-    composable(Screens.Library.route) {
-        LibraryScreen()
-    }
+    composable(Screens.Library.route) { }
 
     composable(Screens.ListenTogether.route) {
         ListenTogetherScreen(navController, showTopBar = false)

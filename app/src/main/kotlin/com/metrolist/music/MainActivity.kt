@@ -21,6 +21,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -117,6 +118,7 @@ import androidx.core.net.toUri
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
@@ -182,6 +184,7 @@ import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.AuraTabTravelOffsetSpring
+import com.metrolist.music.ui.component.AuraTabTravelSpring
 import com.metrolist.music.ui.component.navigationTabIndex
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CreatePlaylistDialog
@@ -191,6 +194,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.dismissedAnchor
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.MainTabContainer
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -746,6 +750,12 @@ class MainActivity : ComponentActivity() {
                             else -> null
                         }
                     }
+                val initialMainTabIndex =
+                    when (tabOpenedFromShortcut ?: defaultOpenTab) {
+                        NavigationTab.LIBRARY -> 2
+                        NavigationTab.SEARCH -> 1
+                        else -> 0
+                    }
 
                 val topLevelScreens =
                     remember {
@@ -787,7 +797,37 @@ class MainActivity : ComponentActivity() {
                 val currentRoute by remember {
                     derivedStateOf { navBackStackEntry?.destination?.route }
                 }
+                val currentMainTabIndex =
+                    when (currentRoute) {
+                        Screens.Home.route -> 0
+                        Screens.Search.route -> 1
+                        Screens.Library.route -> 2
+                        else -> null
+                    }
+                var mainTabTarget by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
+                val mainTabPosition = remember { Animatable(initialMainTabIndex.toFloat()) }
+                // The pager's Search page is not the NavHost's duplicate root destination;
+                // keep its focus/reselect state stable for the lifetime of the activity.
+                val mainSearchSavedStateHandle = remember { SavedStateHandle() }
+                // One animation owner: taps and route changes only update the target. This avoids
+                // competing animateTo coroutines cancelling each other mid-travel.
+                LaunchedEffect(currentMainTabIndex) {
+                    currentMainTabIndex?.let { mainTabTarget = it }
+                }
+                LaunchedEffect(mainTabTarget) {
+                    mainTabPosition.animateTo(mainTabTarget.toFloat(), AuraTabTravelSpring)
+                }
 
+                // The strip has three pages. When Listen Together is shown in the bar it adds
+                // one slot before Library, so only the Library-side indicator position shifts.
+                val bottomIndicatorPosition: () -> Float = {
+                    val position = mainTabPosition.value
+                    if (!listenTogetherInTopBar && position >= 2f) {
+                        position + 1f
+                    } else {
+                        position
+                    }
+                }
                 val inSearchScreen by remember {
                     derivedStateOf { currentRoute?.startsWith("search/") == true }
                 }
@@ -1192,31 +1232,23 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     { screen: Screens, isSelected: Boolean ->
                                         navigationItems.indexOf(screen).takeIf { it >= 0 }?.let { selectedTabOverride = it }
+                                        when (screen) {
+                                            Screens.Home -> mainTabTarget = 0
+                                            Screens.Search -> mainTabTarget = 1
+                                            Screens.Library -> mainTabTarget = 2
+                                            else -> Unit
+                                        }
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
                                         if (isSelected) {
-                                            val targetEntry =
-                                                try {
-                                                    val route = navController.currentBackStackEntry?.destination?.route
-                                                    if (route == SearchRoutes.ROUTE || route == "search_input") {
-                                                        // For search screens, use search_input entry
-                                                        navController.getBackStackEntry("search_input")
-                                                    } else {
-                                                        // For other screens, use current entry
-                                                        navController.currentBackStackEntry
-                                                    }
-                                                } catch (e: Exception) {
-                                                    null
-                                                }
-
-                                            // Search reselect → focus the search field; others scroll to top.
+                                            // Search reselect focuses the stable pager search field;
+                                            // other tabs ask their active NavHost page to scroll up.
                                             if (screen == Screens.Search) {
-                                                val current =
-                                                    targetEntry?.savedStateHandle?.get<Int>("focusSearchField") ?: 0
-                                                targetEntry?.savedStateHandle?.set("focusSearchField", current + 1)
+                                                val current = mainSearchSavedStateHandle.get<Int>("focusSearchField") ?: 0
+                                                mainSearchSavedStateHandle.set("focusSearchField", current + 1)
                                             } else {
-                                                targetEntry?.savedStateHandle?.set("scrollToTop", true)
+                                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                                             }
 
                                             coroutineScope.launch {
@@ -1263,6 +1295,7 @@ class MainActivity : ComponentActivity() {
                                         pureBlack = pureBlack,
                                         slimNav = slimNav,
                                         selectedIndexOverride = selectedTabOverride,
+                                        indicatorPosition = bottomIndicatorPosition,
                                         onSearchLongClick = onSearchLongClick,
                                         modifier =
                                             Modifier
@@ -1346,21 +1379,20 @@ class MainActivity : ComponentActivity() {
                                 remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
                                     { screen: Screens, isSelected: Boolean ->
                                         navigationItems.indexOf(screen).takeIf { it >= 0 }?.let { selectedTabOverride = it }
+                                        when (screen) {
+                                            Screens.Home -> mainTabTarget = 0
+                                            Screens.Search -> mainTabTarget = 1
+                                            Screens.Library -> mainTabTarget = 2
+                                            else -> Unit
+                                        }
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
 
                                         if (isSelected) {
                                             if (screen == Screens.Search) {
-                                                val entry =
-                                                    try {
-                                                        navController.getBackStackEntry("search_input")
-                                                    } catch (_: Exception) {
-                                                        navController.currentBackStackEntry
-                                                    }
-                                                val current =
-                                                    entry?.savedStateHandle?.get<Int>("focusSearchField") ?: 0
-                                                entry?.savedStateHandle?.set("focusSearchField", current + 1)
+                                                val current = mainSearchSavedStateHandle.get<Int>("focusSearchField") ?: 0
+                                                mainSearchSavedStateHandle.set("focusSearchField", current + 1)
                                             } else {
                                                 navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                                             }
@@ -1402,8 +1434,20 @@ class MainActivity : ComponentActivity() {
                                     .weight(1f)
                                     .clip(RoundedCornerShape(0.dp)),
                             ) {
-                                // One clipped viewport owns the Home/Search/Library page travel.
-                                // The NavHost and bottom indicator use the same 260 ms trajectory.
+                                // The primary pages are one real horizontal strip. Its position is
+                                // the same Animatable value consumed by the bottom-nav indicator.
+                                if (currentMainTabIndex != null) {
+                                    MainTabContainer(
+                                        position = { mainTabPosition.value },
+                                        pureBlack = pureBlack,
+                                        snackbarHostState = snackbarHostState,
+                                        searchSavedStateHandle = mainSearchSavedStateHandle,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+
+                                // Keep the root NavHost mounted so nested routes/back stacks remain
+                                // registered, but hide its main-page rendering behind the shared strip.
                                 NavHost(
                                     navController = navController,
                                     startDestination =
@@ -1477,7 +1521,12 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     // Pinned Aura top bar is a no-op nested-scroll target; skip attachment.
-                                    modifier = Modifier,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer {
+                                                alpha = if (currentMainTabIndex == null) 1f else 0f
+                                            },
                                 ) {
                                     navigationBuilder(
                                         navController = navController,
