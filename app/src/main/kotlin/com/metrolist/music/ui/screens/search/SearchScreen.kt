@@ -506,7 +506,9 @@ private fun SearchBrowseHub(
     val loading by viewModel.loading.collectAsStateWithLifecycle()
     val contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+    ) {
         // Keep the search control in the page header instead of allowing it to scroll away.
         Row(
             modifier =
