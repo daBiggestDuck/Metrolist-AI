@@ -1,3 +1,8 @@
+---v13.6.11
+# What's new
+- Improved header transitions from Home to Library and Search pages with floating filter chips and search bars
+- Library and Search now have consistent one-line headers with gradient-background floating elements for smoother transitions
+
 ---v13.6.10
 # What's new
 - Fixed the blank (black) page on the Search and Library tabs once and for all.

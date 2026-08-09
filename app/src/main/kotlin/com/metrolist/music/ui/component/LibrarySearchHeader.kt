@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
+import com.metrolist.music.ui.component.aura.AuraHeroBrush
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import androidx.compose.material3.Text
@@ -64,9 +66,8 @@ fun LibrarySearchHeader(
         modifier =
             modifier
                 .fillMaxWidth()
-                // End inset keeps the clear button fully on-screen; vertical gap separates
-                // the search row from sticky filter chips above.
-                .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp),
+                .background(AuraHeroBrush)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
     ) {
         if (isSearchActive) {
             Row(

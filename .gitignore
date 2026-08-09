@@ -21,6 +21,25 @@ out/
 .gradle/
 build/
 
+# Local build and helper artifacts from repeated build runs
+.aura-*.init.gradle
+.gradle-*/
+.gradle-home/
+.gradle-library-cache/
+.gradle-perf-agent/
+.build-*/
+.chrome-build.init.gradle
+.chrome-polish.init.gradle
+.dj-ai*.init.gradle
+.player-perf.init.gradle
+.search-ux-snapshot/
+.shell-perf.init.gradle
+.sibling-wip-hold/
+.shell-compile*.txt
+.tmp_*
+build-*.txt
+search-ux.init.gradle
+
 # Local configuration file (sdk path, etc)
 local.properties
 

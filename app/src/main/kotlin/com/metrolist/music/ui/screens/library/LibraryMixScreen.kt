@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -61,6 +62,8 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
+import com.metrolist.music.ui.component.aura.AuraHeroBrush
+import com.metrolist.music.ui.component.aura.auraBelowTopChrome
 import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.ui.menu.SelectionPlaylistMenu
 import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
@@ -120,7 +123,7 @@ import java.text.Collator
 @Composable
 fun LibraryMixScreen(
     navController: NavController,
-    filterContent: @Composable () -> Unit,
+    filterContent: @Composable () -> Unit = {},
     viewModel: LibraryMixViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
@@ -421,7 +424,8 @@ fun LibraryMixScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .auraStickyChromeBackground(AuraPlayerCanvas)
+                        .background(AuraHeroBrush)
+                        .auraBelowTopChrome()
                     .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

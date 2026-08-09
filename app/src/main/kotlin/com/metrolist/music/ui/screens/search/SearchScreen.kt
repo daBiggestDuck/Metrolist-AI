@@ -87,6 +87,7 @@ import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
+import com.metrolist.music.ui.component.aura.AuraHeroBrush
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
@@ -265,7 +266,9 @@ fun SearchScreen(
         Scaffold(
             topBar = {
                 AuraTopBar(
+                    expandedHeight = 56.dp,
                     floatTitle = false,
+                    modifier = Modifier.background(AuraHeroBrush),
                     title = {
                         val searchPillShape = RoundedCornerShape(percent = 50)
                         Row(
@@ -452,6 +455,39 @@ fun SearchScreen(
                 },
                 viewModel = hiltViewModel(),
             )
+            
+            // Floating search bar with gradient background
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 60.dp, start = 16.dp, end = 16.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(AuraHeroBrush)
+                    .clickable(onClick = { isSearchActive = true })
+                    .padding(horizontal = 14.dp)
+                    .height(48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = stringResource(
+                        when (searchSource) {
+                            SearchSource.LOCAL -> R.string.search_library
+                            SearchSource.ONLINE -> R.string.search_what_do_you_want
+                        }
+                    ),
+                    style = TextStyle(
+                        color = Color.White.copy(alpha = 0.45f),
+                        fontSize = 16.sp,
+                    ),
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
         }
     }
 
@@ -509,38 +545,8 @@ private fun SearchBrowseHub(
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Keep the search control in the page header instead of allowing it to scroll away.
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(AuraPlayerCanvas)
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top))
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 16.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(SearchHubFieldColor)
-                    .clickable(onClick = onActivateSearch)
-                    .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.search),
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.55f),
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = stringResource(R.string.search_what_do_you_want),
-                style =
-                    TextStyle(
-                        color = Color.White.copy(alpha = 0.45f),
-                        fontSize = 16.sp,
-                    ),
-                modifier = Modifier.padding(start = 10.dp),
-            )
-        }
+        // Add padding to account for floating search bar
+        Spacer(modifier = Modifier.height(80.dp))
 
         LazyColumn(
             state = listState,

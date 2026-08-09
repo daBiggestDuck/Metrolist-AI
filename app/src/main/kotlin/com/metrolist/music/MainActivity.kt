@@ -797,13 +797,7 @@ class MainActivity : ComponentActivity() {
                 val currentRoute by remember {
                     derivedStateOf { navBackStackEntry?.destination?.route }
                 }
-                val currentMainTabIndex =
-                    when (currentRoute) {
-                        Screens.Home.route -> 0
-                        Screens.Search.route -> 1
-                        Screens.Library.route -> 2
-                        else -> null
-                    }
+                val currentMainTabIndex = navigationTabIndex(currentRoute, navigationItems)
                 var mainTabTarget by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
                 var mainTabSettled by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
                 val mainTabPosition = remember { Animatable(initialMainTabIndex.toFloat()) }
