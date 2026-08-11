@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -87,7 +88,6 @@ import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
-import com.metrolist.music.ui.component.aura.AuraHeroBrush
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
@@ -268,7 +268,7 @@ fun SearchScreen(
                 AuraTopBar(
                     expandedHeight = 56.dp,
                     floatTitle = false,
-                    modifier = Modifier.background(AuraHeroBrush),
+                    modifier = Modifier,
                     title = {
                         val searchPillShape = RoundedCornerShape(percent = 50)
                         Row(
@@ -456,13 +456,14 @@ fun SearchScreen(
                 viewModel = hiltViewModel(),
             )
             
-            // Floating search bar with gradient background
+            // Floating search bar
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 60.dp, start = 16.dp, end = 16.dp)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
                     .clip(RoundedCornerShape(percent = 50))
-                    .background(AuraHeroBrush)
+                    .background(AuraElevated)
                     .clickable(onClick = { isSearchActive = true })
                     .padding(horizontal = 14.dp)
                     .height(48.dp),
@@ -541,12 +542,13 @@ private fun SearchBrowseHub(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val loading by viewModel.loading.collectAsStateWithLifecycle()
     val contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Add padding to account for floating search bar
-        Spacer(modifier = Modifier.height(80.dp))
+        // Keep browse content below the floating search bar and status-bar area.
+        Spacer(modifier = Modifier.height(topInset + 64.dp))
 
         LazyColumn(
             state = listState,

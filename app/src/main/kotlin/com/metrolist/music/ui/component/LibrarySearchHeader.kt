@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
-import com.metrolist.music.ui.component.aura.AuraHeroBrush
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import androidx.compose.material3.Text
@@ -66,7 +65,6 @@ fun LibrarySearchHeader(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(AuraHeroBrush)
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
     ) {
         if (isSearchActive) {

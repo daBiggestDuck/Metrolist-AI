@@ -88,6 +88,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LibraryAlbumsScreen(
     navController: NavController,
+    libraryFilterContent: @Composable () -> Unit,
     onDeselect: () -> Unit,
     viewModel: LibraryAlbumsViewModel = hiltViewModel(),
 ) {
@@ -262,6 +263,13 @@ fun LibraryAlbumsScreen(
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
                     item(
+                        key = "library_filter",
+                        contentType = CONTENT_TYPE_HEADER,
+                    ) {
+                        libraryFilterContent()
+                    }
+
+                    item(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -317,6 +325,14 @@ fun LibraryAlbumsScreen(
                         ),
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
+                    item(
+                        key = "library_filter",
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = CONTENT_TYPE_HEADER,
+                    ) {
+                        libraryFilterContent()
+                    }
+
                     item(
                         key = "filter",
                         span = { GridItemSpan(maxLineSpan) },

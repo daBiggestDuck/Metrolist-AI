@@ -100,6 +100,7 @@ import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 @Composable
 fun LibrarySongsScreen(
     navController: NavController,
+    libraryFilterContent: @Composable () -> Unit,
     onDeselect: () -> Unit,
     viewModel: LibrarySongsViewModel = hiltViewModel(),
 ) {
@@ -355,6 +356,13 @@ fun LibrarySongsScreen(
             state = lazyListState,
             contentPadding = auraContentPaddingBelowChrome(),
         ) {
+            item(
+                key = "library_filter",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                libraryFilterContent()
+            }
+
             item(
                 key = "filter",
                 contentType = CONTENT_TYPE_HEADER,
