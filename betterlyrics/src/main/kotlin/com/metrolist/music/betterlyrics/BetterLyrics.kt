@@ -6,6 +6,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -41,7 +42,9 @@ object BetterLyrics {
                 }
             }
 
-            expectSuccess = false
+            install(HttpResponseValidator) {
+                expectSuccess = false
+            }
         }
     }
 
