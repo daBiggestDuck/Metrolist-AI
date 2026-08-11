@@ -9,6 +9,7 @@ import com.metrolist.paxsenix.models.SearchResult
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.ClientRequestException
@@ -66,7 +67,9 @@ object Paxsenix {
                     header("User-Agent", "Metrolist/$appVersion")
                 }
 
-                expectSuccess = true
+                install(HttpResponseValidator) {
+                    expectSuccess = true
+                }
             }
             
             Timber.d("Paxsenix HTTP client initialized")

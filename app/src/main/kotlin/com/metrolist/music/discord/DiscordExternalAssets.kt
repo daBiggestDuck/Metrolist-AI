@@ -1,10 +1,13 @@
 package com.metrolist.music.discord
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.engine.cio.CIO
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
@@ -20,13 +23,15 @@ object DiscordExternalAssets {
     private const val CACHE_MAX_SIZE = 128
 
     private val client: HttpClient by lazy {
-        HttpClient(io.ktor.client.engine.cio.CIO) {
-            install(io.ktor.client.plugins.HttpTimeout) {
+        HttpClient(CIO) {
+            install(HttpTimeout) {
                 requestTimeoutMillis = 10_000L
                 connectTimeoutMillis = 5_000L
                 socketTimeoutMillis = 10_000L
             }
-            expectSuccess = false
+            install(HttpResponseValidator) {
+                expectSuccess = false
+            }
         }
     }
 
