@@ -41,6 +41,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.component.aura.AuraElevated
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -170,7 +172,9 @@ fun <Int> ChoiceChipsRow(
                 exit = shrinkOut() + fadeOut(),
             ) {
                 DropdownMenu(
-                    modifier = Modifier.padding(start = 12.dp),
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .background(AuraElevated, RoundedCornerShape(12.dp)),
                     expanded = expanded,
                     onDismissRequest = {
                         expanded = false

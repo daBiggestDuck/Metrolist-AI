@@ -63,6 +63,7 @@ fun AuraProfileMenuSheet(
     AuraBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = AuraElevated,
     ) {
         Column(
             modifier =

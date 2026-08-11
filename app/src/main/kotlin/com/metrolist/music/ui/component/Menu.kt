@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.component.aura.AuraElevated
 
 @Composable
 fun Material3MenuGroup(
@@ -48,7 +49,7 @@ fun Material3MenuGroup(
                     .animateContentSize(),
                 shape = shape,
                 colors = item.cardColors ?: CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    containerColor = AuraElevated
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
