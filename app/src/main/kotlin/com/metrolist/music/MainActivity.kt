@@ -80,6 +80,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -123,6 +124,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -179,6 +181,7 @@ import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
+import com.metrolist.music.ui.component.MainTabContainer
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.navigationTabIndex
 import com.metrolist.music.ui.component.ChipsRow
@@ -738,6 +741,12 @@ class MainActivity : ComponentActivity() {
                             else -> null
                         }
                     }
+                val initialMainTabIndex =
+                    when (tabOpenedFromShortcut ?: defaultOpenTab) {
+                        NavigationTab.LIBRARY -> 2
+                        NavigationTab.SEARCH -> 1
+                        else -> 0
+                    }
 
                 val topLevelScreens =
                     remember {
@@ -778,6 +787,12 @@ class MainActivity : ComponentActivity() {
 
                 val currentRoute by remember {
                     derivedStateOf { navBackStackEntry?.destination?.route }
+                }
+                val routeMainTabIndex = navigationTabIndex(currentRoute, navigationItems)
+                var selectedMainTabIndex by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
+                val mainSearchSavedStateHandle = remember { SavedStateHandle() }
+                LaunchedEffect(routeMainTabIndex) {
+                    routeMainTabIndex?.let { selectedMainTabIndex = it }
                 }
 
                 val inSearchScreen by remember {
@@ -1253,6 +1268,7 @@ class MainActivity : ComponentActivity() {
                                         onItemClick = onNavItemClick,
                                         pureBlack = pureBlack,
                                         slimNav = slimNav,
+                                        selectedIndexOverride = selectedMainTabIndex,
                                         onSearchLongClick = onSearchLongClick,
                                         modifier =
                                             Modifier
@@ -1387,7 +1403,17 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             Box(Modifier.weight(1f)) {
-                                // NavHost with animations (Material 3 Expressive style)
+                                MainTabContainer(
+                                    selectedPage = selectedMainTabIndex,
+                                    playerConnectionAvailable = playerConnection != null,
+                                    pureBlack = pureBlack,
+                                    snackbarHostState = snackbarHostState,
+                                    searchSavedStateHandle = mainSearchSavedStateHandle,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+
+                                // NavHost retains nested routes and overlays; primary pages are
+                                // rendered by MainTabContainer so Home remains mounted.
                                 NavHost(
                                     navController = navController,
                                     startDestination =
