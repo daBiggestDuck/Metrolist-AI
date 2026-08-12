@@ -66,7 +66,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -692,13 +691,9 @@ fun HomeScreen(
     var showProfileMenu by remember { mutableStateOf(false) }
     var showAccountDialog by remember { mutableStateOf(false) }
 
-    // Defer heavy shelves until after first frames — Spotify-like brief warm-up then smooth scroll.
-    var shelvesReady by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        withFrameNanos { }
-        shelvesReady = true
-    }
+    // Keep the Home layout stable from its first frame. Deferring these shelves by two frames
+    // caused a visible vertical shift when returning from another bottom-navigation tab.
+    val shelvesReady = true
 
     val shouldShowWrappedCard by viewModel.showWrappedCard.collectAsStateWithLifecycle()
     val wrappedState by viewModel.wrappedManager.state.collectAsStateWithLifecycle()

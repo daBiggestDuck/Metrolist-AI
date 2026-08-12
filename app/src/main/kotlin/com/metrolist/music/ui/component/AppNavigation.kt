@@ -72,10 +72,6 @@ private val AuraNavPillBg = AuraElevated
 val AuraTabTravelSpring =
     tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
 
-/** Same travel feel as [AuraTabTravelSpring], for NavHost slide offsets. */
-val AuraTabTravelOffsetSpring =
-    tween<androidx.compose.ui.unit.IntOffset>(durationMillis = 260, easing = FastOutSlowInEasing)
-
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false

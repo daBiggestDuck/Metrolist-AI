@@ -180,7 +180,6 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
-import com.metrolist.music.ui.component.AuraTabTravelOffsetSpring
 import com.metrolist.music.ui.component.navigationTabIndex
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CreatePlaylistDialog
@@ -1401,11 +1400,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideInHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                initialOffsetX = { fullWidth -> direction * fullWidth },
-                                            )
+                                            // Main-tab changes are intentionally instant. The only
+                                            // sliding motion in this release belongs to the bottom
+                                            // navigation indicator, which avoids a visible page shift
+                                            // while Home is still binding its content.
+                                            androidx.compose.animation.EnterTransition.None
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1417,11 +1416,7 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideOutHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
-                                            )
+                                            androidx.compose.animation.ExitTransition.None
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1433,11 +1428,7 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideInHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                initialOffsetX = { fullWidth -> direction * fullWidth },
-                                            )
+                                            androidx.compose.animation.EnterTransition.None
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1449,11 +1440,7 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideOutHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
-                                            )
+                                            androidx.compose.animation.ExitTransition.None
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),

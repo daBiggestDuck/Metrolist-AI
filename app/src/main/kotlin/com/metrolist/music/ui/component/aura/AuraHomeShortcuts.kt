@@ -117,8 +117,14 @@ fun AuraHomeShortcutGrid(
     modifier: Modifier = Modifier,
 ) {
     val columns = 2
-    val limited = remember(items) { items.take(8) }
-    val rows = remember(limited) { limited.chunked(columns) }
+    val limited = remember(items) { items.take(columns * 4) }
+    // Keep the Spotify-style footprint stable while data is refreshed or partially available.
+    // Empty cells preserve the 2-column alignment and guarantee four rows whenever the grid is shown.
+    val rows = remember(limited) {
+        List(4) { rowIndex ->
+            limited.drop(rowIndex * columns).take(columns)
+        }
+    }
     Column(
         modifier =
             modifier
