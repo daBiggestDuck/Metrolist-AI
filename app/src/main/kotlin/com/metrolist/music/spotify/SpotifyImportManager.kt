@@ -261,7 +261,9 @@ class SpotifyImportManager(
             }
 
             // Persist listening + Spotify taste prefs FIRST so Exportify imports succeed even
-            // when YouTube matching later fails or times out. AI analysis uses the selected DJ provider.
+            // when YouTube matching later fails or times out. A file import remains useful when
+            // the optional DJ provider is unavailable, so the helper may use a deterministic
+            // artist/track summary for this path.
             onProgress(SpotifyImportProgress(phase = "Analyzing taste with DJ AI", total = cleaned.size))
             val taste =
                 CsvTasteImportHelper.importTaste(
@@ -269,6 +271,7 @@ class SpotifyImportManager(
                     database = database,
                     tracks = cleaned,
                     enableNano = enableNano,
+                    allowHeuristicFallback = true,
                 )
 
             val topArtists = deriveTopArtists(cleaned)

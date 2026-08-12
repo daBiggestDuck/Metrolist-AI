@@ -854,11 +854,16 @@ class MainActivity : ComponentActivity() {
                 val activePlayerConnection =
                     if (playerReady && playerMetadata != null) playerConnection else null
 
-                // Treat the not-yet-resolved start destination as Home for inset purposes. The
-                // previous null -> non-null route transition briefly reserved an app-bar height,
-                // which made Home's sticky header jump after the first frame.
+                // The selected tab changes before Navigation updates its back-stack route. Use
+                // that selection for primary tabs so Home does not briefly inherit the other
+                // tab's app-bar inset during the route transition; nested routes still use the
+                // route itself and keep their normal top chrome.
                 val isHomeRouteForInsets =
-                    navBackStackEntry?.destination?.route?.let { it == Screens.Home.route } ?: true
+                    when {
+                        currentRoute == null -> selectedMainTabIndex == 0
+                        navigationItemRoutes.contains(currentRoute) -> selectedMainTabIndex == 0
+                        else -> false
+                    }
                 val playerAwareWindowInsets =
                     remember(
                         bottomInset,
@@ -1040,6 +1045,10 @@ class MainActivity : ComponentActivity() {
                 var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
                 val baseBg = if (pureBlack) Color.Black else Color(0xFF121212)
+                val opaqueRouteBackground =
+                    MaterialTheme.colorScheme.background.takeIf {
+                        it != Color.Unspecified && it.alpha > 0f
+                    } ?: baseBg
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -1475,7 +1484,16 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     // Pinned Aura top bar is a no-op nested-scroll target; skip attachment.
-                                    modifier = Modifier,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                if (currentRoute?.startsWith("settings") == true) {
+                                                    opaqueRouteBackground
+                                                } else {
+                                                    Color.Transparent
+                                                },
+                                            ),
                                 ) {
                                     navigationBuilder(
                                         navController = navController,

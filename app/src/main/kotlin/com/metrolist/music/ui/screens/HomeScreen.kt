@@ -130,7 +130,6 @@ import com.metrolist.music.ui.component.aura.AuraShortcutItem
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraSpotifyOnGreen
 import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
-import com.metrolist.music.ui.component.aura.auraBelowTopChrome
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -1177,10 +1176,10 @@ fun HomeScreen(
                             Modifier
                                 .fillMaxWidth()
                                 .background(AuraPlayerCanvas)
-                                // Apply the activity-owned top inset exactly once. Unlike a
-                                // direct status-bar inset, this stays aligned with the shell's
-                                // measured chrome during the initial route resolution.
-                                .auraBelowTopChrome()
+                                // Home has no activity top app bar. Read the platform status
+                                // inset directly so a nested-route transition cannot change this
+                                // header's height between the first and settled frames.
+                                .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
                                 .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

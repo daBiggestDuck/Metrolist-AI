@@ -114,7 +114,14 @@ fun AuraScreen(
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val bg = MaterialTheme.colorScheme.background.takeIf { it != Color.Unspecified } ?: AuraNearBlack
+    // Settings and integration routes must remain opaque while nested navigation transitions
+    // expose the destination below them. Keep custom/light themes intact, but never allow a
+    // transparent or unspecified theme token to reveal the screen underneath.
+    val themeBackground = MaterialTheme.colorScheme.background
+    val bg =
+        themeBackground.takeIf {
+            it != Color.Unspecified && it.alpha > 0f
+        } ?: AuraPlayerCanvas
     Column(
         screenModifier
             .fillMaxSize()

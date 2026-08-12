@@ -9,6 +9,7 @@ import android.content.Context
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.SpotifyImportArtistDerive
 import com.metrolist.music.ai.TasteImportAi
+import com.metrolist.music.ai.DjAiException
 import com.metrolist.music.ai.TasteImportException
 import com.metrolist.music.ai.TasteImportFailReason
 import com.metrolist.music.ai.TasteSummary
@@ -45,6 +46,8 @@ object CsvTasteImportHelper {
         @Suppress("UNUSED_PARAMETER") database: MusicDatabase,
         tracks: List<Pair<String, String>>,
         @Suppress("UNUSED_PARAMETER") enableNano: Boolean? = null,
+        /** File imports should still save a usable taste when an optional AI provider is unavailable. */
+        allowHeuristicFallback: Boolean = false,
     ): CsvTasteImportResult =
         withContext(Dispatchers.IO) {
             val cleaned =
@@ -60,8 +63,34 @@ object CsvTasteImportHelper {
 
             Timber.tag(TAG).i("Taste import starting for %d tracks", cleaned.size)
 
-            // 1) Call selected DJ AI first — throws when AI enabled and fails (no fake success).
-            val analysis = TasteImportAi.analyzeTracks(context, cleaned)
+            // 1) Prefer the selected DJ AI. A picked Exportify file is still useful without an
+            // AI provider, so that premium-free import path falls back to a deterministic profile
+            // instead of discarding the entire import after parsing succeeds.
+            val analysis =
+                try {
+                    TasteImportAi.analyzeTracks(context, cleaned)
+                } catch (e: TasteImportException) {
+                    if (!allowHeuristicFallback) throw e
+                    Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                    heuristicTasteAnalysis(
+                        SpotifyImportArtistDerive.derive(cleaned),
+                        cleaned,
+                    )
+                } catch (e: DjAiException) {
+                    if (!allowHeuristicFallback) throw e
+                    Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                    heuristicTasteAnalysis(
+                        SpotifyImportArtistDerive.derive(cleaned),
+                        cleaned,
+                    )
+                } catch (e: IllegalStateException) {
+                    if (!allowHeuristicFallback) throw e
+                    Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                    heuristicTasteAnalysis(
+                        SpotifyImportArtistDerive.derive(cleaned),
+                        cleaned,
+                    )
+                }
             val summary =
                 TasteSummary.sanitizeOrNull(analysis.summary)
                     ?: throw TasteImportException(
