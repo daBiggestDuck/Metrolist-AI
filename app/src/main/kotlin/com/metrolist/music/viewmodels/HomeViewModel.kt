@@ -118,71 +118,121 @@ class HomeViewModel @Inject constructor(
     /** Spotify Home shows a fixed 4×2 shortcut grid (8 tiles), not a multi-page dial. */
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
-            database.speedDialDao.getAll(),
-            keepListening,
-            quickPicks
-        ) { pinned, keepListening, quick ->
-            val pinnedItems = pinned.map { it.toYTItem() }
-            val filled = pinnedItems.toMutableList()
-            val targetSize = 8
+            combine(
+                database.speedDialDao.getAll(),
+                keepListening,
+                quickPicks,
+                forgottenFavorites,
+            ) { pinned, keepListening, quick, forgotten ->
+                val pinnedItems = pinned.map { it.toYTItem() }
+                val filled = pinnedItems.toMutableList()
+                val targetSize = 8
 
-            if (filled.size < targetSize) {
-                // Keep Listening (History/Heavy Rotation)
-                keepListening?.let { k ->
-                    val needed = targetSize - filled.size
-                    val available = k.filter { item ->
-                        filled.none { p -> p.id == item.id }
-                    }.mapNotNull { item ->
-                        when (item) {
-                            is Song -> SongItem(
-                                id = item.id,
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                thumbnail = item.thumbnailUrl ?: "",
-                                explicit = false
-                            )
-                            is Album -> AlbumItem(
-                                browseId = item.id,
-                                playlistId = item.album.playlistId ?: "",
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                year = item.album.year,
-                                thumbnail = item.thumbnailUrl ?: ""
-                            )
-                            is com.metrolist.music.db.entities.Artist -> ArtistItem(
-                                id = item.id,
-                                title = item.title,
-                                thumbnail = item.thumbnailUrl,
-                                shuffleEndpoint = null,
-                                radioEndpoint = null
-                            )
-                            else -> null
+                if (filled.size < targetSize) {
+                    // Keep Listening (History/Heavy Rotation)
+                    keepListening?.let { k ->
+                        val needed = targetSize - filled.size
+                        val available = k.filter { item ->
+                            filled.none { p -> p.id == item.id }
+                        }.mapNotNull { item ->
+                            when (item) {
+                                is Song -> SongItem(
+                                    id = item.id,
+                                    title = item.title,
+                                    artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                                    thumbnail = item.thumbnailUrl ?: "",
+                                    explicit = false,
+                                )
+                                is Album -> AlbumItem(
+                                    browseId = item.id,
+                                    playlistId = item.album.playlistId ?: "",
+                                    title = item.title,
+                                    artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                                    year = item.album.year,
+                                    thumbnail = item.thumbnailUrl ?: "",
+                                )
+                                is com.metrolist.music.db.entities.Artist -> ArtistItem(
+                                    id = item.id,
+                                    title = item.title,
+                                    thumbnail = item.thumbnailUrl,
+                                    shuffleEndpoint = null,
+                                    radioEndpoint = null,
+                                )
+                                else -> null
+                            }
                         }
+                        filled.addAll(available.take(needed))
                     }
-                    filled.addAll(available.take(needed))
                 }
-            }
 
-            if (filled.size < targetSize) {
-                // Quick Picks
-                quick?.let { q ->
-                    val needed = targetSize - filled.size
-                    val available = q.filter { song ->
-                        filled.none { p -> p.id == song.id }
-                    }.map { song ->
-                        SongItem(
-                            id = song.id,
-                            title = song.title,
-                            artists = song.artists.map { Artist(name = it.name, id = it.id) },
-                            thumbnail = song.thumbnailUrl ?: "",
-                            explicit = false
-                        )
+                if (filled.size < targetSize) {
+                    // Quick Picks
+                    quick?.let { q ->
+                        val needed = targetSize - filled.size
+                        val available = q.filter { song ->
+                            filled.none { p -> p.id == song.id }
+                        }.map { song ->
+                            SongItem(
+                                id = song.id,
+                                title = song.title,
+                                artists = song.artists.map { Artist(name = it.name, id = it.id) },
+                                thumbnail = song.thumbnailUrl ?: "",
+                                explicit = false,
+                            )
+                        }
+                        filled.addAll(available.take(needed))
                     }
-                    filled.addAll(available.take(needed))
                 }
+
+                if (filled.size < targetSize) {
+                    // Forgotten Favorites is another local song source that is available even
+                    // when Quick Picks is disabled or has not finished its network enrichment.
+                    forgotten?.let { songs ->
+                        val needed = targetSize - filled.size
+                        val available = songs.filter { song ->
+                            filled.none { p -> p.id == song.id }
+                        }.map { song ->
+                            SongItem(
+                                id = song.id,
+                                title = song.title,
+                                artists = song.artists.map { Artist(name = it.name, id = it.id) },
+                                thumbnail = song.thumbnailUrl ?: "",
+                                explicit = false,
+                            )
+                        }
+                        filled.addAll(available.take(needed))
+                    }
+                }
+
+                filled.take(targetSize)
+            },
+            homePage,
+            allYtItems,
+        ) { currentItems, page, cachedItems ->
+            val filled = currentItems.toMutableList()
+            if (filled.size < 8) {
+                // Use already-loaded Home results as an immediate real-item fallback. The
+                // previous implementation only watched local history and Quick Picks, so the
+                // eight reserved cells stayed empty while those slower flows were warming.
+                page?.sections
+                    ?.asSequence()
+                    ?.flatMap { it.items.asSequence() }
+                    ?.filterIsInstance<SongItem>()
+                    ?.filter { song -> filled.none { it.id == song.id } }
+                    ?.forEach { song ->
+                        if (filled.size < 8) filled += song
+                    }
             }
-            
-            filled.take(targetSize)
+            if (filled.size < 8) {
+                cachedItems
+                    .asSequence()
+                    .filterIsInstance<SongItem>()
+                    .filter { song -> filled.none { it.id == song.id } }
+                    .forEach { song ->
+                        if (filled.size < 8) filled += song
+                    }
+            }
+            filled.take(8)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     suspend fun getRandomItem(): YTItem? {

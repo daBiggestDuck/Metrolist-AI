@@ -854,8 +854,11 @@ class MainActivity : ComponentActivity() {
                 val activePlayerConnection =
                     if (playerReady && playerMetadata != null) playerConnection else null
 
+                // Treat the not-yet-resolved start destination as Home for inset purposes. The
+                // previous null -> non-null route transition briefly reserved an app-bar height,
+                // which made Home's sticky header jump after the first frame.
                 val isHomeRouteForInsets =
-                    navBackStackEntry?.destination?.route == Screens.Home.route
+                    navBackStackEntry?.destination?.route?.let { it == Screens.Home.route } ?: true
                 val playerAwareWindowInsets =
                     remember(
                         bottomInset,
