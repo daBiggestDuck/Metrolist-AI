@@ -1211,7 +1211,7 @@ fun HomeScreen(
                 }
 
                 // Spotify Home: fixed 2×4 shortcuts under chips (no title / no pager).
-                if (selectedChip == null && speedDialItems.isNotEmpty()) {
+                if (selectedChip == null) {
                     item(key = "home_shortcuts", contentType = CONTENT_TYPE_LIST) {
                         val shortcutItems =
                             remember(speedDialItems, pinnedSpeedDialItems, autoRadioQueue, isListenTogetherGuest) {

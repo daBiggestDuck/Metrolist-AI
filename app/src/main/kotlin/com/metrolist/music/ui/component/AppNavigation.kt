@@ -5,9 +5,8 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -70,7 +69,10 @@ private val AuraNavPillBg = AuraElevated
  * without the long spring tail that used to get lost during heavy screen recomposition.
  */
 val AuraTabTravelSpring =
-    tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
+    spring<Float>(
+        dampingRatio = 0.82f,
+        stiffness = 520f,
+    )
 
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {

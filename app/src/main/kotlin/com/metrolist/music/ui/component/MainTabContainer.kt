@@ -10,12 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,11 +35,9 @@ fun MainTabContainer(
     searchSavedStateHandle: SavedStateHandle,
     modifier: Modifier = Modifier,
 ) {
-    var visitedMask by rememberSaveable { mutableIntStateOf(1 shl selectedPage.coerceIn(0, 2)) }
-
-    LaunchedEffect(selectedPage) {
-        visitedMask = visitedMask or (1 shl selectedPage.coerceIn(0, 2))
-    }
+    // Keep all primary pages composed from the first frame. Their ViewModels and scroll state
+    // remain warm, so switching back to Home does not recreate the filter chrome or shelves.
+    val visitedMask = rememberSaveable { 0b111 }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (playerConnectionAvailable) {

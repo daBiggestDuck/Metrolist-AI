@@ -958,27 +958,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
                 val searchActiveFlow =
                     remember(navBackStackEntry?.id) {
                         navBackStackEntry?.savedStateHandle?.getStateFlow("searchActive", false)
                             ?: kotlinx.coroutines.flow.MutableStateFlow(false)
                     }
                 val searchActive by searchActiveFlow.collectAsStateWithLifecycle()
-
-                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar, searchActive) {
-                    val currentRoute = navBackStackEntry?.destination?.route
-                    val isListenTogetherScreen =
-                        currentRoute == Screens.ListenTogether.route ||
-                            currentRoute == "listen_together_from_topbar"
-                    val isSearchTyping =
-                        currentRoute == Screens.Search.route && searchActive
-                    shouldShowTopBar = currentRoute in topLevelScreens &&
-                        currentRoute != "settings" &&
-                        currentRoute != Screens.Home.route &&
-                        !isSearchTyping &&
-                        !(isListenTogetherScreen && listenTogetherInTopBar)
-                }
+                val currentTopBarRoute = navBackStackEntry?.destination?.route
+                val isListenTogetherTopBarScreen =
+                    currentTopBarRoute == Screens.ListenTogether.route ||
+                        currentTopBarRoute == "listen_together_from_topbar"
+                val shouldShowTopBar =
+                    currentTopBarRoute in topLevelScreens &&
+                        currentTopBarRoute != "settings" &&
+                        currentTopBarRoute != Screens.Home.route &&
+                        !(currentTopBarRoute == Screens.Search.route && searchActive) &&
+                        !(isListenTogetherTopBarScreen && listenTogetherInTopBar)
 
                 val coroutineScope = rememberCoroutineScope()
                 var sharedSong: SongItem? by remember {
@@ -1229,6 +1224,7 @@ class MainActivity : ComponentActivity() {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         } else {
+                                            navigationTabIndex(screen.route, navigationItems)?.let { selectedMainTabIndex = it }
                                             navController.navigate(screen.route) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
@@ -1373,6 +1369,7 @@ class MainActivity : ComponentActivity() {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         } else {
+                                            navigationTabIndex(screen.route, navigationItems)?.let { selectedMainTabIndex = it }
                                             navController.navigate(screen.route) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true

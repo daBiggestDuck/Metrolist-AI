@@ -9,6 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -117,14 +118,10 @@ fun AuraHomeShortcutGrid(
     modifier: Modifier = Modifier,
 ) {
     val columns = 2
-    val limited = remember(items) { items.take(columns * 4) }
-    // Keep the Spotify-style footprint stable while data is refreshed or partially available.
-    // Empty cells preserve the 2-column alignment and guarantee four rows whenever the grid is shown.
-    val rows = remember(limited) {
-        List(4) { rowIndex ->
-            limited.drop(rowIndex * columns).take(columns)
-        }
-    }
+    // Keep all eight slots present while the database/network flows warm up. This prevents the
+    // entire Quick Dial block from disappearing and pushing Home content down later.
+    val slots = remember(items) { List(columns * 4) { items.getOrNull(it) } }
+    val rows = remember(slots) { slots.chunked(columns) }
     Column(
         modifier =
             modifier
@@ -138,18 +135,24 @@ fun AuraHomeShortcutGrid(
                 horizontalArrangement = Arrangement.spacedBy(AuraShortcutGap),
             ) {
                 rowItems.forEach { item ->
-                    AuraShortcutTile(
-                        title = item.title,
-                        thumbnailUrl = item.thumbnailUrl,
-                        circularThumbnail = item.circularThumbnail,
-                        onClick = item.onClick,
-                        onLongClick = item.onLongClick,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // Keep column alignment when a row has fewer than [columns] tiles.
-                repeat(columns - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
+                    if (item == null) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(AuraShortcutHeight)
+                                .clip(AuraShortcutShape)
+                                .background(AuraShortcutBg.copy(alpha = 0.55f)),
+                        )
+                    } else {
+                        AuraShortcutTile(
+                            title = item.title,
+                            thumbnailUrl = item.thumbnailUrl,
+                            circularThumbnail = item.circularThumbnail,
+                            onClick = item.onClick,
+                            onLongClick = item.onLongClick,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
