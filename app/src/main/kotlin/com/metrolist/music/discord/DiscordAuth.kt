@@ -12,6 +12,7 @@ import com.metrolist.music.discord.DiscordDefaults.DISCORD_OAUTH_TOKEN
 import com.metrolist.music.discord.DiscordDefaults.DISCORD_SCOPES
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.statement.HttpResponse
@@ -219,7 +220,9 @@ class DiscordAuth(
                 connectTimeoutMillis = 10_000L
                 socketTimeoutMillis = 15_000L
             }
-            expectSuccess = false
+            install(HttpResponseValidator) {
+                expectSuccess = false
+            }
         }
 
         fun generatePkcePair(): PkcePair {

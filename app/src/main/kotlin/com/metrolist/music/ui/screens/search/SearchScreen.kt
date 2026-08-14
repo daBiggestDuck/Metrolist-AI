@@ -11,15 +11,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -64,6 +69,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -84,6 +90,7 @@ import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTopBar
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
@@ -259,7 +266,9 @@ fun SearchScreen(
         Scaffold(
             topBar = {
                 AuraTopBar(
+                    expandedHeight = 56.dp,
                     floatTitle = false,
+                    modifier = Modifier,
                     title = {
                         val searchPillShape = RoundedCornerShape(percent = 50)
                         Row(
@@ -446,6 +455,40 @@ fun SearchScreen(
                 },
                 viewModel = hiltViewModel(),
             )
+            
+            // Floating search bar
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(AuraElevated)
+                    .clickable(onClick = { isSearchActive = true })
+                    .padding(horizontal = 14.dp)
+                    .height(48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = stringResource(
+                        when (searchSource) {
+                            SearchSource.LOCAL -> R.string.search_library
+                            SearchSource.ONLINE -> R.string.search_what_do_you_want
+                        }
+                    ),
+                    style = TextStyle(
+                        color = Color.White.copy(alpha = 0.45f),
+                        fontSize = 16.sp,
+                    ),
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
         }
     }
 
@@ -499,44 +542,23 @@ private fun SearchBrowseHub(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val loading by viewModel.loading.collectAsStateWithLifecycle()
     val contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    LazyColumn(
-        state = listState,
-        contentPadding = contentPadding,
+    Column(
         modifier = Modifier.fillMaxSize(),
     ) {
-        item(key = "search_field") {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 24.dp)
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(percent = 50))
-                        .background(SearchHubFieldColor)
-                        .clickable(onClick = onActivateSearch)
-                        .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    text = stringResource(R.string.search_what_do_you_want),
-                    style =
-                        TextStyle(
-                            color = Color.White.copy(alpha = 0.45f),
-                            fontSize = 16.sp,
-                        ),
-                    modifier = Modifier.padding(start = 10.dp),
-                )
-            }
-        }
+        // Keep browse content below the floating search bar and status-bar area.
+        Spacer(modifier = Modifier.height(topInset + 64.dp))
 
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(
+                start = contentPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                end = contentPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                bottom = contentPadding.calculateBottomPadding(),
+            ),
+            modifier = Modifier.fillMaxSize(),
+        ) {
         item(key = "browse_all_title") {
             Text(
                 text = stringResource(R.string.search_browse_all),
@@ -606,6 +628,7 @@ private fun SearchBrowseHub(
                     }
                 }
             }
+        }
         }
     }
 }

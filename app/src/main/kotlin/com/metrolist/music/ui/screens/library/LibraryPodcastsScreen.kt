@@ -102,6 +102,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LibraryPodcastsScreen(
     navController: NavController,
+    libraryFilterContent: @Composable () -> Unit,
     onDeselect: () -> Unit,
     viewModel: LibraryPodcastsViewModel = hiltViewModel(),
 ) {
@@ -214,6 +215,9 @@ fun LibraryPodcastsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
+                    item(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
+                        libraryFilterContent()
+                    }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }
@@ -276,6 +280,9 @@ fun LibraryPodcastsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
+                    item(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
+                        libraryFilterContent()
+                    }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }
@@ -344,6 +351,9 @@ fun LibraryPodcastsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
+                    item(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
+                        libraryFilterContent()
+                    }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }

@@ -80,11 +80,13 @@ fun NavGraphBuilder.navigationBuilder(
     activity: Activity,
     snackbarHostState: SnackbarHostState,
 ) {
-    // Primary tab content is rendered by MainTabContainer in MainActivity so each visited
-    // tab stays mounted. These destinations remain as navigation anchors for nested routes.
-    composable(Screens.Home.route) {}
-    composable(Screens.Search.route) {}
-    composable(Screens.Library.route) {}
+    // The main tab strip owns the primary page rendering. These destinations remain as
+    // navigation anchors for nested/detail routes without composing duplicate page trees.
+    composable(Screens.Home.route) { }
+
+    composable(Screens.Search.route) { }
+
+    composable(Screens.Library.route) { }
 
     composable(Screens.ListenTogether.route) {
         ListenTogetherScreen(navController, showTopBar = false)

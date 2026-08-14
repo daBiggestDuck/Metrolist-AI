@@ -67,18 +67,22 @@ fun LibraryScreen() {
             LibraryFilter.PLAYLISTS -> LibraryPlaylistsScreen(navController, filterContent)
             LibraryFilter.SONGS -> LibrarySongsScreen(
                 navController,
+                filterContent,
                 { filterType = LibraryFilter.LIBRARY },
             )
             LibraryFilter.ALBUMS -> LibraryAlbumsScreen(
                 navController,
+                filterContent,
                 { filterType = LibraryFilter.LIBRARY },
             )
             LibraryFilter.ARTISTS -> LibraryArtistsScreen(
                 navController,
+                filterContent,
                 { filterType = LibraryFilter.LIBRARY },
             )
             LibraryFilter.PODCASTS -> LibraryPodcastsScreen(
                 navController,
+                filterContent,
                 { filterType = LibraryFilter.LIBRARY },
             )
         }

@@ -87,7 +87,7 @@ private val AuraBannerShape = RoundedCornerShape(8.dp)
 private val AuraHeroShape = RoundedCornerShape(12.dp)
 private val AuraButtonContentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
 private val AuraSecondaryContentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-private val AuraHeroBrush = Brush.verticalGradient(listOf(AuraHeroTop, AuraHeroBottom))
+val AuraHeroBrush = Brush.verticalGradient(listOf(AuraHeroTop, AuraHeroBottom))
 
 /**
  * Default Aura top chrome is optically transparent — islands float over the black canvas.

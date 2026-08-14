@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,10 +20,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -32,6 +35,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraTopBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -249,7 +253,8 @@ fun ContentSettings(
                         )
                         ExposedDropdownMenu(
                             expanded = expandedDropdown,
-                            onDismissRequest = { expandedDropdown = false }
+                            onDismissRequest = { expandedDropdown = false },
+                            modifier = Modifier.background(AuraElevated, RoundedCornerShape(12.dp))
                         ) {
                             listOf(Proxy.Type.HTTP, Proxy.Type.SOCKS).forEach { type ->
                                 DropdownMenuItem(

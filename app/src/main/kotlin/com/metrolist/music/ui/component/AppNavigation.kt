@@ -5,8 +5,9 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -69,10 +70,11 @@ private val AuraNavPillBg = AuraElevated
  * without the long spring tail that used to get lost during heavy screen recomposition.
  */
 val AuraTabTravelSpring =
-    spring<Float>(
-        dampingRatio = 0.82f,
-        stiffness = 520f,
-    )
+    tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
+
+/** Same travel feel as [AuraTabTravelSpring], for NavHost slide offsets. */
+val AuraTabTravelOffsetSpring =
+    tween<androidx.compose.ui.unit.IntOffset>(durationMillis = 260, easing = FastOutSlowInEasing)
 
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
@@ -142,6 +144,7 @@ fun AppNavigationRail(
     onItemClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
+    indicatorPosition: (() -> Float)? = null,
     onSearchLongClick: (() -> Unit)? = null
 ) {
     val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
@@ -154,12 +157,14 @@ fun AppNavigationRail(
         resolvedSelectedIndex?.let { lastSelectedIndex.intValue = it }
     }
     val selectedIndex = resolvedSelectedIndex ?: lastSelectedIndex.intValue
-    val animatedIndex =
-        animateFloatAsState(
+    val animatedIndex = remember { Animatable(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) {
+        animatedIndex.animateTo(
             targetValue = selectedIndex.toFloat(),
             animationSpec = AuraTabTravelSpring,
-            label = "auraRailIndicator",
         )
+    }
+    val animatedPosition = indicatorPosition ?: { animatedIndex.value }
 
     Column(
         modifier =
@@ -193,7 +198,7 @@ fun AppNavigationRail(
                             .height(itemHeight)
                             .padding(4.dp)
                             .graphicsLayer {
-                                translationY = animatedIndex.value * itemHeightPx
+                                translationY = animatedPosition() * itemHeightPx
                             }
                             .clip(AuraFloatingPillShape)
                         .background(AuraNavIndicator),
@@ -269,6 +274,7 @@ fun AppNavigationBar(
     pureBlack: Boolean = false,
     slimNav: Boolean = false,
     selectedIndexOverride: Int? = null,
+    indicatorPosition: (() -> Float)? = null,
     onSearchLongClick: (() -> Unit)? = null
 ) {
     val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
@@ -282,12 +288,14 @@ fun AppNavigationBar(
         resolvedSelectedIndex?.let { lastSelectedIndex.intValue = it }
     }
     val selectedIndex = selectedIndexOverride ?: resolvedSelectedIndex ?: lastSelectedIndex.intValue
-    val animatedIndex =
-        animateFloatAsState(
+    val animatedIndex = remember { Animatable(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) {
+        animatedIndex.animateTo(
             targetValue = selectedIndex.toFloat(),
             animationSpec = AuraTabTravelSpring,
-            label = "auraNavIndicator",
         )
+    }
+    val animatedPosition = indicatorPosition ?: { animatedIndex.value }
 
     Box(
         modifier =
@@ -326,9 +334,8 @@ fun AppNavigationBar(
                             .width(indicatorWidth)
                             .fillMaxHeight()
                             .padding(vertical = 7.dp)
-                            .graphicsLayer {
-                                translationX =
-                                    indicatorOffsetPx + animatedIndex.value * tabWidthPx
+                            .graphicsLayer {                                    translationX =
+                                    indicatorOffsetPx + animatedPosition() * tabWidthPx
                             }
                             .clip(AuraFloatingPillShape)
                         .background(AuraNavIndicator),

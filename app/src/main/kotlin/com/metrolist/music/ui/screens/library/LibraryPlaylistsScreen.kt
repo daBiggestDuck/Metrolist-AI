@@ -104,7 +104,7 @@ private data class VisiblePlaylistItem(
 @Composable
 fun LibraryPlaylistsScreen(
     navController: NavController,
-    filterContent: @Composable () -> Unit,
+    filterContent: @Composable () -> Unit = {},
     viewModel: LibraryPlaylistsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current

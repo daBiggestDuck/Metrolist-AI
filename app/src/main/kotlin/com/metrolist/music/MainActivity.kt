@@ -21,6 +21,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -117,6 +118,7 @@ import androidx.core.net.toUri
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
@@ -124,7 +126,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -181,8 +182,9 @@ import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
-import com.metrolist.music.ui.component.MainTabContainer
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.AuraTabTravelOffsetSpring
+import com.metrolist.music.ui.component.AuraTabTravelSpring
 import com.metrolist.music.ui.component.navigationTabIndex
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CreatePlaylistDialog
@@ -192,6 +194,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.dismissedAnchor
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.MainTabContainer
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -723,6 +726,12 @@ class MainActivity : ComponentActivity() {
                             Screens.MainScreens
                         }
                     }
+                val routeTabIndex = navigationTabIndex(navBackStackEntry?.destination?.route, navigationItems)
+                var selectedTabOverride by rememberSaveable { mutableStateOf<Int?>(null) }
+                LaunchedEffect(routeTabIndex) {
+                    if (routeTabIndex != null) selectedTabOverride = routeTabIndex
+                }
+
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val (defaultOpenTabInt) = rememberPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME.name)
@@ -788,13 +797,49 @@ class MainActivity : ComponentActivity() {
                 val currentRoute by remember {
                     derivedStateOf { navBackStackEntry?.destination?.route }
                 }
-                val routeMainTabIndex = navigationTabIndex(currentRoute, navigationItems)
-                var selectedMainTabIndex by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
+                val currentMainTabIndex = navigationTabIndex(currentRoute, navigationItems)
+                var mainTabTarget by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
+                var mainTabSettled by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
+                val mainTabPosition = remember { Animatable(initialMainTabIndex.toFloat()) }
+                // The pager's Search page is not the NavHost's duplicate root destination;
+                // keep its focus/reselect state stable for the lifetime of the activity.
                 val mainSearchSavedStateHandle = remember { SavedStateHandle() }
-                LaunchedEffect(routeMainTabIndex) {
-                    routeMainTabIndex?.let { selectedMainTabIndex = it }
+                // Keep the NavHost visible while an overlay/detail destination is still part of
+                // the transition. Looking only at currentRoute hides Settings too early when its
+                // pop animation is moving back to a main tab.
+                val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
+                val navHostShowsOverlay =
+                    currentRoute != null &&
+                        (currentMainTabIndex == null ||
+                            visibleEntries.any { entry ->
+                                navigationTabIndex(entry.destination.route, navigationItems) == null
+                            })
+                // One animation owner: taps and route changes only update the target. This avoids
+                // competing animateTo coroutines cancelling each other mid-travel.
+                LaunchedEffect(currentMainTabIndex) {
+                    currentMainTabIndex?.let { mainTabTarget = it }
+                }
+                LaunchedEffect(mainTabTarget) {
+                    mainTabPosition.animateTo(mainTabTarget.toFloat(), AuraTabTravelSpring)
+                    // The container uses this completion signal to release the old page. This
+                    // stays synchronized even when a second tap cancels the first animation.
+                    mainTabSettled = mainTabTarget
                 }
 
+                // The strip uses page-space indices 0/1/2. If Listen Together is in the bar,
+                // Library occupies nav index 3; interpolate between mapped endpoints so the
+                // bubble never follows page-space and then teleports at the end.
+                val bottomIndicatorPosition: () -> Float = {
+                    val pagePosition = mainTabPosition.value
+                    if (listenTogetherInTopBar) {
+                        pagePosition
+                    } else {
+                        // Preserve continuity at Search while giving Library its real nav slot.
+                        // This is a piecewise linear map: 0→1 stays 0→1, then 1→2 becomes
+                        // 1→3 without a threshold jump.
+                        if (pagePosition <= 1f) pagePosition else 2f * pagePosition - 1f
+                    }
+                }
                 val inSearchScreen by remember {
                     derivedStateOf { currentRoute?.startsWith("search/") == true }
                 }
@@ -854,16 +899,8 @@ class MainActivity : ComponentActivity() {
                 val activePlayerConnection =
                     if (playerReady && playerMetadata != null) playerConnection else null
 
-                // The selected tab changes before Navigation updates its back-stack route. Use
-                // that selection for primary tabs so Home does not briefly inherit the other
-                // tab's app-bar inset during the route transition; nested routes still use the
-                // route itself and keep their normal top chrome.
                 val isHomeRouteForInsets =
-                    when {
-                        currentRoute == null -> selectedMainTabIndex == 0
-                        navigationItemRoutes.contains(currentRoute) -> selectedMainTabIndex == 0
-                        else -> false
-                    }
+                    navBackStackEntry?.destination?.route == Screens.Home.route
                 val playerAwareWindowInsets =
                     remember(
                         bottomInset,
@@ -966,22 +1003,27 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
                 val searchActiveFlow =
                     remember(navBackStackEntry?.id) {
                         navBackStackEntry?.savedStateHandle?.getStateFlow("searchActive", false)
                             ?: kotlinx.coroutines.flow.MutableStateFlow(false)
                     }
                 val searchActive by searchActiveFlow.collectAsStateWithLifecycle()
-                val currentTopBarRoute = navBackStackEntry?.destination?.route
-                val isListenTogetherTopBarScreen =
-                    currentTopBarRoute == Screens.ListenTogether.route ||
-                        currentTopBarRoute == "listen_together_from_topbar"
-                val shouldShowTopBar =
-                    currentTopBarRoute in topLevelScreens &&
-                        currentTopBarRoute != "settings" &&
-                        currentTopBarRoute != Screens.Home.route &&
-                        !(currentTopBarRoute == Screens.Search.route && searchActive) &&
-                        !(isListenTogetherTopBarScreen && listenTogetherInTopBar)
+
+                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar, searchActive) {
+                    val currentRoute = navBackStackEntry?.destination?.route
+                    val isListenTogetherScreen =
+                        currentRoute == Screens.ListenTogether.route ||
+                            currentRoute == "listen_together_from_topbar"
+                    val isSearchTyping =
+                        currentRoute == Screens.Search.route && searchActive
+                    shouldShowTopBar = currentRoute in topLevelScreens &&
+                        currentRoute != "settings" &&
+                        currentRoute != Screens.Home.route &&
+                        !isSearchTyping &&
+                        !(isListenTogetherScreen && listenTogetherInTopBar)
+                }
 
                 val coroutineScope = rememberCoroutineScope()
                 var sharedSong: SongItem? by remember {
@@ -1045,10 +1087,6 @@ class MainActivity : ComponentActivity() {
                 var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
                 val baseBg = if (pureBlack) Color.Black else Color(0xFF121212)
-                val opaqueRouteBackground =
-                    MaterialTheme.colorScheme.background.takeIf {
-                        it != Color.Unspecified && it.alpha > 0f
-                    } ?: baseBg
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -1205,38 +1243,30 @@ class MainActivity : ComponentActivity() {
                                     currentBackStackEntry,
                                 ) {
                                     { screen: Screens, isSelected: Boolean ->
+                                        navigationItems.indexOf(screen).takeIf { it >= 0 }?.let { selectedTabOverride = it }
+                                        when (screen) {
+                                            Screens.Home -> mainTabTarget = 0
+                                            Screens.Search -> mainTabTarget = 1
+                                            Screens.Library -> mainTabTarget = 2
+                                            else -> Unit
+                                        }
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
                                         if (isSelected) {
-                                            val targetEntry =
-                                                try {
-                                                    val route = navController.currentBackStackEntry?.destination?.route
-                                                    if (route == SearchRoutes.ROUTE || route == "search_input") {
-                                                        // For search screens, use search_input entry
-                                                        navController.getBackStackEntry("search_input")
-                                                    } else {
-                                                        // For other screens, use current entry
-                                                        navController.currentBackStackEntry
-                                                    }
-                                                } catch (e: Exception) {
-                                                    null
-                                                }
-
-                                            // Search reselect → focus the search field; others scroll to top.
+                                            // Search reselect focuses the stable pager search field;
+                                            // other tabs ask their active NavHost page to scroll up.
                                             if (screen == Screens.Search) {
-                                                val current =
-                                                    targetEntry?.savedStateHandle?.get<Int>("focusSearchField") ?: 0
-                                                targetEntry?.savedStateHandle?.set("focusSearchField", current + 1)
+                                                val current = mainSearchSavedStateHandle.get<Int>("focusSearchField") ?: 0
+                                                mainSearchSavedStateHandle.set("focusSearchField", current + 1)
                                             } else {
-                                                targetEntry?.savedStateHandle?.set("scrollToTop", true)
+                                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                                             }
 
                                             coroutineScope.launch {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         } else {
-                                            navigationTabIndex(screen.route, navigationItems)?.let { selectedMainTabIndex = it }
                                             navController.navigate(screen.route) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
@@ -1276,7 +1306,8 @@ class MainActivity : ComponentActivity() {
                                         onItemClick = onNavItemClick,
                                         pureBlack = pureBlack,
                                         slimNav = slimNav,
-                                        selectedIndexOverride = selectedMainTabIndex,
+                                        selectedIndexOverride = selectedTabOverride,
+                                        indicatorPosition = bottomIndicatorPosition,
                                         onSearchLongClick = onSearchLongClick,
                                         modifier =
                                             Modifier
@@ -1359,21 +1390,21 @@ class MainActivity : ComponentActivity() {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
                                 remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
                                     { screen: Screens, isSelected: Boolean ->
+                                        navigationItems.indexOf(screen).takeIf { it >= 0 }?.let { selectedTabOverride = it }
+                                        when (screen) {
+                                            Screens.Home -> mainTabTarget = 0
+                                            Screens.Search -> mainTabTarget = 1
+                                            Screens.Library -> mainTabTarget = 2
+                                            else -> Unit
+                                        }
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
 
                                         if (isSelected) {
                                             if (screen == Screens.Search) {
-                                                val entry =
-                                                    try {
-                                                        navController.getBackStackEntry("search_input")
-                                                    } catch (_: Exception) {
-                                                        navController.currentBackStackEntry
-                                                    }
-                                                val current =
-                                                    entry?.savedStateHandle?.get<Int>("focusSearchField") ?: 0
-                                                entry?.savedStateHandle?.set("focusSearchField", current + 1)
+                                                val current = mainSearchSavedStateHandle.get<Int>("focusSearchField") ?: 0
+                                                mainSearchSavedStateHandle.set("focusSearchField", current + 1)
                                             } else {
                                                 navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                                             }
@@ -1381,7 +1412,6 @@ class MainActivity : ComponentActivity() {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         } else {
-                                            navigationTabIndex(screen.route, navigationItems)?.let { selectedMainTabIndex = it }
                                             navController.navigate(screen.route) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
@@ -1411,9 +1441,18 @@ class MainActivity : ComponentActivity() {
                                     onSearchLongClick = onRailSearchLongClick,
                                 )
                             }
-                            Box(Modifier.weight(1f)) {
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(0.dp)),
+                            ) {
+                                // The primary pages are one real horizontal strip. Keep it mounted
+                                // while Settings/detail routes are on top so their return does not
+                                // destroy and recreate the expensive tab trees.
                                 MainTabContainer(
-                                    selectedPage = selectedMainTabIndex,
+                                    position = { mainTabPosition.value },
+                                    targetPage = mainTabTarget,
+                                    settledPage = mainTabSettled,
                                     playerConnectionAvailable = playerConnection != null,
                                     pureBlack = pureBlack,
                                     snackbarHostState = snackbarHostState,
@@ -1421,8 +1460,9 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.fillMaxSize(),
                                 )
 
-                                // NavHost retains nested routes and overlays; primary pages are
-                                // rendered by MainTabContainer so Home remains mounted.
+                                // Keep the root NavHost mounted so nested routes/back stacks remain
+                                // registered. Its main destinations are empty anchors; overlay
+                                // destinations stay visible for the whole NavHost transition.
                                 NavHost(
                                     navController = navController,
                                     startDestination =
@@ -1435,11 +1475,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            // Main-tab changes are intentionally instant. The only
-                                            // sliding motion in this release belongs to the bottom
-                                            // navigation indicator, which avoids a visible page shift
-                                            // while Home is still binding its content.
-                                            androidx.compose.animation.EnterTransition.None
+                                            val direction = if (toTab > fromTab) 1 else -1
+                                            slideInHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                initialOffsetX = { fullWidth -> direction * fullWidth },
+                                            )
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1451,7 +1491,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            androidx.compose.animation.ExitTransition.None
+                                            val direction = if (toTab > fromTab) 1 else -1
+                                            slideOutHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
+                                            )
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1463,7 +1507,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            androidx.compose.animation.EnterTransition.None
+                                            val direction = if (toTab > fromTab) 1 else -1
+                                            slideInHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                initialOffsetX = { fullWidth -> direction * fullWidth },
+                                            )
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1475,7 +1523,11 @@ class MainActivity : ComponentActivity() {
                                         val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
                                         val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
                                         if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            androidx.compose.animation.ExitTransition.None
+                                            val direction = if (toTab > fromTab) 1 else -1
+                                            slideOutHorizontally(
+                                                animationSpec = AuraTabTravelOffsetSpring,
+                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
+                                            )
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1487,13 +1539,9 @@ class MainActivity : ComponentActivity() {
                                     modifier =
                                         Modifier
                                             .fillMaxSize()
-                                            .background(
-                                                if (currentRoute?.startsWith("settings") == true) {
-                                                    opaqueRouteBackground
-                                                } else {
-                                                    Color.Transparent
-                                                },
-                                            ),
+                                            .graphicsLayer {
+                                                alpha = if (navHostShowsOverlay) 1f else 0f
+                                            },
                                 ) {
                                     navigationBuilder(
                                         navController = navController,
