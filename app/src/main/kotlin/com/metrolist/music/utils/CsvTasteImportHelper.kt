@@ -45,7 +45,7 @@ object CsvTasteImportHelper {
         context: Context,
         @Suppress("UNUSED_PARAMETER") database: MusicDatabase,
         tracks: List<Pair<String, String>>,
-        @Suppress("UNUSED_PARAMETER") enableNano: Boolean? = null,
+        enableNano: Boolean? = null,
         /** File imports should still save a usable taste when an optional AI provider is unavailable. */
         allowHeuristicFallback: Boolean = false,
     ): CsvTasteImportResult =
@@ -67,29 +67,36 @@ object CsvTasteImportHelper {
             // AI provider, so that premium-free import path falls back to a deterministic profile
             // instead of discarding the entire import after parsing succeeds.
             val analysis =
-                try {
-                    TasteImportAi.analyzeTracks(context, cleaned)
-                } catch (e: TasteImportException) {
-                    if (!allowHeuristicFallback) throw e
-                    Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                if (enableNano == false) {
                     heuristicTasteAnalysis(
                         SpotifyImportArtistDerive.derive(cleaned),
                         cleaned,
                     )
-                } catch (e: DjAiException) {
-                    if (!allowHeuristicFallback) throw e
-                    Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
-                    heuristicTasteAnalysis(
-                        SpotifyImportArtistDerive.derive(cleaned),
-                        cleaned,
-                    )
-                } catch (e: IllegalStateException) {
-                    if (!allowHeuristicFallback) throw e
-                    Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
-                    heuristicTasteAnalysis(
-                        SpotifyImportArtistDerive.derive(cleaned),
-                        cleaned,
-                    )
+                } else {
+                    try {
+                        TasteImportAi.analyzeTracks(context, cleaned)
+                    } catch (e: TasteImportException) {
+                        if (!allowHeuristicFallback) throw e
+                        Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                        heuristicTasteAnalysis(
+                            SpotifyImportArtistDerive.derive(cleaned),
+                            cleaned,
+                        )
+                    } catch (e: DjAiException) {
+                        if (!allowHeuristicFallback) throw e
+                        Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                        heuristicTasteAnalysis(
+                            SpotifyImportArtistDerive.derive(cleaned),
+                            cleaned,
+                        )
+                    } catch (e: IllegalStateException) {
+                        if (!allowHeuristicFallback) throw e
+                        Timber.tag(TAG).w(e, "DJ AI unavailable; using heuristic taste for file import")
+                        heuristicTasteAnalysis(
+                            SpotifyImportArtistDerive.derive(cleaned),
+                            cleaned,
+                        )
+                    }
                 }
             val summary =
                 TasteSummary.sanitizeOrNull(analysis.summary)
@@ -131,21 +138,25 @@ object CsvTasteImportHelper {
             ListeningTasteTracker.forceSummary(context, summary)
 
             // 4) Persist Spotify taste prefs + listening summary key in one write (UI re-reads both).
-            context.safeDataStoreEdit { prefs ->
-                prefs[ListeningTasteSummaryKey] = summary
-                prefs[SpotifyTasteSummaryKey] = summary
-                if (hints.isNotEmpty()) {
-                    prefs[SpotifyTasteHintsKey] = hints.joinToString("\n")
+            val persisted =
+                context.safeDataStoreEdit { prefs ->
+                    prefs[ListeningTasteSummaryKey] = summary
+                    prefs[SpotifyTasteSummaryKey] = summary
+                    if (hints.isNotEmpty()) {
+                        prefs[SpotifyTasteHintsKey] = hints.joinToString("\n")
+                    }
+                    if (topArtists.isNotEmpty()) {
+                        prefs[SpotifyTopArtistsKey] = topArtists.joinToString("\n")
+                    }
+                    if (topTracks.isNotEmpty()) {
+                        prefs[SpotifyTopTracksKey] =
+                            topTracks.joinToString("\n") { (title, artist) ->
+                                if (artist.isNotBlank()) "$title — $artist" else title
+                            }
+                    }
                 }
-                if (topArtists.isNotEmpty()) {
-                    prefs[SpotifyTopArtistsKey] = topArtists.joinToString("\n")
-                }
-                if (topTracks.isNotEmpty()) {
-                    prefs[SpotifyTopTracksKey] =
-                        topTracks.joinToString("\n") { (title, artist) ->
-                            if (artist.isNotBlank()) "$title — $artist" else title
-                        }
-                }
+            if (!persisted) {
+                throw IllegalStateException("Taste profile could not be saved")
             }
 
             Timber.tag(TAG).i(

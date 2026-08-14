@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -55,6 +57,8 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.spotify.SpotifyImportManager
+import com.metrolist.music.ui.component.aura.AuraBottomSheet
+import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraIconButton
 import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
@@ -70,11 +74,10 @@ fun MetroDjChatButton(
     modifier: Modifier = Modifier,
     tint: Color = Color.White,
 ) {
-    val sheetState = LocalBottomSheetPageState.current
+    var showChat by remember { mutableStateOf(false) }
+
     AuraIconButton(
-        onClick = {
-            sheetState.show { MetroDjChatSheet(onDismiss = sheetState::dismiss) }
-        },
+        onClick = { showChat = true },
         modifier = modifier.size(42.dp),
         containerColor = Color.White.copy(alpha = 0.1f),
         contentColor = tint,
@@ -85,8 +88,13 @@ fun MetroDjChatButton(
             modifier = Modifier.size(20.dp),
         )
     }
+
+    if (showChat) {
+        MetroDjChatSheet(onDismiss = { showChat = false })
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MetroDjChatSheet(
     onDismiss: () -> Unit,
@@ -494,6 +502,97 @@ fun MetroDjChatSheet(
         }
     }
 
+    AuraBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = AuraElevated,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
+        ) {
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.radio),
+                    contentDescription = null,
+                    tint = AuraSpotifyGreen,
+                    modifier = Modifier.size(28.dp),
+                )
+                Column {
+                    Text(
+                        text = stringResource(R.string.nano_dj_section),
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    Text(
+                        text = if (active) stringResource(R.string.nano_dj_on_air) else stringResource(R.string.nano_dj_off_air),
+                        color = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.65f),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.nano_dj_lane_format, laneName),
+                color = Color.White.copy(alpha = 0.65f),
+            )
+            commentary?.let { Text(it, color = Color.White.copy(alpha = 0.75f)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    stringResource(R.string.nano_dj_action_start),
+                    stringResource(R.string.nano_dj_action_chill),
+                    stringResource(R.string.nano_dj_action_skip),
+                ).forEach { label ->
+                    AssistChip(
+                        onClick = { runCommand(label) },
+                        label = { Text(label) },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            labelColor = Color.White,
+                        ),
+                    )
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 180.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                items(messages) { message ->
+                    Text(
+                        text = if (message.fromDj) "Metro DJ: ${message.text}" else "You: ${message.text}",
+                        color = if (message.fromDj) AuraSpotifyGreen else Color.White,
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.nano_dj_chat_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { runCommand(input) }),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AuraSpotifyGreen,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                ),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AuraPrimaryButton(onClick = { runCommand(input) }, enabled = input.isNotBlank() && !busy) {
+                    Text(stringResource(R.string.send))
+                }
+                AuraSecondaryAction(onClick = onDismiss) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        }
+    }
+
     if (pendingConfirmation != null) {
         DefaultDialog(
             onDismiss = {
@@ -515,69 +614,5 @@ fun MetroDjChatSheet(
                 }) { Text(stringResource(android.R.string.cancel)) }
             },
         )
-    }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-    ) {
-        Text(stringResource(R.string.nano_dj_section), style = MaterialTheme.typography.headlineSmall)
-        Text(
-            text = if (active) stringResource(R.string.nano_dj_on_air) else stringResource(R.string.nano_dj_off_air),
-            color = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.65f),
-        )
-        Text(
-            text = stringResource(R.string.nano_dj_lane_format, laneName),
-            color = Color.White.copy(alpha = 0.65f),
-        )
-        commentary?.let { Text(it, color = Color.White.copy(alpha = 0.75f)) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                stringResource(R.string.nano_dj_action_start),
-                stringResource(R.string.nano_dj_action_chill),
-                stringResource(R.string.nano_dj_action_skip),
-            ).forEach { label ->
-                AssistChip(
-                    onClick = { runCommand(label) },
-                    label = { Text(label) },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = Color.White.copy(alpha = 0.08f),
-                        labelColor = Color.White,
-                    ),
-                )
-            }
-        }
-        LazyColumn(
-            modifier = Modifier.heightIn(max = 180.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            items(messages) { message ->
-                Text(
-                    text = if (message.fromDj) "Metro DJ: ${message.text}" else "You: ${message.text}",
-                    color = if (message.fromDj) AuraSpotifyGreen else Color.White,
-                )
-            }
-        }
-        OutlinedTextField(
-            value = input,
-            onValueChange = { input = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(stringResource(R.string.nano_dj_chat_hint)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { runCommand(input) }),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AuraSpotifyGreen,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-            ),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AuraPrimaryButton(onClick = { runCommand(input) }, enabled = input.isNotBlank() && !busy) {
-                Text(stringResource(R.string.send))
-            }
-            AuraSecondaryAction(onClick = onDismiss) {
-                Text(stringResource(android.R.string.cancel))
-            }
-        }
     }
 }

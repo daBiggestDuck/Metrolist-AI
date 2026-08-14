@@ -154,7 +154,6 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.HorizontalPagedLazyGrid
-import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.MetroDjChatSheet
 import com.metrolist.music.ui.component.NavigationTitle
@@ -645,7 +644,6 @@ fun HomeScreen(
     val viewModel: HomeViewModel = hiltViewModel(activity)
     val navController = LocalNavController.current
     val menuState = LocalMenuState.current
-    val bottomSheetPageState = LocalBottomSheetPageState.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
@@ -1311,8 +1309,8 @@ fun HomeScreen(
                     val context = LocalContext.current
                     val nanoScope = rememberCoroutineScope()
                     val nanoDjSpeak by rememberPreference(com.metrolist.music.constants.NanoDjSpeakKey, true)
-                    val bottomSheetPageState = LocalBottomSheetPageState.current
                     var nanoDjStarting by remember { mutableStateOf(false) }
+                    var showMetroDjChat by rememberSaveable { mutableStateOf(false) }
                     com.metrolist.music.ui.component.aura.AuraHeroPanel(
                         title = stringResource(R.string.nano_dj_section),
                         subtitle = stringResource(R.string.nano_dj_home_subtitle),
@@ -1350,11 +1348,7 @@ fun HomeScreen(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                     com.metrolist.music.ui.component.aura.AuraFloatingChromeButton(
-                        onClick = {
-                            bottomSheetPageState.show {
-                                MetroDjChatSheet(onDismiss = bottomSheetPageState::dismiss)
-                            }
-                        },
+                        onClick = { showMetroDjChat = true },
                         contentDescription = stringResource(R.string.nano_dj_open_chat),
                     ) {
                         Icon(
@@ -1363,6 +1357,9 @@ fun HomeScreen(
                             tint = Color.White,
                             modifier = Modifier.size(20.dp),
                         )
+                    }
+                    if (showMetroDjChat) {
+                        MetroDjChatSheet(onDismiss = { showMetroDjChat = false })
                     }
                 }
 

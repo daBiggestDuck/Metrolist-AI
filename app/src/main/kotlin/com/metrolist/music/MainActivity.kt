@@ -808,11 +808,15 @@ class MainActivity : ComponentActivity() {
                 // the transition. Looking only at currentRoute hides Settings too early when its
                 // pop animation is moving back to a main tab.
                 val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
+                val mainTabRoutes =
+                    remember {
+                        setOf(Screens.Home.route, Screens.Search.route, Screens.Library.route)
+                    }
                 val navHostShowsOverlay =
                     currentRoute != null &&
-                        (currentMainTabIndex == null ||
+                        (!mainTabRoutes.contains(currentRoute) ||
                             visibleEntries.any { entry ->
-                                navigationTabIndex(entry.destination.route, navigationItems) == null
+                                !mainTabRoutes.contains(entry.destination.route)
                             })
                 // One animation owner: taps and route changes only update the target. This avoids
                 // competing animateTo coroutines cancelling each other mid-travel.
@@ -1457,7 +1461,7 @@ class MainActivity : ComponentActivity() {
                                     pureBlack = pureBlack,
                                     snackbarHostState = snackbarHostState,
                                     searchSavedStateHandle = mainSearchSavedStateHandle,
-                                    visible = currentRoute == null || navigationItemRoutes.contains(currentRoute),
+                                    visible = currentRoute == null || mainTabRoutes.contains(currentRoute),
                                     modifier = Modifier.fillMaxSize(),
                                 )
 
@@ -1540,6 +1544,10 @@ class MainActivity : ComponentActivity() {
                                     modifier =
                                         Modifier
                                             .fillMaxSize()
+                                            // Every nested destination owns an opaque canvas. This
+                                            // prevents transparent/detail screens from exposing the
+                                            // mounted Home/Search/Library strip underneath them.
+                                            .background(if (navHostShowsOverlay) baseBg else Color.Transparent)
                                             .graphicsLayer {
                                                 alpha = if (navHostShowsOverlay) 1f else 0f
                                             },

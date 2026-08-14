@@ -24,6 +24,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.R
 import com.metrolist.music.utils.CsvTasteImportHelper
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -173,6 +174,14 @@ class SpotifyImportManager(
                     tracks = cleaned,
                     enableNano = enableNano,
                 )
+            onProgress(
+                SpotifyImportProgress(
+                    current = cleaned.size,
+                    total = cleaned.size,
+                    phase = appContext.getString(R.string.spotify_taste_profile_saved),
+                ),
+            )
+
             val topArtists = deriveTopArtists(cleaned)
             val topTracks = cleaned.take(50)
             val hints =
@@ -273,6 +282,14 @@ class SpotifyImportManager(
                     enableNano = enableNano,
                     allowHeuristicFallback = true,
                 )
+
+            onProgress(
+                SpotifyImportProgress(
+                    current = cleaned.size,
+                    total = cleaned.size,
+                    phase = appContext.getString(R.string.spotify_taste_profile_saved),
+                ),
+            )
 
             val topArtists = deriveTopArtists(cleaned)
             val topTracks = cleaned.take(50)
