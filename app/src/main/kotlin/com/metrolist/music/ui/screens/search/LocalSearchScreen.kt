@@ -60,6 +60,7 @@ import com.metrolist.music.ui.component.AlbumListItem
 import com.metrolist.music.ui.component.ArtistListItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SongListItem
@@ -110,7 +111,7 @@ fun LocalSearchScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .background(if (pureBlack) Color.Black else AuraPlayerCanvas)
                 .let { base ->
                     if (isLandscape) {
                         base.windowInsetsPadding(

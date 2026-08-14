@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.screens.settings.integrations
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -131,9 +132,10 @@ fun SpotifySettings(
     }
 
     fun showTasteError(message: String?) {
-        tasteErrorMessage = message ?: context.getString(R.string.ai_error_unknown)
+        tasteErrorMessage = message?.takeIf { it.isNotBlank() } ?: context.getString(R.string.ai_error_unknown)
         showTasteErrorDialog = true
         statusMessage = tasteErrorMessage
+        Toast.makeText(context, tasteErrorMessage, Toast.LENGTH_LONG).show()
     }
 
     fun requestTasteOverwrite(action: () -> Unit) {
@@ -665,16 +667,6 @@ fun SpotifySettings(
         )
 
         Spacer(Modifier.height(8.dp))
-        AuraRow(
-            title = stringResource(R.string.spotify_view_taste),
-            subtitle =
-                displayTasteSummary?.take(120)
-                    ?: stringResource(R.string.spotify_view_taste_desc),
-            showChevron = true,
-            onClick = { navController.navigate("settings/integrations/spotify/taste") },
-        )
-        AuraDivider()
-
         AuraRow(
             title = stringResource(R.string.nano_recommendations_generate),
             subtitle = stringResource(R.string.nano_recommendations_generate_desc),

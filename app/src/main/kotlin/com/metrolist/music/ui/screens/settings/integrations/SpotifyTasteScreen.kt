@@ -44,7 +44,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalDatabase
@@ -72,7 +71,6 @@ import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.spotify.SpotifyImportProgress
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
-import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraArtistAvatar
 import com.metrolist.music.ui.component.aura.AuraDivider
 import com.metrolist.music.ui.component.aura.AuraHeader
@@ -215,9 +213,6 @@ fun SpotifyTasteScreen(
     var isBusy by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableStateOf(SpotifyImportProgress()) }
-    var pendingFileTracks by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
-    var showFilePlaylistNameDialog by remember { mutableStateOf(false) }
-    var pendingFilePlaylistName by remember { mutableStateOf(SpotifyImportManager.TASTE_PLAYLIST_NAME) }
     var showLocalPlaylistPicker by remember { mutableStateOf(false) }
     var showTasteOverwriteConfirm by remember { mutableStateOf(false) }
     var pendingTasteOverwrite by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -244,7 +239,7 @@ fun SpotifyTasteScreen(
     }
 
     fun showTasteError(message: String?) {
-        tasteErrorMessage = message ?: context.getString(R.string.ai_error_unknown)
+        tasteErrorMessage = message?.takeIf { it.isNotBlank() } ?: context.getString(R.string.ai_error_unknown)
         showTasteErrorDialog = true
         statusMessage = tasteErrorMessage
         Toast.makeText(context, tasteErrorMessage, Toast.LENGTH_LONG).show()
@@ -338,7 +333,6 @@ fun SpotifyTasteScreen(
             } finally {
                 manager.close()
                 isBusy = false
-                pendingFileTracks = null
             }
         }
     }
@@ -416,11 +410,18 @@ fun SpotifyTasteScreen(
                         showTasteError(statusMessage)
                         return@launch
                     }
-                    pendingFileTracks = parsed.tracks
-                    pendingFilePlaylistName =
+                    val playlistName =
                         parsed.playlistName?.takeIf { it.isNotBlank() }
                             ?: SpotifyImportManager.TASTE_PLAYLIST_NAME
-                    showFilePlaylistNameDialog = true
+                    statusMessage =
+                        context.getString(
+                            R.string.spotify_file_import_started,
+                            parsed.tracks.size,
+                        )
+                    Toast.makeText(context, statusMessage, Toast.LENGTH_SHORT).show()
+                    // The file itself is the explicit overwrite action. Do not add a second
+                    // playlist-name and confirmation flow before the taste update can start.
+                    runFileTasteImport(parsed.tracks, playlistName)
                 } catch (e: Exception) {
                     showTasteError(e.message)
                     reportException(e)
@@ -569,30 +570,6 @@ fun SpotifyTasteScreen(
                 }) {
                     Text(stringResource(R.string.listening_taste_reset))
                 }
-            },
-        )
-    }
-
-    if (showFilePlaylistNameDialog) {
-        TextFieldDialog(
-            title = { Text(stringResource(R.string.spotify_file_import_playlist_name_title)) },
-            icon = { Icon(painterResource(R.drawable.playlist_add), null) },
-            initialTextFieldValue = TextFieldValue(text = pendingFilePlaylistName),
-            onDone = { name ->
-                showFilePlaylistNameDialog = false
-                val fileTracks = pendingFileTracks
-                if (fileTracks != null) {
-                    requestTasteOverwrite {
-                        runFileTasteImport(
-                            fileTracks = fileTracks,
-                            playlistName = name.trim().ifBlank { SpotifyImportManager.TASTE_PLAYLIST_NAME },
-                        )
-                    }
-                }
-            },
-            onDismiss = {
-                showFilePlaylistNameDialog = false
-                pendingFileTracks = null
             },
         )
     }

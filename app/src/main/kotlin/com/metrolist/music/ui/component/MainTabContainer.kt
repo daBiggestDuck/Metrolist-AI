@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
@@ -62,7 +63,8 @@ fun MainTabContainer(
     BoxWithConstraints(
         modifier = modifier
             .then(if (visible) Modifier.fillMaxSize() else Modifier.size(0.dp))
-            .clip(RectangleShape),
+            .clip(RectangleShape)
+            .background(if (pureBlack) Color.Black else AuraPlayerCanvas),
     ) {
         val pageWidth: Dp = maxWidth
         val pageWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { pageWidth.toPx() }

@@ -1543,14 +1543,17 @@ class MainActivity : ComponentActivity() {
                                     // Pinned Aura top bar is a no-op nested-scroll target; skip attachment.
                                     modifier =
                                         Modifier
-                                            .fillMaxSize()
-                                            // Every nested destination owns an opaque canvas. This
-                                            // prevents transparent/detail screens from exposing the
-                                            // mounted Home/Search/Library strip underneath them.
-                                            .background(if (navHostShowsOverlay) baseBg else Color.Transparent)
-                                            .graphicsLayer {
-                                                alpha = if (navHostShowsOverlay) 1f else 0f
-                                            },
+                                            // Keep the NavHost out of the hit-test/layout tree for
+                                            // the three mounted tab anchors. Nested routes get a
+                                            // real opaque canvas instead of an alpha-hidden overlay.
+                                            .then(
+                                                if (navHostShowsOverlay) {
+                                                    Modifier.fillMaxSize()
+                                                } else {
+                                                    Modifier.size(0.dp)
+                                                },
+                                            )
+                                            .background(if (navHostShowsOverlay) baseBg else Color.Transparent),
                                 ) {
                                     navigationBuilder(
                                         navController = navController,

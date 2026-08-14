@@ -83,6 +83,7 @@ import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.playback.queues.YouTubeQueue
@@ -461,7 +462,9 @@ fun SearchScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    // MainActivity owns the floating Aura header. Keep this search island below
+                    // that header in browse mode instead of letting it render underneath it.
+                    .padding(top = AppBarHeight + 8.dp, start = 16.dp, end = 16.dp)
                     .clip(RoundedCornerShape(percent = 50))
                     .background(AuraElevated)
                     .clickable(onClick = { isSearchActive = true })
@@ -547,8 +550,8 @@ private fun SearchBrowseHub(
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Keep browse content below the floating search bar and status-bar area.
-        Spacer(modifier = Modifier.height(topInset + 64.dp))
+        // Keep browse content below the floating search bar, shell header, and status-bar area.
+        Spacer(modifier = Modifier.height(topInset + AppBarHeight + 64.dp))
 
         LazyColumn(
             state = listState,

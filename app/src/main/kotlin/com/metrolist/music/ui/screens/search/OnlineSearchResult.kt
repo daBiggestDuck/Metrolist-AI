@@ -104,6 +104,7 @@ import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -365,7 +366,7 @@ fun OnlineSearchResult(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .background(if (pureBlack) Color.Black else AuraPlayerCanvas)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
     ) {
         // Google-style SearchBar with Material 3 design

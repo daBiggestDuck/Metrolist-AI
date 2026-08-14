@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,11 +16,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +34,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -58,6 +61,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.ui.component.aura.AuraBottomSheet
+import com.metrolist.music.ui.component.aura.AuraDivider
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraIconButton
 import com.metrolist.music.ui.component.aura.AuraPrimaryButton
@@ -68,6 +72,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private data class MetroDjMessage(val fromDj: Boolean, val text: String)
+
+private data class MetroDjQuickAction(
+    val label: String,
+    val command: String,
+)
 
 @Composable
 fun MetroDjChatButton(
@@ -516,16 +525,23 @@ fun MetroDjChatSheet(
                     .padding(bottom = 8.dp),
         ) {
             Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.radio),
-                    contentDescription = null,
-                    tint = AuraSpotifyGreen,
-                    modifier = Modifier.size(28.dp),
-                )
-                Column {
+                AuraIconButton(
+                    onClick = {},
+                    modifier = Modifier.size(48.dp),
+                    enabled = false,
+                    containerColor = if (active) AuraSpotifyGreen.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f),
+                    contentColor = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.7f),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.radio),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.nano_dj_section),
                         style = MaterialTheme.typography.headlineSmall,
@@ -537,25 +553,92 @@ fun MetroDjChatSheet(
                     )
                 }
             }
-            Text(
-                text = stringResource(R.string.nano_dj_lane_format, laneName),
-                color = Color.White.copy(alpha = 0.65f),
-            )
-            commentary?.let { Text(it, color = Color.White.copy(alpha = 0.75f)) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    stringResource(R.string.nano_dj_action_start),
-                    stringResource(R.string.nano_dj_action_chill),
-                    stringResource(R.string.nano_dj_action_skip),
-                ).forEach { label ->
-                    AssistChip(
-                        onClick = { runCommand(label) },
-                        label = { Text(label) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = Color.White.copy(alpha = 0.08f),
-                            labelColor = Color.White,
-                        ),
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.06f))
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.nano_dj_lane_format, laneName),
+                    color = Color.White.copy(alpha = 0.72f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = if (active) stringResource(R.string.nano_dj_on_air) else stringResource(R.string.nano_dj_off_air),
+                    color = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            commentary?.let { line ->
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(AuraSpotifyGreen.copy(alpha = 0.10f))
+                            .padding(14.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.nano_dj_badge),
+                        color = AuraSpotifyGreen,
+                        style = MaterialTheme.typography.labelMedium,
                     )
+                    Text(
+                        text = line,
+                        color = Color.White.copy(alpha = 0.86f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.04f)),
+            ) {
+                listOf(
+                    MetroDjQuickAction(
+                        stringResource(R.string.nano_dj_action_start),
+                        "start",
+                    ),
+                    MetroDjQuickAction(
+                        stringResource(R.string.nano_dj_action_chill),
+                        "make it chill",
+                    ),
+                    MetroDjQuickAction(
+                        stringResource(R.string.nano_dj_action_skip),
+                        "skip",
+                    ),
+                ).forEachIndexed { index, action ->
+                    if (index > 0) AuraDivider()
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !busy) { runCommand(action.command) }
+                                .padding(horizontal = 14.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = action.label,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.55f),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
             LazyColumn(
