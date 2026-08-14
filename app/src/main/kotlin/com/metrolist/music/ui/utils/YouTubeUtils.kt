@@ -3,8 +3,6 @@
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
-@file:Suppress("LocalVariableName")
-
 package com.metrolist.music.ui.utils
 
 fun String.resize(
@@ -12,21 +10,36 @@ fun String.resize(
     height: Int? = null,
 ): String {
     if (width == null && height == null) return this
-    // Match BOTH lh3 and yt3 googleusercontent: YouTube migrated music/album art from
-    // lh3.googleusercontent.com to yt3.googleusercontent.com. Both serve the same =wW-hH resize
-    // params; matching only lh3 silently no-ops on the new host, so the player upscales the raw
-    // ~60px thumbnail (blurry). Verified live: a yt3 URL + =w544-h544 returns a sharp full-size image.
-    "https://(?:lh3|yt3)\\.googleusercontent\\.com/.*=w(\\d+)-h(\\d+).*".toRegex()
-        .matchEntire(this)?.groupValues?.let { group ->
-        val (W, H) = group.drop(1).map { it.toInt() }
-        var w = width
-        var h = height
-        if (w != null && h == null) h = (w / W) * H
-        if (w == null && h != null) w = (h / H) * W
-        return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
+
+    val googleusercontent =
+        Regex("^(https://(?:lh3|yt3)\\.googleusercontent\\.com/.*)=w(\\d+)-h(\\d+)(.*)$")
+            .matchEntire(this)
+    if (googleusercontent != null) {
+        val originalWidth = googleusercontent.groupValues[2].toInt()
+        val originalHeight = googleusercontent.groupValues[3].toInt()
+        val resizedWidth = width ?: ((height!! * originalWidth) / originalHeight)
+        val resizedHeight = height ?: ((width!! * originalHeight) / originalWidth)
+        return "${googleusercontent.groupValues[1]}=w$resizedWidth-h$resizedHeight${googleusercontent.groupValues[4]}"
     }
-    if (this matches "https://yt3\\.ggpht\\.com/.*=s(\\d+)".toRegex()) {
-        return "$this-s${width ?: height}"
+
+    val ggpht = Regex("^(https://yt3\\.ggpht\\.com/.*)=s(\\d+)(.*)$").matchEntire(this)
+    if (ggpht != null) {
+        val requestedWidth = width ?: height!!
+        val requestedHeight = height ?: width
+        val dimensions =
+            if (requestedHeight != null) {
+                "w$requestedWidth-h$requestedHeight-p-l90-rj"
+            } else {
+                "s$requestedWidth-p-l90-rj"
+            }
+        return "${ggpht.groupValues[1]}=$dimensions${ggpht.groupValues[3]}"
     }
+
+    if (startsWith("https://i.ytimg.com/") && maxOf(width ?: 0, height ?: 0) > 480) {
+        return replace("hqdefault.jpg", "maxresdefault.jpg")
+            .replace("mqdefault.jpg", "maxresdefault.jpg")
+            .replace("sddefault.jpg", "maxresdefault.jpg")
+    }
+
     return this
 }

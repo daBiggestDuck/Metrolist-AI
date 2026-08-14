@@ -1457,6 +1457,7 @@ class MainActivity : ComponentActivity() {
                                     pureBlack = pureBlack,
                                     snackbarHostState = snackbarHostState,
                                     searchSavedStateHandle = mainSearchSavedStateHandle,
+                                    visible = currentRoute == null || navigationItemRoutes.contains(currentRoute),
                                     modifier = Modifier.fillMaxSize(),
                                 )
 

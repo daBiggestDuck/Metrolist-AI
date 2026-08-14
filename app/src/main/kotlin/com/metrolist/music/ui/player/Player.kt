@@ -167,6 +167,7 @@ import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.MetroDjChatButton
 import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
@@ -1044,6 +1045,7 @@ fun BottomSheetPlayer(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        MetroDjChatButton(tint = iconButtonColor)
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                             if (showLyrics) {
                                 AuraIconButton(onClick = { isFullScreen = !isFullScreen },
@@ -1198,7 +1200,10 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else {
-                    AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        MetroDjChatButton(tint = iconButtonColor)
+                        Spacer(Modifier.width(8.dp))
+                        AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                         if (showLyrics) {
                             Box(
                                 modifier =
@@ -1297,6 +1302,7 @@ fun BottomSheetPlayer(
                                 textButtonColor = textButtonColor,
                                 iconButtonColor = iconButtonColor,
                             )
+                        }
                         }
                     }
                 }

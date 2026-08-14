@@ -39,6 +39,7 @@ object NanoDjLauncher {
         context: Context,
         playerConnection: PlayerConnection,
         speak: Boolean = true,
+        replaceCurrentQueue: Boolean = false,
     ): Result<Unit> =
         runCatching {
             NanoDjSession.ensureTts(context)
@@ -115,6 +116,11 @@ object NanoDjLauncher {
                     lane = merged.lane,
                     excludedSongIds = excludedSongIds,
                 )
+            if (replaceCurrentQueue) {
+                playerConnection.service.clearAutomix()
+                playerConnection.player.stop()
+                playerConnection.player.clearMediaItems()
+            }
             playerConnection.playQueue(queue)
         }
 

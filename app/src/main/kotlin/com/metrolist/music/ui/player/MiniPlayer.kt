@@ -125,6 +125,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.MetroDjChatButton
 import com.metrolist.music.ui.menu.AddToPlaylistDialog
 
 /**
@@ -459,7 +460,14 @@ private fun NewMiniPlayer(
                     modifier = Modifier.weight(1f),
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+
+                MetroDjChatButton(
+                    modifier = Modifier.size(40.dp),
+                    tint = onSurfaceColor,
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 // Cast indicator
                 if (isCasting) {
@@ -860,6 +868,11 @@ private fun LegacyMiniPlayer(
                     )
                 }
             }
+
+            MetroDjChatButton(
+                modifier = Modifier.size(40.dp),
+                tint = Color.White,
+            )
 
             LegacyPlayPauseButton(
                 playbackState = playbackState,

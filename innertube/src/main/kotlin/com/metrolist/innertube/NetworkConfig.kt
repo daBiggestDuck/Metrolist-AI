@@ -2,7 +2,6 @@ package com.metrolist.innertube
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -32,9 +31,7 @@ object NetworkConfig {
         cacheDir: File? = null,
         enableCache: Boolean = true
     ): HttpClient = HttpClient(OkHttp) {
-        install(HttpResponseValidator) {
-            expectSuccess = true
-        }
+        expectSuccess = true
 
         install(ContentNegotiation) {
             json(Json {

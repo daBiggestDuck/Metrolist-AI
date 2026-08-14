@@ -2131,6 +2131,16 @@ class MusicService :
         automixItems.value = emptyList()
     }
 
+    /** Stops Metro DJ and invalidates its queue owner before clearing player items. */
+    fun stopMetroDj() {
+        if (currentQueue is com.metrolist.music.playback.queues.NanoDjQueue) {
+            currentQueue = EmptyQueue
+            queueTitle = null
+            clearAutomix()
+            com.metrolist.music.ai.NanoDjSession.stop()
+        }
+    }
+
     /**
      * Apply a player dislike to the active Metro DJ queue immediately. The preference write
      * happens in the UI; this method prevents the item from being played from the already
@@ -2652,6 +2662,15 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        // Metro DJ commentary is announced only after Media3 reports a real item transition.
+        // Queue-page prefetches update the visible line but must remain silent.
+        if (currentQueue is com.metrolist.music.playback.queues.NanoDjQueue &&
+            reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
+            mediaItem != null
+        ) {
+            com.metrolist.music.ai.NanoDjSession.announceTransition(mediaItem.mediaId)
+        }
+
         // The track that was playing before this transition only gets marked as
         // "fully cached" if it advanced AUTOmatically (i.e. it actually finished),
         // never on a manual skip/seek. lastTransitionedMediaId must be read BEFORE

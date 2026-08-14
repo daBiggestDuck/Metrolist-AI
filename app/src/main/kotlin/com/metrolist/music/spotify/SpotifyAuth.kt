@@ -13,7 +13,6 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.statement.HttpResponse
@@ -211,9 +210,7 @@ class SpotifyAuth(
                 connectTimeoutMillis = 10_000L
                 socketTimeoutMillis = 15_000L
             }
-            install(HttpResponseValidator) {
-                expectSuccess = false
-            }
+            expectSuccess = false
         }
 
         fun generatePkcePair(): SpotifyPkcePair {

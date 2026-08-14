@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -34,6 +35,12 @@ object NanoDjSession {
 
     private val ttsReady = AtomicBoolean(false)
     private val speakEnabled = AtomicBoolean(true)
+    private var lastAnnouncedLine: String? = null
+    private var lastTransitionMediaId: String? = null
+    private val transitionCommentary = ConcurrentHashMap<String, String>()
+    private var pendingTransitionMediaId: String? = null
+    @Volatile
+    private var pendingAnnouncement: String? = null
 
     fun setSpeakEnabled(enabled: Boolean) {
         speakEnabled.set(enabled)
@@ -54,6 +61,12 @@ object NanoDjSession {
                                 result != TextToSpeech.LANG_NOT_SUPPORTED,
                         )
                         Timber.tag(TAG).i("TTS ready=%s", ttsReady.get())
+                        synchronized(this@NanoDjSession) {
+                            pendingAnnouncement?.also {
+                                pendingAnnouncement = null
+                                speakOnce(it, force = true)
+                            }
+                        }
                     } else {
                         ttsReady.set(false)
                         Timber.tag(TAG).w("TTS init failed status=%d", status)
@@ -62,25 +75,66 @@ object NanoDjSession {
         }
     }
 
+    @Synchronized
     fun start(openingLine: String?, usedAi: Boolean = false) {
         _active.value = true
+        pendingTransitionMediaId = null
         publish(openingLine, usedAi)
+        announceCurrent()
     }
 
-    fun publish(line: String?, usedAi: Boolean = false) {
+    /** Updates the visible host line without speaking during queue composition/prefetch. */
+    @Synchronized
+    fun publish(
+        line: String?,
+        usedAi: Boolean = false,
+        transitionMediaId: String? = null,
+    ) {
         if (line.isNullOrBlank()) return
         _commentary.value = line.trim()
         _usedAi.value = usedAi
-        maybeSpeak(line.trim())
+        pendingTransitionMediaId = transitionMediaId?.takeIf { it.isNotBlank() }
+        transitionMediaId?.takeIf { it.isNotBlank() }?.let { id ->
+            transitionCommentary[id] = line.trim()
+        }
     }
 
+    /** Speaks a user-requested change immediately, bypassing transition deduplication. */
+    @Synchronized
+    fun announce(line: String?, usedAi: Boolean = false) {
+        if (line.isNullOrBlank()) return
+        publish(line, usedAi)
+        speakOnce(line.trim(), force = true)
+    }
+
+    /** Announces the latest block commentary once, only after a real playback transition. */
+    @Synchronized
+    fun announceTransition(mediaId: String?) {
+        if (!_active.value || mediaId.isNullOrBlank() || mediaId == lastTransitionMediaId) return
+        val line = transitionCommentary.remove(mediaId) ?: return
+        lastTransitionMediaId = mediaId
+        if (pendingTransitionMediaId == mediaId) pendingTransitionMediaId = null
+        speakOnce(line)
+    }
+
+    private fun announceCurrent() {
+        _commentary.value?.trim()?.takeIf { it.isNotBlank() }?.let { speakOnce(it) }
+    }
+
+    @Synchronized
     fun stop() {
         _active.value = false
         _commentary.value = null
         _usedAi.value = false
+        lastAnnouncedLine = null
+        lastTransitionMediaId = null
+        pendingTransitionMediaId = null
+        transitionCommentary.clear()
+        pendingAnnouncement = null
         runCatching { tts?.stop() }
     }
 
+    @Synchronized
     fun shutdown() {
         stop()
         runCatching {
@@ -90,9 +144,16 @@ object NanoDjSession {
         ttsReady.set(false)
     }
 
-    private fun maybeSpeak(line: String) {
-        if (!speakEnabled.get() || !ttsReady.get()) return
+    @Synchronized
+    private fun speakOnce(line: String, force: Boolean = false) {
+        if (!force && lastAnnouncedLine == line) return
+        if (!speakEnabled.get()) return
+        if (!ttsReady.get()) {
+            pendingAnnouncement = line
+            return
+        }
         val engine = tts ?: return
+        lastAnnouncedLine = line
         runCatching {
             engine.speak(line, TextToSpeech.QUEUE_FLUSH, null, "nano_dj_${System.currentTimeMillis()}")
         }.onFailure {

@@ -48,4 +48,34 @@ class CsvPlaylistParserTest {
         assertEquals(2, result.tracks.size)
         assertEquals("Blinding Lights", result.tracks[0].first)
     }
+
+    @Test
+    fun `parses headerless title artist CSV without treating first row as a header`() {
+        val lines = listOf(
+            "Song One,Artist One\r",
+            "Song Two,Artist Two, Featuring Artist\r",
+            "\r",
+        )
+        val previewRows = lines.map { CsvParser.parseLine(it) }
+        val mapping = CsvImportColumnDetector.detect(previewRows, hasHeader = false)
+        val result = CsvPlaylistParser.parse(lines, mapping)
+
+        assertEquals(0, mapping.titleColumnIndex)
+        assertEquals(1, mapping.artistColumnIndex)
+        assertEquals(listOf("Song One" to "Artist One", "Song Two" to "Artist Two"), result.tracks)
+    }
+
+    @Test
+    fun `keeps commas inside quoted title and artist fields`() {
+        val lines = listOf(
+            "\"Title, With Comma\",\"Artist, With Comma\"",
+        )
+        val mapping = CsvImportColumnDetector.detect(
+            lines.map { CsvParser.parseLine(it) },
+            hasHeader = false,
+        )
+        val result = CsvPlaylistParser.parse(lines, mapping)
+
+        assertEquals("Title, With Comma" to "Artist, With Comma", result.tracks.single())
+    }
 }

@@ -574,6 +574,21 @@ object ListeningTasteTracker {
         }
     }
 
+    /** Change the active DJ lane without changing the Room schema or imported taste. */
+    suspend fun setActiveLane(context: Context, lane: DjLane) {
+        if (memoryProfile == null) loadProfile(context)
+        val updated =
+            mutex.withLock {
+                val next = (memoryProfile ?: Profile()).copy(
+                    activeLane = lane,
+                    lastUpdatedMs = System.currentTimeMillis(),
+                )
+                memoryProfile = next
+                next
+            }
+        persistProfile(context, updated)
+    }
+
     /**
      * Merge continuous listening taste with optional Spotify import prefs for Metro DJ.
      */

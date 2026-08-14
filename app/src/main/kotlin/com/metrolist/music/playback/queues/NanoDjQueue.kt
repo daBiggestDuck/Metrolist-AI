@@ -45,7 +45,9 @@ class NanoDjQueue(
 
     override suspend fun getInitialStatus(): Queue.Status =
         withContext(Dispatchers.IO) {
-            NanoDjSession.start(null, usedAi = false)
+            // A new queue is a new DJ session: clear stale commentary and pending speech before
+            // composing the opening line, otherwise replacing a queue can replay the old block.
+            NanoDjSession.stop()
             val opening =
                 NanoDjEngine.openingLine(
                     context = currentContext(),
@@ -99,7 +101,6 @@ class NanoDjQueue(
                 enableNano = enableNano,
                 client = client,
             )
-        NanoDjSession.publish(pick.commentary, usedAi = pick.usedAi)
 
         val resolved = ArrayList<MediaItem>(batchSize)
         for (query in pick.queries) {
@@ -129,6 +130,12 @@ class NanoDjQueue(
                 Timber.tag(TAG).w(it, "Radio fallback failed")
             }
         }
+
+        NanoDjSession.publish(
+            pick.commentary,
+            usedAi = pick.usedAi,
+            transitionMediaId = resolved.firstOrNull()?.mediaId,
+        )
 
         Timber.tag(TAG).i(
             "page=%d lane=%s resolved=%d ai=%s",

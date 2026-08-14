@@ -1,7 +1,6 @@
 package com.metrolist.music.discord
 
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -29,9 +28,7 @@ object DiscordExternalAssets {
                 connectTimeoutMillis = 5_000L
                 socketTimeoutMillis = 10_000L
             }
-            install(HttpResponseValidator) {
-                expectSuccess = false
-            }
+            expectSuccess = false
         }
     }
 

@@ -156,6 +156,7 @@ import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.HorizontalPagedLazyGrid
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.MetroDjChatSheet
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
@@ -1310,6 +1311,7 @@ fun HomeScreen(
                     val context = LocalContext.current
                     val nanoScope = rememberCoroutineScope()
                     val nanoDjSpeak by rememberPreference(com.metrolist.music.constants.NanoDjSpeakKey, true)
+                    val bottomSheetPageState = LocalBottomSheetPageState.current
                     var nanoDjStarting by remember { mutableStateOf(false) }
                     com.metrolist.music.ui.component.aura.AuraHeroPanel(
                         title = stringResource(R.string.nano_dj_section),
@@ -1347,6 +1349,21 @@ fun HomeScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
+                    com.metrolist.music.ui.component.aura.AuraFloatingChromeButton(
+                        onClick = {
+                            bottomSheetPageState.show {
+                                MetroDjChatSheet(onDismiss = bottomSheetPageState::dismiss)
+                            }
+                        },
+                        contentDescription = stringResource(R.string.nano_dj_open_chat),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.radio),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
 
                 if (isLoading && homePage?.chips.isNullOrEmpty()) {

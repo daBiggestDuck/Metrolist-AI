@@ -6,7 +6,6 @@ import com.metrolist.kugou.models.SearchLyricsResponse
 import com.metrolist.kugou.models.SearchSongResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
@@ -23,9 +22,7 @@ import kotlin.math.abs
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalEncodingApi::class)
 private val client = HttpClient {
-    install(HttpResponseValidator) {
-        expectSuccess = true
-    }
+    expectSuccess = true
 
     install(ContentNegotiation) {
         val json = Json {

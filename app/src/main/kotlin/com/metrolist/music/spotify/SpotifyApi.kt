@@ -7,7 +7,6 @@ package com.metrolist.music.spotify
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -266,9 +265,7 @@ class SpotifyApi(
                 connectTimeoutMillis = 10_000L
                 socketTimeoutMillis = 30_000L
             }
-            install(HttpResponseValidator) {
-                expectSuccess = false
-            }
+            expectSuccess = false
         }
     }
 }

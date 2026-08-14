@@ -56,8 +56,9 @@ object CsvImportColumnDetector {
         val trackIdx = headerCols.indexOfFirst { it in trackHeaders }
         val artistIdx = headerCols.indexOfFirst { it in artistHeaders }
         val urlIdx = headerCols.indexOfFirst { it in urlHeaders }
+        val effectiveHasHeader = hasHeader && trackIdx >= 0 && artistIdx >= 0
 
-        return if (hasHeader && trackIdx >= 0 && artistIdx >= 0) {
+        return if (effectiveHasHeader) {
             CsvImportState(
                 previewRows = previewRows,
                 artistColumnIndex = artistIdx,
@@ -66,12 +67,21 @@ object CsvImportColumnDetector {
                 hasHeader = true,
             )
         } else {
+            val firstDataRow = previewRows.firstOrNull()
+            val uriIndex = firstDataRow?.indexOfFirst(CsvParser::isSpotifyTrackUri) ?: -1
+            val (titleColumn, artistColumn) =
+                when {
+                    firstDataRow == null -> 1 to 0
+                    firstDataRow.size == 2 -> 0 to 1
+                    uriIndex >= 0 && uriIndex + 3 < firstDataRow.size -> (uriIndex + 1) to (uriIndex + 3)
+                    else -> 1 to 0
+                }
             CsvImportState(
                 previewRows = previewRows,
-                artistColumnIndex = 0,
-                titleColumnIndex = 1,
+                artistColumnIndex = artistColumn,
+                titleColumnIndex = titleColumn,
                 urlColumnIndex = -1,
-                hasHeader = hasHeader,
+                hasHeader = effectiveHasHeader,
             )
         }
     }
@@ -80,11 +90,7 @@ object CsvImportColumnDetector {
         val normalized = row.map { CsvParser.normalizeHeader(it) }
         val hasTrack = normalized.any { it in trackHeaders }
         val hasArtist = normalized.any { it in artistHeaders }
-        if (hasTrack && hasArtist) return true
-        // Two-column CSV without recognizable headers — treat first row as data.
-        return normalized.any { header ->
-            header.contains("name") || header.contains("artist") || header.contains("title")
-        }
+        return hasTrack && hasArtist
     }
 
     /**
