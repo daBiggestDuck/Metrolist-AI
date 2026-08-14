@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.utils.parseCookieString
+import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.aura.auraContentPaddingBelowChrome
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
@@ -110,6 +111,14 @@ fun LibraryPlaylistsScreen(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val database = LocalDatabase.current
+    val dislikedPlaylistName = stringResource(R.string.nano_dj_disliked_playlist_name)
+
+    LaunchedEffect(dislikedPlaylistName) {
+        withContext(Dispatchers.IO) {
+            runCatching { database.ensureLocalPlaylist(dislikedPlaylistName) }
+        }
+    }
 
     val coroutineScope = rememberCoroutineScope()
 

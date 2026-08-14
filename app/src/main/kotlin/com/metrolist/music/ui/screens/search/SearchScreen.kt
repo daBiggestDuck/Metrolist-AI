@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -83,8 +85,6 @@ import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.SearchSource
-import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
@@ -96,7 +96,6 @@ import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.utils.RecentSearchesStore
 import com.metrolist.music.utils.SearchRoutes
-import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.SearchHubViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -161,7 +160,6 @@ fun SearchScreen(
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
     var lastFocusSearchCount by rememberSaveable { mutableIntStateOf(0) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
-    var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }
@@ -262,8 +260,7 @@ fun SearchScreen(
     val onSearch: (String) -> Unit = { searchQuery -> handleSearch(searchQuery) }
     val onSearchFromSuggestion: (String) -> Unit = { searchQuery -> handleSearch(searchQuery) }
 
-    if (isSearchActive) {
-        Scaffold(
+    Scaffold(
             topBar = {
                 AuraTopBar(
                     expandedHeight = 56.dp,
@@ -281,6 +278,13 @@ fun SearchScreen(
                                         color = AuraElevated,
                                         elevation = 5.dp,
                                     )
+                                    .then(
+                                        if (isSearchActive) {
+                                            Modifier
+                                        } else {
+                                            Modifier.clickable { isSearchActive = true }
+                                        },
+                                    )
                                     .padding(horizontal = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -290,86 +294,61 @@ fun SearchScreen(
                                 tint = Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.size(18.dp),
                             )
-                            BasicTextField(
-                                value = query,
-                                onValueChange = { query = it },
-                                modifier =
-                                    Modifier
-                                        .weight(1f)
-                                        .padding(horizontal = 8.dp)
-                                        .focusRequester(focusRequester),
-                                textStyle =
-                                    TextStyle(
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                    ),
-                                cursorBrush = SolidColor(AuraSpotifyGreen),
-                                singleLine = true,
-                                decorationBox = { innerTextField ->
-                                    if (query.text.isEmpty()) {
-                                        Text(
-                                            text =
-                                                stringResource(
-                                                    when (searchSource) {
-                                                        SearchSource.LOCAL -> R.string.search_library
-                                                        SearchSource.ONLINE -> R.string.search_what_do_you_want
-                                                    },
-                                                ),
-                                            style =
-                                                TextStyle(
-                                                    color = Color.White.copy(alpha = 0.45f),
-                                                    fontSize = 16.sp,
-                                                ),
-                                        )
-                                    }
-                                    innerTextField()
-                                },
-                                keyboardOptions =
-                                    KeyboardOptions(
-                                        imeAction = ImeAction.Search,
-                                    ),
-                                keyboardActions =
-                                    KeyboardActions(
-                                        onSearch = { onSearch(query.text) },
-                                    ),
-                            )
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                if (query.text.isNotEmpty()) {
-                                    AuraFloatingChromeButton(
-                                        onClick = { query = TextFieldValue("") },
-                                        size = 32.dp,
-                                        contentDescription = stringResource(R.string.dismiss),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.close),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                    }
-                                }
-                                AuraFloatingChromeButton(
-                                    onClick = {
-                                        searchSource =
-                                            if (searchSource == SearchSource.ONLINE) {
-                                                SearchSource.LOCAL
-                                            } else {
-                                                SearchSource.ONLINE
-                                            }
+                            if (isSearchActive) {
+                                BasicTextField(
+                                    value = query,
+                                    onValueChange = { query = it },
+                                    modifier =
+                                        Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 8.dp)
+                                            .focusRequester(focusRequester),
+                                    textStyle =
+                                        TextStyle(
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                        ),
+                                    cursorBrush = SolidColor(AuraSpotifyGreen),
+                                    singleLine = true,
+                                    decorationBox = { innerTextField ->
+                                        if (query.text.isEmpty()) {
+                                            Text(
+                                                text = stringResource(R.string.search_what_do_you_want),
+                                                style =
+                                                    TextStyle(
+                                                        color = Color.White.copy(alpha = 0.45f),
+                                                        fontSize = 16.sp,
+                                                    ),
+                                            )
+                                        }
+                                        innerTextField()
                                     },
+                                    keyboardOptions =
+                                        KeyboardOptions(
+                                            imeAction = ImeAction.Search,
+                                        ),
+                                    keyboardActions =
+                                        KeyboardActions(
+                                            onSearch = { onSearch(query.text) },
+                                        ),
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.search_what_do_you_want),
+                                    color = Color.White.copy(alpha = 0.45f),
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                                )
+                            }
+
+                            if (isSearchActive && query.text.isNotEmpty()) {
+                                AuraFloatingChromeButton(
+                                    onClick = { query = TextFieldValue("") },
                                     size = 32.dp,
+                                    contentDescription = stringResource(R.string.dismiss),
                                 ) {
                                     Icon(
-                                        painter =
-                                            painterResource(
-                                                when (searchSource) {
-                                                    SearchSource.LOCAL -> R.drawable.library_music
-                                                    SearchSource.ONLINE -> R.drawable.language
-                                                },
-                                            ),
+                                        painter = painterResource(R.drawable.close),
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                     )
@@ -378,15 +357,19 @@ fun SearchScreen(
                         }
                     },
                     navigationIcon = {
-                        AuraFloatingChromeButton(
-                            onClick = { exitSearchMode() },
-                            contentDescription = stringResource(R.string.back),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                            )
+                        if (isSearchActive) {
+                            AuraFloatingChromeButton(
+                                onClick = { exitSearchMode() },
+                                contentDescription = stringResource(R.string.back),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_back),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.size(42.dp))
                         }
                     },
                     actions = {
@@ -414,85 +397,34 @@ fun SearchScreen(
             containerColor = canvasColor,
         ) { paddingValues ->
             Box(
-                modifier =
-                    Modifier
-                        .padding(top = paddingValues.calculateTopPadding())
-                        .fillMaxSize(),
-            ) {
-                when (searchSource) {
-                    SearchSource.LOCAL -> {
-                        LocalSearchScreen(
-                            query = query.text,
-                            onDismiss = { exitSearchMode() },
-                            pureBlack = pureBlack,
-                        )
-                    }
+                modifier =                        Modifier
+                            .padding(paddingValues)
+                            .fillMaxSize(),
 
-                    SearchSource.ONLINE -> {
-                        OnlineSearchScreen(
-                            query = query.text,
-                            onQueryChange = { query = it },
-                            onSearch = onSearchFromSuggestion,
-                            onDismiss = { /* Keep active while picking suggestions */ },
-                            pureBlack = pureBlack,
-                        )
-                    }
+            ) {
+                // Keep the browse hub (and its headers) visible while the field is focused but
+                // empty; suggestions only take over once the listener starts typing. This avoids
+                // the jarring swap to a blank screen on focus.
+                if (!isSearchActive || query.text.isEmpty()) {
+                    SearchBrowseHub(
+                        listState = hubListState,
+                        onCategoryClick = { browseId, params ->
+                            navController.navigate("youtube_browse/$browseId?params=$params")
+                        },
+                        viewModel = hiltViewModel(),
+                        belowSearchBar = true,
+                    )
+                } else {
+                    OnlineSearchScreen(
+                        query = query.text,
+                        onQueryChange = { query = it },
+                        onSearch = onSearchFromSuggestion,
+                        onDismiss = { /* Keep active while picking suggestions */ },
+                        pureBlack = pureBlack,
+                    )
                 }
             }
         }
-    } else {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(canvasColor),
-        ) {
-            SearchBrowseHub(
-                listState = hubListState,
-                onActivateSearch = { isSearchActive = true },
-                onCategoryClick = { browseId, params ->
-                    navController.navigate("youtube_browse/$browseId?params=$params")
-                },
-                viewModel = hiltViewModel(),
-            )
-            
-            // Floating search bar
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    // Search owns this header; the activity shell deliberately does not add a
-                    // second title/profile bar on the Search route.
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(AuraElevated)
-                    .clickable(onClick = { isSearchActive = true })
-                    .padding(horizontal = 14.dp)
-                    .height(48.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    text = stringResource(
-                        when (searchSource) {
-                            SearchSource.LOCAL -> R.string.search_library
-                            SearchSource.ONLINE -> R.string.search_what_do_you_want
-                        }
-                    ),
-                    style = TextStyle(
-                        color = Color.White.copy(alpha = 0.45f),
-                        fontSize = 16.sp,
-                    ),
-                    modifier = Modifier.padding(start = 10.dp),
-                )
-            }
-        }
-    }
 
     DisposableEffect(lifecycleOwner, isPlayerExpanded, isSearchActive) {
         val observer =
@@ -529,9 +461,9 @@ fun SearchScreen(
 @Composable
 private fun SearchBrowseHub(
     listState: androidx.compose.foundation.lazy.LazyListState,
-    onActivateSearch: () -> Unit,
     onCategoryClick: (browseId: String, params: String?) -> Unit,
     viewModel: SearchHubViewModel = hiltViewModel(),
+    belowSearchBar: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
     val columns =
@@ -550,14 +482,20 @@ private fun SearchBrowseHub(
         modifier = Modifier.fillMaxSize(),
     ) {
         // Keep browse content below the floating search bar and status-bar area.
-        Spacer(modifier = Modifier.height(topInset + 64.dp))
+        // When the hub is rendered under the active search bar the chrome already
+        // reserves that space, so only a small breathing gap is needed.
+        Spacer(modifier = Modifier.height(if (belowSearchBar) 4.dp else topInset + 64.dp))
 
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(
                 start = contentPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
                 end = contentPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                bottom = contentPadding.calculateBottomPadding(),
+                bottom =
+                    LocalPlayerAwareWindowInsets.current
+                        .union(WindowInsets.ime)
+                        .asPaddingValues()
+                        .calculateBottomPadding(),
             ),
             modifier = Modifier.fillMaxSize(),
         ) {

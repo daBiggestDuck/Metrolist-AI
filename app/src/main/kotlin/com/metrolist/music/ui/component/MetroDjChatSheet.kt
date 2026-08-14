@@ -5,20 +5,30 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,7 +52,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +68,9 @@ import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.ai.NanoDjSession
+import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.db.entities.PlaylistEntity
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
@@ -125,6 +139,12 @@ fun MetroDjChatSheet(
     var laneName by remember { mutableStateOf(ListeningTasteTracker.DjLane.ARTIST_RADIO.displayName) }
     var confirmationText by remember { mutableStateOf<String?>(null) }
     var pendingConfirmation by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val messagesListState = rememberLazyListState()
+    val currentMediaMetadata by
+        connection?.mediaMetadata?.collectAsStateWithLifecycle()
+            ?: remember { mutableStateOf<MediaMetadata?>(null) }
+    val (excludedTasteIds, _) =
+        rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
 
     fun reply(text: String) {
         messages += MetroDjMessage(true, text)
@@ -335,21 +355,24 @@ fun MetroDjChatSheet(
             (normalized.contains("open") || normalized.contains("show")) &&
                 (normalized.contains("metro dj") || normalized.contains("recommendation") || normalized.contains("disliked")) -> {
                 scope.launch {
+                    val isDislikedPlaylist = normalized.contains("disliked")
+                    val targetName =
+                        if (isDislikedPlaylist) {
+                            context.getString(R.string.nano_dj_disliked_playlist_name)
+                        } else {
+                            SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME
+                        }
                     val playlistId = withContext(Dispatchers.IO) {
-                        database.playlistEntitiesByNameAsc()
-                            .firstOrNull {
-                                it.name.equals(
-                                    if (normalized.contains("disliked")) {
-                                        context.getString(R.string.nano_dj_disliked_playlist_name)
-                                    } else {
-                                        SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME
-                                    },
-                                    ignoreCase = true,
-                                )
-                            }?.id
+                        if (isDislikedPlaylist) {
+                            database.ensureLocalPlaylist(targetName).id
+                        } else {
+                            database.playlistEntitiesByNameAsc()
+                                .firstOrNull { it.name.equals(targetName, ignoreCase = true) }
+                                ?.id
+                        }
                     }
                     if (playlistId == null) {
-                        reply(context.getString(R.string.nano_dj_playlist_not_found, SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME))
+                        reply(context.getString(R.string.nano_dj_playlist_not_found, targetName))
                     } else {
                         navController.navigate("local_playlist/$playlistId")
                         reply(context.getString(R.string.nano_dj_playlist_opened))
@@ -562,6 +585,13 @@ fun MetroDjChatSheet(
         }
     }
 
+    // Keep the conversation pinned to the newest message so chat never drifts off-screen.
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            messagesListState.animateScrollToItem(messages.lastIndex)
+        }
+    }
+
     LaunchedEffect(Unit) {
         messages += MetroDjMessage(true, context.getString(R.string.nano_dj_chat_welcome))
         laneName = withContext(Dispatchers.IO) {
@@ -577,6 +607,7 @@ fun MetroDjChatSheet(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_explain), "why did you choose this?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_skip), "skip"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_refresh), "refresh the next block"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_open_disliked), "open the disliked playlist"),
             )
         } else {
             listOf(
@@ -584,12 +615,15 @@ fun MetroDjChatSheet(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_categories), "what categories can you play?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_recommendation), "what should I listen to right now?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_chat_music), "tell me something interesting about music"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_open_disliked), "open the disliked playlist"),
             )
         }
 
     AuraBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = AuraElevated,
+        // The chat input must remain above the IME instead of being covered by it.
+        contentWindowInsets = { WindowInsets.ime },
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -622,11 +656,29 @@ fun MetroDjChatSheet(
                         text = stringResource(R.string.nano_dj_section),
                         style = MaterialTheme.typography.headlineSmall,
                     )
-                    Text(
-                        text = if (active) stringResource(R.string.nano_dj_on_air) else stringResource(R.string.nano_dj_off_air),
-                        color = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.65f),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (active) {
+                            val pulse by rememberInfiniteTransition(label = "djOnAir").animateFloat(
+                                initialValue = 1f,
+                                targetValue = 0.3f,
+                                animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                                label = "djOnAirAlpha",
+                            )
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .padding(end = 6.dp)
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(AuraSpotifyGreen.copy(alpha = pulse)),
+                            )
+                        }
+                        Text(
+                            text = if (active) stringResource(R.string.nano_dj_on_air) else stringResource(R.string.nano_dj_off_air),
+                            color = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.65f),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
                 }
             }
             Row(
@@ -649,6 +701,54 @@ fun MetroDjChatSheet(
                     color = if (active) AuraSpotifyGreen else Color.White.copy(alpha = 0.55f),
                     style = MaterialTheme.typography.labelMedium,
                 )
+            }
+            currentMediaMetadata?.let { media ->
+                val isEpisode = media.isEpisode
+                val isDisliked = !isEpisode && media.id in excludedTasteIds
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.06f))
+                            .padding(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.nano_dj_now_playing),
+                        color = AuraSpotifyGreen,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Text(
+                        text = media.title,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 10.dp),
+                    ) {
+                        if (!isEpisode) {
+                            AuraSecondaryAction(
+                                onClick = {
+                                    runCommand(if (isDisliked) "remove dislike" else "dislike this song")
+                                },
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (isDisliked) R.string.nano_dj_action_undislike else R.string.nano_dj_action_dislike,
+                                    ),
+                                )
+                            }
+                        }
+                        AuraSecondaryAction(onClick = { runCommand("play next") }) {
+                            Text(stringResource(R.string.nano_dj_action_play_next))
+                        }
+                    }
+                }
             }
             commentary?.let { line ->
                 Column(
@@ -705,6 +805,7 @@ fun MetroDjChatSheet(
                 }
             }
             LazyColumn(
+                state = messagesListState,
                 modifier = Modifier.heightIn(max = 240.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {

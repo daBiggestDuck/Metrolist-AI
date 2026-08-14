@@ -2145,16 +2145,9 @@ class MusicService :
         val metadata = mediaItem?.metadata ?: return
         if (metadata.isEpisode) return
         withContext(Dispatchers.IO) {
+            val playlistName = getString(com.metrolist.music.R.string.nano_dj_disliked_playlist_name)
+            val entity = database.ensureLocalPlaylist(playlistName)
             database.withTransaction {
-                val playlistName = getString(com.metrolist.music.R.string.nano_dj_disliked_playlist_name)
-                val entity =
-                    database.playlistEntitiesByNameAsc()
-                        .firstOrNull { it.name.equals(playlistName, ignoreCase = true) }
-                        ?: PlaylistEntity(
-                            name = playlistName,
-                            isEditable = true,
-                            isLocal = true,
-                        ).also { database.insert(it) }
                 database.insert(metadata.toSongEntity())
                 database.playlistBlocking(entity.id)?.let { playlist ->
                     if (database.checkInPlaylist(playlist.id, metadata.id) == 0) {

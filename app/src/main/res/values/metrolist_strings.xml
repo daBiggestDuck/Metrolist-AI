@@ -1178,6 +1178,11 @@
     <string name="nano_dj_explanation_unavailable">I don’t have a selection explanation for this block yet.</string>
     <string name="nano_dj_playlist_opened">Opened Metro DJ Recommendations.</string>
     <string name="nano_dj_playlist_is_queue">The active Metro DJ playlist is the live queue. Ask me to refresh it, change the lane, or add tracks to Metro DJ Recommendations.</string>
+    <string name="nano_dj_now_playing">Now playing</string>
+    <string name="nano_dj_action_dislike">Not for my taste</string>
+    <string name="nano_dj_action_undislike">Like this again</string>
+    <string name="nano_dj_action_play_next">Play next</string>
+    <string name="nano_dj_action_open_disliked">Open disliked songs</string>
     <string name="send">Send</string>
     <string name="nano_recommendations_generate">Update recommendations playlist</string>
     <string name="nano_recommendations_generate_desc">Rebuilds the single “Metro DJ Recommendations” playlist from your taste (imported CSV, listening, or Spotify). Does not create duplicates.</string>

@@ -45,6 +45,7 @@ import com.metrolist.music.db.entities.SortedSongArtistMap
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.toSQLiteQuery
 import timber.log.Timber
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -56,6 +57,8 @@ import java.util.Locale
 class MusicDatabase(
     private val delegate: InternalDatabase,
 ) : DatabaseDao by delegate.dao {
+    private val localPlaylistMutex = kotlinx.coroutines.sync.Mutex()
+
     val speedDialDao: SpeedDialDao
         get() = delegate.speedDialDao
 
@@ -87,6 +90,35 @@ class MusicDatabase(
                     }
                 }
             }
+        }
+
+    /** Ensures a local playlist is visible in Library and repairs legacy unbookmarked rows. */
+    suspend fun ensureLocalPlaylist(name: String): PlaylistEntity =
+        localPlaylistMutex.withLock {
+            var ensured: PlaylistEntity? = null
+            withTransaction {
+                val existing =
+                    playlistEntitiesByNameAsc()
+                        .firstOrNull { it.name.equals(name, ignoreCase = true) }
+                ensured =
+                    when {
+                        existing == null ->
+                            PlaylistEntity(
+                                name = name,
+                                bookmarkedAt = LocalDateTime.now(),
+                                isEditable = true,
+                                isLocal = true,
+                            ).also { insert(it) }
+                        existing.bookmarkedAt == null ->
+                            existing.copy(
+                                bookmarkedAt = LocalDateTime.now(),
+                                isEditable = true,
+                                isLocal = true,
+                            ).also { update(it) }
+                        else -> existing
+                    }
+            }
+            checkNotNull(ensured)
         }
 
     fun close() = delegate.close()
