@@ -64,6 +64,9 @@ fun AuraProfileMenuSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = AuraElevated,
+        // The profile sheet is a menu, not a draggable player surface; the default handle
+        // reads as an unwanted line through the top of the popup.
+        dragHandle = null,
     ) {
         Column(
             modifier =

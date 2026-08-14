@@ -375,6 +375,8 @@ object ListeningTasteTracker {
         title: String,
         artists: List<String>,
         enableNano: Boolean = true,
+        /** Forces the expensive summary refresh after the listening-time interval elapses. */
+        forceNanoRefresh: Boolean = false,
         client: GeminiNanoClient = GeminiNanoClient.get(context),
     ) {
         if (songId.isBlank() || title.isBlank()) return
@@ -424,7 +426,7 @@ object ListeningTasteTracker {
 
                 val shouldRefreshNano =
                     enableNano &&
-                        (!TasteSummary.isUsable(profile.summary) || listenCount % NANO_REFRESH_EVERY == 0)
+                        (forceNanoRefresh || !TasteSummary.isUsable(profile.summary))
 
                 val now = System.currentTimeMillis()
                 val updated =

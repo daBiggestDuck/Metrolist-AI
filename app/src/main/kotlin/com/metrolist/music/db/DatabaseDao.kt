@@ -1124,6 +1124,9 @@ interface DatabaseDao {
         songId: String,
     ): Int
 
+    @Query("DELETE FROM playlist_song_map WHERE playlistId = :playlistId AND songId = :songId")
+    fun removeSongFromPlaylist(playlistId: String, songId: String)
+
     @Query("SELECT songId from playlist_song_map WHERE playlistId = :playlistId AND songId IN (:songIds)")
     fun playlistDuplicates(
         playlistId: String,

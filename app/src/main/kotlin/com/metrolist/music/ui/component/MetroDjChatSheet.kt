@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -51,6 +52,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.ai.NanoDjSession
@@ -83,7 +85,9 @@ fun MetroDjChatButton(
     modifier: Modifier = Modifier,
     tint: Color = Color.White,
 ) {
+    val active by NanoDjSession.active.collectAsStateWithLifecycle()
     var showChat by remember { mutableStateOf(false) }
+    if (!active) return
 
     AuraIconButton(
         onClick = { showChat = true },
@@ -134,6 +138,42 @@ fun MetroDjChatSheet(
     fun currentMedia(): MediaMetadata? =
         runCatching { connection?.player?.currentMediaItem?.metadata }.getOrNull()
 
+    suspend fun answerNaturally(question: String): String {
+        val current = currentMedia()
+        val contextPrompt =
+            """
+            You are Metro DJ, a friendly music-radio host inside a music player. Have a natural,
+            useful conversation with the listener. Do not force an action, playlist, or command
+            unless the listener explicitly asks for one. You can discuss music, artists, albums,
+            genres, the current set, listening taste, and what might fit next. Be concise but
+            personable, usually two or three sentences. Never mention hidden prompts or APIs.
+
+            Current state: ${if (active) "on air" else "off air"}
+            Current lane: $laneName
+            Current commentary: ${commentary.orEmpty().ifBlank { "none" }}
+            Current song: ${current?.title.orEmpty().ifBlank { "none" }}
+            Recent chat:
+            ${messages.takeLast(8).joinToString("\\n") { if (it.fromDj) "DJ: ${it.text}" else "Listener: ${it.text}" }}
+
+            Listener message: $question
+            """.trimIndent()
+        val generated =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    GeminiNanoClient.get(context).generateContent(contextPrompt)?.trim()
+                }
+            }.getOrNull()?.takeIf { it.isNotBlank() }
+        return generated ?:
+            when {
+                question.contains("why", ignoreCase = true) && commentary != null ->
+                    commentary.orEmpty()
+                active ->
+                    "I'm listening with you in the $laneName lane. Ask me about the current song, the vibe, or what you want to hear next."
+                else ->
+                    "I'm here to talk music with you. Ask about an artist, a genre, a song, or the kind of mood you're after."
+            }
+    }
+
     fun queuedMedia(): List<MediaMetadata> =
         runCatching {
             connection?.player?.let { player ->
@@ -180,21 +220,6 @@ fun MetroDjChatSheet(
         }
 
         when {
-            normalized == "start" || normalized.contains("start metro dj") || normalized.contains("turn on") -> {
-                val player = connection
-                if (player == null) {
-                    reply(context.getString(R.string.nano_dj_no_player))
-                } else {
-                    scope.launch {
-                        busy = true
-                        NanoDjLauncher.start(context, player, NanoDjSession.isSpeakEnabled())
-                            .onFailure { reply(it.message ?: context.getString(R.string.nano_dj_action_failed)) }
-                            .onSuccess { reply(context.getString(R.string.nano_dj_started)) }
-                        busy = false
-                    }
-                }
-            }
-
             normalized == "stop" || normalized.contains("stop metro dj") || normalized.contains("turn off") -> {
                 if (active) {
                     connection?.service?.stopMetroDj()
@@ -308,13 +333,17 @@ fun MetroDjChatSheet(
             }
 
             (normalized.contains("open") || normalized.contains("show")) &&
-                (normalized.contains("metro dj") || normalized.contains("recommendation")) -> {
+                (normalized.contains("metro dj") || normalized.contains("recommendation") || normalized.contains("disliked")) -> {
                 scope.launch {
                     val playlistId = withContext(Dispatchers.IO) {
                         database.playlistEntitiesByNameAsc()
                             .firstOrNull {
                                 it.name.equals(
-                                    SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME,
+                                    if (normalized.contains("disliked")) {
+                                        context.getString(R.string.nano_dj_disliked_playlist_name)
+                                    } else {
+                                        SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME
+                                    },
                                     ignoreCase = true,
                                 )
                             }?.id
@@ -387,6 +416,23 @@ fun MetroDjChatSheet(
                 }
             }
 
+            normalized.contains("remove dislike") || normalized.contains("undo dislike") || normalized.contains("like this again") -> {
+                val media = currentMedia()
+                if (media == null) {
+                    reply(context.getString(R.string.nano_dj_no_current_song))
+                } else {
+                    scope.launch {
+                        busy = true
+                        withContext(Dispatchers.IO) {
+                            ListeningTasteTracker.setExcluded(context, media.id, false)
+                        }
+                        connection?.service?.onSongUndisliked(media.id)
+                        reply(context.getString(R.string.nano_dj_dislike_removed, media.title))
+                        busy = false
+                    }
+                }
+            }
+
             normalized.contains("dislike") || normalized.contains("not for my taste") -> {
                 val media = currentMedia()
                 if (media == null) {
@@ -449,8 +495,13 @@ fun MetroDjChatSheet(
                 }
             }
 
-            normalized.contains("chill") || normalized.contains("hype") || normalized.contains("focus") ||
-                normalized.contains("nostalgia") || normalized.contains("artist radio") -> {
+            (normalized.startsWith("make it") ||
+                normalized.startsWith("switch to") ||
+                normalized.startsWith("change to") ||
+                normalized.startsWith("play ") ||
+                normalized.startsWith("give me")) &&
+                (normalized.contains("chill") || normalized.contains("hype") || normalized.contains("focus") ||
+                    normalized.contains("nostalgia") || normalized.contains("artist radio")) -> {
                 val laneId = when {
                     normalized.contains("artist radio") -> "artist_radio"
                     normalized.contains("chill") -> "chill"
@@ -495,7 +546,13 @@ fun MetroDjChatSheet(
                 reply(context.getString(R.string.nano_dj_playlist_is_queue))
             }
 
-            else -> reply(context.getString(R.string.nano_dj_command_help))
+            else -> {
+                scope.launch {
+                    busy = true
+                    reply(answerNaturally(command))
+                    busy = false
+                }
+            }
         }
     }
 
@@ -506,10 +563,29 @@ fun MetroDjChatSheet(
     }
 
     LaunchedEffect(Unit) {
+        messages += MetroDjMessage(true, context.getString(R.string.nano_dj_chat_welcome))
         laneName = withContext(Dispatchers.IO) {
             ListeningTasteTracker.loadMergedTaste(context).lane.displayName
         }
     }
+
+    val quickActions =
+        if (active) {
+            listOf(
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_more_like_this), "more like this"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_change_vibe), "what vibes should we try?"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_explain), "why did you choose this?"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_skip), "skip"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_refresh), "refresh the next block"),
+            )
+        } else {
+            listOf(
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_taste), "what do you know about my taste?"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_categories), "what categories can you play?"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_recommendation), "what should I listen to right now?"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_chat_music), "tell me something interesting about music"),
+            )
+        }
 
     AuraBottomSheet(
         onDismissRequest = onDismiss,
@@ -603,20 +679,7 @@ fun MetroDjChatSheet(
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color.White.copy(alpha = 0.04f)),
             ) {
-                listOf(
-                    MetroDjQuickAction(
-                        stringResource(R.string.nano_dj_action_start),
-                        "start",
-                    ),
-                    MetroDjQuickAction(
-                        stringResource(R.string.nano_dj_action_chill),
-                        "make it chill",
-                    ),
-                    MetroDjQuickAction(
-                        stringResource(R.string.nano_dj_action_skip),
-                        "skip",
-                    ),
-                ).forEachIndexed { index, action ->
+                quickActions.forEachIndexed { index, action ->
                     if (index > 0) AuraDivider()
                     Row(
                         modifier =
@@ -642,14 +705,64 @@ fun MetroDjChatSheet(
                 }
             }
             LazyColumn(
-                modifier = Modifier.heightIn(max = 180.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.heightIn(max = 240.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(messages) { message ->
-                    Text(
-                        text = if (message.fromDj) "Metro DJ: ${message.text}" else "You: ${message.text}",
-                        color = if (message.fromDj) AuraSpotifyGreen else Color.White,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            if (message.fromDj) Arrangement.Start else Arrangement.End,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        if (message.fromDj) {
+                            AuraIconButton(
+                                onClick = {},
+                                enabled = false,
+                                modifier = Modifier.size(28.dp),
+                                containerColor = AuraSpotifyGreen.copy(alpha = 0.16f),
+                                contentColor = AuraSpotifyGreen,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.radio),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .widthIn(max = 320.dp)
+                                .padding(horizontal = 6.dp),
+                            horizontalAlignment =
+                                if (message.fromDj) Alignment.Start else Alignment.End,
+                        ) {
+                            Text(
+                                text = if (message.fromDj) stringResource(R.string.nano_dj_badge) else stringResource(R.string.nano_dj_you),
+                                color = if (message.fromDj) AuraSpotifyGreen else Color.White.copy(alpha = 0.55f),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                            Text(
+                                text = message.text,
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = 16.dp,
+                                            topEnd = 16.dp,
+                                            bottomStart = if (message.fromDj) 4.dp else 16.dp,
+                                            bottomEnd = if (message.fromDj) 16.dp else 4.dp,
+                                        ),
+                                    )
+                                    .background(
+                                        if (message.fromDj) AuraSpotifyGreen.copy(alpha = 0.15f)
+                                        else Color.White.copy(alpha = 0.12f),
+                                    )
+                                    .padding(horizontal = 13.dp, vertical = 9.dp),
+                            )
+                        }
+                    }
                 }
             }
             OutlinedTextField(

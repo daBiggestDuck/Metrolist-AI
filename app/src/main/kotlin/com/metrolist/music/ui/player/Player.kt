@@ -1167,6 +1167,8 @@ fun BottomSheetPlayer(
                                                     )
                                                     if (exclude) {
                                                         playerConnection.service.onSongDisliked(mediaMetadata.id)
+                                                    } else {
+                                                        playerConnection.service.onSongUndisliked(mediaMetadata.id)
                                                     }
                                                 }
                                                 if (exclude && isFavorite) {
@@ -1534,6 +1536,8 @@ Spacer(Modifier.width(8.dp))
                                                     )
                                                     if (exclude) {
                                                         playerConnection.service.onSongDisliked(mediaMetadata.id)
+                                                    } else {
+                                                        playerConnection.service.onSongUndisliked(mediaMetadata.id)
                                                     }
                                                 }
                                                 if (exclude && isFavorite) {

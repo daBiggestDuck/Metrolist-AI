@@ -6,6 +6,7 @@
 package com.metrolist.music.ai
 
 import timber.log.Timber
+import kotlin.random.Random
 
 /**
  * On-device DJ brain powered by Gemini Nano — Metrolist's replacement for Spotify DJ.
@@ -31,6 +32,9 @@ object NanoDjEngine {
         val avoidTitles: List<String> = emptyList(),
         val categories: List<String> = emptyList(),
         val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
+        val skipPressure: Int = 0,
+        /** Changes the order of a DJ session without changing the persisted taste profile. */
+        val randomSeed: Long = 0L,
     )
 
     suspend fun pickNext(
@@ -75,6 +79,11 @@ object NanoDjEngine {
             Favorite tracks: ${context.seedTracks.take(12).joinToString("; ").ifBlank { "(unknown)" }}
             Recently played: ${context.recentTitles.take(10).joinToString("; ").ifBlank { "(none)" }}
             Avoid repeating: ${context.avoidTitles.take(20).joinToString("; ").ifBlank { "(none)" }}
+            Recent skip pressure: ${context.skipPressure} (if this is high, deliberately change
+            the angle/category instead of continuing the same sound)
+            Do not simply replay the listener's favorites in their existing order. Prefer adjacent
+            artists, deep cuts, rediscoveries, and a little discovery within this lane; use at most
+            one exact item from Favorite tracks unless the listener explicitly requests favorites.
             """.trimIndent()
 
         val raw = runCatching { client.generateContent(prompt) }.getOrNull()?.trim().orEmpty()
@@ -185,27 +194,58 @@ object NanoDjEngine {
         val laneQueries =
             when (lane) {
                 ListeningTasteTracker.DjLane.ARTIST_RADIO ->
-                    context.seedArtists.take(3).flatMap { listOf("$it songs", "$it mix") }
-                else -> lane.searchHints + context.categories.take(2).map { "$it playlist" }
+                    context.seedArtists.take(6).flatMap {
+                        listOf(
+                            "$it radio",
+                            "songs like $it",
+                            "$it deep cuts",
+                            "new artists like $it",
+                        )
+                    } +
+                        listOf(
+                            "new releases for my taste",
+                            "rediscoveries from my taste",
+                            "deep cuts and hidden gems",
+                            "throwback songs I may have forgotten",
+                            "similar artists discovery",
+                        )
+                else ->
+                    lane.searchHints +
+                        context.categories.take(4).map { "$it ${lane.displayName} playlist" } +
+                        context.seedArtists.take(4).map { "$it ${lane.displayName} mix" }
             }
 
+        val feedbackQueries =
+            if (context.skipPressure >= 2) {
+                listOf("different ${lane.displayName} discoveries", "new music outside my usual favorites")
+            } else {
+                emptyList()
+            }
+        val random = Random(context.randomSeed + context.recentTitles.size * 31L)
         val queries =
             buildList {
                 addAll(laneQueries)
-                context.seedTracks.take(batchSize).forEach { add(it) }
-                context.seedArtists.forEach { add("$it songs") }
-                context.recentTitles.take(2).forEach { add("songs like $it") }
+                addAll(feedbackQueries)
+                context.recentTitles.takeLast(3).forEach { add("songs similar to $it") }
+                // Keep only a small seed sample; putting every favorite first made every
+                // session resolve the same playlist in the same order.
+                context.seedTracks.shuffled(random).take(2).forEach { add(it) }
+                addAll(lane.searchHints)
             }.map { it.trim() }
                 .filter { it.isNotBlank() }
                 .distinct()
+                .shuffled(random)
                 .take(batchSize.coerceAtLeast(1))
                 .ifEmpty {
-                    (lane.searchHints + listOf("popular songs", "chill hits", "indie favorites"))
+                    (lane.searchHints + listOf("new music discovery", "songs you may like", "deep cuts"))
+                        .shuffled(random)
                         .take(batchSize)
                 }
 
         val commentary =
             when {
+                context.skipPressure >= 2 ->
+                    "I caught the skips — changing the angle while staying in your ${lane.displayName} lane."
                 lane != ListeningTasteTracker.DjLane.ARTIST_RADIO ->
                     "Keeping this ${lane.displayName} set rolling — Metro DJ's got more in that lane coming up."
                 context.seedArtists.isNotEmpty() ->

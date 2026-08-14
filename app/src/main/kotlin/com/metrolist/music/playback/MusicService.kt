@@ -2141,6 +2141,41 @@ class MusicService :
         }
     }
 
+    private suspend fun addToMetroDjDislikedPlaylist(mediaItem: MediaItem?) {
+        val metadata = mediaItem?.metadata ?: return
+        if (metadata.isEpisode) return
+        withContext(Dispatchers.IO) {
+            database.withTransaction {
+                val playlistName = getString(com.metrolist.music.R.string.nano_dj_disliked_playlist_name)
+                val entity =
+                    database.playlistEntitiesByNameAsc()
+                        .firstOrNull { it.name.equals(playlistName, ignoreCase = true) }
+                        ?: PlaylistEntity(
+                            name = playlistName,
+                            isEditable = true,
+                            isLocal = true,
+                        ).also { database.insert(it) }
+                database.insert(metadata.toSongEntity())
+                database.playlistBlocking(entity.id)?.let { playlist ->
+                    if (database.checkInPlaylist(playlist.id, metadata.id) == 0) {
+                        database.addSongsToPlaylist(playlist, listOf(metadata.id to null))
+                    }
+                }
+            }
+        }
+    }
+
+    /** Removes a song from the local dislike playlist when the listener reverses the dislike. */
+    fun onSongUndisliked(songId: String) {
+        if (songId.isBlank()) return
+        scope.launch(Dispatchers.IO) {
+            val playlistName = getString(com.metrolist.music.R.string.nano_dj_disliked_playlist_name)
+            database.playlistEntitiesByNameAsc()
+                .firstOrNull { it.name.equals(playlistName, ignoreCase = true) }
+                ?.let { database.removeSongFromPlaylist(it.id, songId) }
+        }
+    }
+
     /**
      * Apply a player dislike to the active Metro DJ queue immediately. The preference write
      * happens in the UI; this method prevents the item from being played from the already
@@ -2150,6 +2185,7 @@ class MusicService :
         if (songId.isBlank()) return
         scope.launch {
             if (!::player.isInitialized) return@launch
+            addToMetroDjDislikedPlaylist(player.currentMediaItem)
             val activeQueue = currentQueue as? com.metrolist.music.playback.queues.NanoDjQueue
                 ?: return@launch
             activeQueue.excludeSong(songId)
@@ -2623,6 +2659,8 @@ class MusicService :
     // onMediaItemTransition call, so we can decide whether IT finished
     // naturally (and is therefore safe to mark as fully cached).
     private var lastTransitionedMediaId: String? = null
+    private var tasteListeningSinceRefreshMs = 0L
+    private val tasteRefreshIntervalMs = 60L * 60L * 1000L
     private var previousEpisodePosition: Long = 0L
 
     /**
@@ -2668,6 +2706,10 @@ class MusicService :
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
             mediaItem != null
         ) {
+            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                (currentQueue as com.metrolist.music.playback.queues.NanoDjQueue)
+                    .recordSkip(lastTransitionedMediaId)
+            }
             com.metrolist.music.ai.NanoDjSession.announceTransition(mediaItem.mediaId)
         }
 
@@ -4089,6 +4131,11 @@ class MusicService :
                 val songId = mediaItem.mediaId
                 val title = meta.title
                 val artistNames = meta.artists.map { it.name }
+                tasteListeningSinceRefreshMs += playbackStats.totalPlayTimeMs.coerceAtLeast(0L)
+                val forceNanoRefresh = tasteListeningSinceRefreshMs >= tasteRefreshIntervalMs
+                if (forceNanoRefresh) {
+                    tasteListeningSinceRefreshMs %= tasteRefreshIntervalMs
+                }
                 scope.launch(Dispatchers.IO) {
                     runCatching {
                         ListeningTasteTracker.recordListen(
@@ -4097,6 +4144,7 @@ class MusicService :
                             title = title,
                             artists = artistNames,
                             enableNano = enableNano,
+                            forceNanoRefresh = forceNanoRefresh,
                         )
                     }.onFailure {
                         Timber.tag(TAG).w(it, "Listening taste update failed")

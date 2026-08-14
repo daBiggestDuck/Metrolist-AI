@@ -1022,9 +1022,13 @@ class MainActivity : ComponentActivity() {
                             currentRoute == "listen_together_from_topbar"
                     val isSearchTyping =
                         currentRoute == Screens.Search.route && searchActive
+                    // Search owns its complete header/search hierarchy. Rendering the shell
+                    // Search title and the SearchScreen field together created the exact overlap
+                    // seen while the keyboard was open, so never add the shell bar on that route.
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
                         currentRoute != Screens.Home.route &&
+                        currentRoute != Screens.Search.route &&
                         !isSearchTyping &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }

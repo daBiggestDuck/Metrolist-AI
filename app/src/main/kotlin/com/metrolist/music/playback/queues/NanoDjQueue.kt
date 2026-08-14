@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import timber.log.Timber
+import kotlin.random.Random
 
 /**
  * Continuous radio queue curated by Metro DJ (Spotify DJ replacement).
@@ -40,8 +41,13 @@ class NanoDjQueue(
     private val excludedIds = ConcurrentHashMap.newKeySet<String>().apply { addAll(excludedSongIds) }
     private val playedIds = LinkedHashSet<String>()
     private val playedTitles = ArrayDeque<String>()
+    private val titleById = HashMap<String, String>()
+    private val skippedTitles = ArrayDeque<String>()
+    private var skipPressure = 0
     private var exhausted = false
     private var pagesLoaded = 0
+    private val sessionSeed = System.nanoTime()
+    private val random = Random(sessionSeed)
 
     override suspend fun getInitialStatus(): Queue.Status =
         withContext(Dispatchers.IO) {
@@ -56,14 +62,16 @@ class NanoDjQueue(
                 )
             NanoDjSession.start(opening, usedAi = enableNano)
 
-            val seeded = initialItems.filterNot { it.mediaId in playedIds || it.mediaId in excludedIds }
-            val items =
-                if (seeded.isNotEmpty()) {
-                    seeded.forEach { remember(it) }
-                    seeded
-                } else {
-                    fetchBatch(batchSize = 5)
-                }
+            // Use at most one taste seed and fill the rest from a newly shuffled category
+            // block. Returning the same imported favorites first made every DJ session identical.
+            val seeded =
+                initialItems
+                    .filterNot { it.mediaId in playedIds || it.mediaId in excludedIds }
+                    .shuffled(random)
+                    .take(1)
+            seeded.forEach { remember(it) }
+            val generated = fetchBatch(batchSize = 5 - seeded.size)
+            val items = (seeded + generated).distinctBy { it.mediaId }
 
             if (items.isEmpty()) {
                 exhausted = true
@@ -85,7 +93,7 @@ class NanoDjQueue(
     override suspend fun nextPage(): List<MediaItem> =
         withContext(Dispatchers.IO) {
             if (!hasNextPage()) return@withContext emptyList()
-            val batch = fetchBatch(batchSize = 4)
+            val batch = fetchBatch(batchSize = 6)
             if (batch.isEmpty()) {
                 exhausted = true
             }
@@ -136,6 +144,11 @@ class NanoDjQueue(
             usedAi = pick.usedAi,
             transitionMediaId = resolved.firstOrNull()?.mediaId,
         )
+        if (skipPressure >= 2 && resolved.isNotEmpty()) {
+            // The changed block has acknowledged the feedback; future skips can build pressure
+            // again instead of permanently forcing discovery mode.
+            skipPressure = 0
+        }
 
         Timber.tag(TAG).i(
             "page=%d lane=%s resolved=%d ai=%s",
@@ -152,6 +165,16 @@ class NanoDjQueue(
         if (songId.isNotBlank()) excludedIds += songId
     }
 
+    /** Records an explicit skip so the next block can deliberately change its angle. */
+    fun recordSkip(songId: String?) {
+        if (songId.isNullOrBlank()) return
+        skipPressure++
+        titleById[songId]?.let {
+            skippedTitles.addLast(it)
+            while (skippedTitles.size > 12) skippedTitles.removeFirst()
+        }
+    }
+
     private suspend fun searchFirstSong(query: String): MediaItem? {
         val result = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull() ?: return null
         val song = result.items.filterIsInstance<SongItem>().firstOrNull() ?: return null
@@ -161,6 +184,7 @@ class NanoDjQueue(
     private fun remember(item: MediaItem) {
         playedIds += item.mediaId
         val title = item.mediaMetadata.title?.toString().orEmpty()
+        titleById[item.mediaId] = title
         if (title.isNotBlank()) {
             playedTitles.addLast(title)
             while (playedTitles.size > 30) playedTitles.removeFirst()
@@ -173,9 +197,11 @@ class NanoDjQueue(
             recentTitles = playedTitles.toList(),
             seedArtists = seedArtists,
             seedTracks = seedTracks,
-            avoidTitles = playedTitles.toList(),
+            avoidTitles = (playedTitles + skippedTitles).toList(),
             categories = categories,
             lane = lane,
+            skipPressure = skipPressure,
+            randomSeed = sessionSeed,
         )
 
     companion object {
