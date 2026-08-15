@@ -164,16 +164,6 @@ fun SearchScreen(
         mutableStateOf(TextFieldValue())
     }
 
-    // Keep shell profile chrome on the browse hub; hide it while typing.
-    LaunchedEffect(isSearchActive) {
-        savedStateHandle["searchActive"] = isSearchActive
-    }
-    DisposableEffect(Unit) {
-        onDispose {
-            savedStateHandle["searchActive"] = false
-        }
-    }
-
     fun exitSearchMode() {
         isSearchActive = false
         focusManager.clearFocus(force = true)
@@ -356,34 +346,9 @@ fun SearchScreen(
                             }
                         }
                     },
-                    navigationIcon = {
-                        if (isSearchActive) {
-                            AuraFloatingChromeButton(
-                                onClick = { exitSearchMode() },
-                                contentDescription = stringResource(R.string.back),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.arrow_back),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.size(42.dp))
-                        }
-                    },
-                    actions = {
-                        AuraFloatingChromeButton(
-                            onClick = { navController.navigate("recognition") },
-                            contentDescription = stringResource(R.string.recognize_music),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.mic),
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    },
+                    // The profile/title/recognition row belongs to the activity shell above this
+                    // field. Leave both sides empty here so those controls are not duplicated.
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                     colors =
                         TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent,

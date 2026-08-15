@@ -745,8 +745,8 @@ fun AuraDivider(modifier: Modifier = Modifier) {
 }
 
 /**
- * Dark gradient hero with title, subtitle, and a green circular play CTA.
- * Used for Metro DJ entry points.
+ * Compact Metro DJ launcher styled like the mini-player: identity on the left and one play
+ * action on the right, without the oversized hero panel.
  */
 @Composable
 fun AuraHeroPanel(
@@ -760,48 +760,53 @@ fun AuraHeroPanel(
     Row(
         modifier
             .fillMaxWidth()
-            .clip(AuraHeroShape)
-            .background(AuraHeroBrush)
-            .padding(20.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(AuraPlayerChrome)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        AuraIconButton(
+            onClick = onPlayClick,
+            enabled = enabled,
+            modifier = Modifier.size(42.dp),
+            containerColor = AuraSpotifyDark,
+            contentColor = AuraSpotifyGreen,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.radio),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                softWrap = true,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(6.dp))
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = AuraHeroMutedText,
-                maxLines = 4,
-                softWrap = true,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.width(16.dp))
-        Box(
-            modifier =
-                Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (enabled) AuraSpotifyGreen else AuraSpotifyGreen.copy(alpha = 0.35f),
-                    )
-                    .clickable(enabled = enabled, onClick = onPlayClick),
-            contentAlignment = Alignment.Center,
+        AuraIconButton(
+            onClick = onPlayClick,
+            enabled = enabled,
+            modifier = Modifier.size(42.dp),
+            containerColor = AuraSpotifyGreen,
+            contentColor = AuraSpotifyOnGreen,
         ) {
             Icon(
                 painter = painterResource(R.drawable.play),
                 contentDescription = playContentDescription,
-                tint = AuraSpotifyOnGreen,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
     }

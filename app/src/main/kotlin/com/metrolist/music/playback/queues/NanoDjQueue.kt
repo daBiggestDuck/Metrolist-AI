@@ -70,7 +70,7 @@ class NanoDjQueue(
                     .shuffled(random)
                     .take(1)
             seeded.forEach { remember(it) }
-            val generated = fetchBatch(batchSize = 5 - seeded.size)
+            val generated = fetchBatch(batchSize = 4 - seeded.size.coerceAtMost(4))
             val items = (seeded + generated).distinctBy { it.mediaId }
 
             if (items.isEmpty()) {
@@ -114,7 +114,14 @@ class NanoDjQueue(
         for (query in pick.queries) {
             if (resolved.size >= batchSize) break
             val item = searchFirstSong(query) ?: continue
-            if (item.mediaId in playedIds || item.mediaId in excludedIds) continue
+            val title = item.mediaMetadata.title?.toString().orEmpty().trim()
+            if (
+                title.isBlank() ||
+                    item.mediaId in playedIds ||
+                    item.mediaId in excludedIds ||
+                    title in playedTitles ||
+                    resolved.any { it.mediaMetadata.title?.toString().equals(title, ignoreCase = true) }
+            ) continue
             remember(item)
             resolved += item
         }
@@ -130,6 +137,10 @@ class NanoDjQueue(
                         resolved.size < batchSize
                     ) {
                         val media = song.toMediaItem()
+                        val title = media.mediaMetadata.title?.toString().orEmpty().trim()
+                        if (title.isBlank() || resolved.any {
+                                it.mediaMetadata.title?.toString().equals(title, ignoreCase = true)
+                            }) return@forEach
                         remember(media)
                         resolved += media
                     }

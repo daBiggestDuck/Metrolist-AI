@@ -2141,32 +2141,9 @@ class MusicService :
         }
     }
 
-    private suspend fun addToMetroDjDislikedPlaylist(mediaItem: MediaItem?) {
-        val metadata = mediaItem?.metadata ?: return
-        if (metadata.isEpisode) return
-        withContext(Dispatchers.IO) {
-            val playlistName = getString(com.metrolist.music.R.string.nano_dj_disliked_playlist_name)
-            val entity = database.ensureLocalPlaylist(playlistName)
-            database.withTransaction {
-                database.insert(metadata.toSongEntity())
-                database.playlistBlocking(entity.id)?.let { playlist ->
-                    if (database.checkInPlaylist(playlist.id, metadata.id) == 0) {
-                        database.addSongsToPlaylist(playlist, listOf(metadata.id to null))
-                    }
-                }
-            }
-        }
-    }
-
-    /** Removes a song from the local dislike playlist when the listener reverses the dislike. */
+    /** Keeps the service API stable; dislikes are now represented by the taste exclusion set. */
     fun onSongUndisliked(songId: String) {
-        if (songId.isBlank()) return
-        scope.launch(Dispatchers.IO) {
-            val playlistName = getString(com.metrolist.music.R.string.nano_dj_disliked_playlist_name)
-            database.playlistEntitiesByNameAsc()
-                .firstOrNull { it.name.equals(playlistName, ignoreCase = true) }
-                ?.let { database.removeSongFromPlaylist(it.id, songId) }
-        }
+        // The exclusion set is updated by the caller before this callback.
     }
 
     /**
@@ -2178,7 +2155,12 @@ class MusicService :
         if (songId.isBlank()) return
         scope.launch {
             if (!::player.isInitialized) return@launch
-            addToMetroDjDislikedPlaylist(player.currentMediaItem)
+            val currentMetadata = player.currentMediaItem?.metadata
+            if (currentMetadata != null && !currentMetadata.isEpisode) {
+                withContext(Dispatchers.IO) {
+                    database.insert(currentMetadata.toSongEntity())
+                }
+            }
             val activeQueue = currentQueue as? com.metrolist.music.playback.queues.NanoDjQueue
                 ?: return@launch
             activeQueue.excludeSong(songId)

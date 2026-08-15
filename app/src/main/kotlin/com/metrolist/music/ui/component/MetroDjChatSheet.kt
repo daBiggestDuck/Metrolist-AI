@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -132,6 +134,7 @@ fun MetroDjChatSheet(
     val connection = LocalPlayerConnection.current
     val scope = rememberCoroutineScope()
     val active by NanoDjSession.active.collectAsStateWithLifecycle()
+    val sessionId by NanoDjSession.sessionId.collectAsStateWithLifecycle()
     val commentary by NanoDjSession.commentary.collectAsStateWithLifecycle()
     val messages = remember { mutableStateListOf<MetroDjMessage>() }
     var input by remember { mutableStateOf("") }
@@ -358,24 +361,25 @@ fun MetroDjChatSheet(
                     val isDislikedPlaylist = normalized.contains("disliked")
                     val targetName =
                         if (isDislikedPlaylist) {
-                            context.getString(R.string.nano_dj_disliked_playlist_name)
+                            context.getString(R.string.disliked_songs)
                         } else {
                             SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME
                         }
-                    val playlistId = withContext(Dispatchers.IO) {
-                        if (isDislikedPlaylist) {
-                            database.ensureLocalPlaylist(targetName).id
-                        } else {
+                    if (isDislikedPlaylist) {
+                        navController.navigate("auto_playlist/disliked")
+                        reply(context.getString(R.string.nano_dj_playlist_opened))
+                    } else {
+                        val playlistId = withContext(Dispatchers.IO) {
                             database.playlistEntitiesByNameAsc()
                                 .firstOrNull { it.name.equals(targetName, ignoreCase = true) }
                                 ?.id
                         }
-                    }
-                    if (playlistId == null) {
-                        reply(context.getString(R.string.nano_dj_playlist_not_found, targetName))
-                    } else {
-                        navController.navigate("local_playlist/$playlistId")
-                        reply(context.getString(R.string.nano_dj_playlist_opened))
+                        if (playlistId == null) {
+                            reply(context.getString(R.string.nano_dj_playlist_not_found, targetName))
+                        } else {
+                            navController.navigate("local_playlist/$playlistId")
+                            reply(context.getString(R.string.nano_dj_playlist_opened))
+                        }
                     }
                 }
             }
@@ -592,7 +596,12 @@ fun MetroDjChatSheet(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(sessionId) {
+        // A radio restart is a fresh conversation; do not carry commands or suggestions into it.
+        messages.clear()
+        input = ""
+        confirmationText = null
+        pendingConfirmation = null
         messages += MetroDjMessage(true, context.getString(R.string.nano_dj_chat_welcome))
         laneName = withContext(Dispatchers.IO) {
             ListeningTasteTracker.loadMergedTaste(context).lane.displayName
@@ -607,7 +616,6 @@ fun MetroDjChatSheet(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_explain), "why did you choose this?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_skip), "skip"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_refresh), "refresh the next block"),
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_open_disliked), "open the disliked playlist"),
             )
         } else {
             listOf(
@@ -615,7 +623,6 @@ fun MetroDjChatSheet(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_categories), "what categories can you play?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_recommendation), "what should I listen to right now?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_chat_music), "tell me something interesting about music"),
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_open_disliked), "open the disliked playlist"),
             )
         }
 
@@ -625,15 +632,19 @@ fun MetroDjChatSheet(
         // The chat input must remain above the IME instead of being covered by it.
         contentWindowInsets = { WindowInsets.ime },
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .imePadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 8.dp),
+        Box(
+            modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp),
         ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .imePadding()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 92.dp),
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -866,6 +877,18 @@ fun MetroDjChatSheet(
                     }
                 }
             }
+            // The composer is rendered by the fixed footer below the scrollable conversation.
+        }
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(AuraElevated)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
@@ -888,6 +911,7 @@ fun MetroDjChatSheet(
                 }
             }
         }
+    }
     }
 
     if (pendingConfirmation != null) {
