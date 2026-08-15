@@ -451,7 +451,7 @@ fun MetroDjChatSheet(
                     scope.launch {
                         busy = true
                         withContext(Dispatchers.IO) {
-                            ListeningTasteTracker.setExcluded(context, media.id, false)
+                            ListeningTasteTracker.setDisliked(context, media.id, false)
                         }
                         connection?.service?.onSongUndisliked(media.id)
                         reply(context.getString(R.string.nano_dj_dislike_removed, media.title))
@@ -468,7 +468,7 @@ fun MetroDjChatSheet(
                     scope.launch {
                         busy = true
                         withContext(Dispatchers.IO) {
-                            ListeningTasteTracker.setExcluded(
+                            ListeningTasteTracker.setDisliked(
                                 context,
                                 media.id,
                                 true,

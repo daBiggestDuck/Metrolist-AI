@@ -9,9 +9,9 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.metrolist.music.constants.DislikedSongIdsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
-import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
@@ -56,7 +56,7 @@ constructor(
         val descending: Boolean,
         val hideExplicit: Boolean,
         val hideVideoSongs: Boolean,
-        val excludedSongIds: Set<String>,
+        val dislikedSongIds: Set<String>,
     )
 
     val likedSongs =
@@ -67,7 +67,7 @@ constructor(
                     descending = it[SongSortDescendingKey] ?: true,
                     hideExplicit = it[HideExplicitKey] ?: false,
                     hideVideoSongs = it[HideVideoSongsKey] ?: false,
-                    excludedSongIds = it[ListeningTasteExcludedSongIdsKey].orEmpty(),
+                    dislikedSongIds = it[DislikedSongIdsKey].orEmpty(),
                 )
             }
             .distinctUntilChanged()
@@ -84,10 +84,10 @@ constructor(
 
                     "disliked" -> kotlinx.coroutines.flow.flow {
                         val songs =
-                            if (preferences.excludedSongIds.isEmpty()) {
+                            if (preferences.dislikedSongIds.isEmpty()) {
                                 emptyList()
                             } else {
-                                database.getSongsByIds(preferences.excludedSongIds.toList())
+                                database.getSongsByIds(preferences.dislikedSongIds.toList())
                                     .filter { !it.song.isEpisode }
                                     .filterExplicit(preferences.hideExplicit)
                                     .filterVideoSongs(preferences.hideVideoSongs)

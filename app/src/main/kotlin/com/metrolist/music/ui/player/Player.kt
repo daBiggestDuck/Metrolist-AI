@@ -1125,10 +1125,10 @@ fun BottomSheetPlayer(
                                         onClick = {
                                             if (!isEpisode && isDisliked && !isFavorite) {
                                                 scope.launch(Dispatchers.IO) {
-                                                    ListeningTasteTracker.setExcluded(
+                                                    ListeningTasteTracker.setDisliked(
                                                         context = context,
                                                         songId = mediaMetadata.id,
-                                                        excluded = false,
+                                                        disliked = false,
                                                     )
                                                 }
                                             }
@@ -1156,22 +1156,22 @@ fun BottomSheetPlayer(
                                     if (!isEpisode) {
                                         AuraIconButton(
                                             onClick = {
-                                                val exclude = !isDisliked
+                                                val disliked = !isDisliked
                                                 scope.launch(Dispatchers.IO) {
-                                                    ListeningTasteTracker.setExcluded(
+                                                    ListeningTasteTracker.setDisliked(
                                                         context = context,
                                                         songId = mediaMetadata.id,
-                                                        excluded = exclude,
+                                                        disliked = disliked,
                                                         title = mediaMetadata.title,
                                                         artists = mediaMetadata.artists.map { it.name },
                                                     )
-                                                    if (exclude) {
+                                                    if (disliked) {
                                                         playerConnection.service.onSongDisliked(mediaMetadata.id)
                                                     } else {
                                                         playerConnection.service.onSongUndisliked(mediaMetadata.id)
                                                     }
                                                 }
-                                                if (exclude && isFavorite) {
+                                                if (disliked && isFavorite) {
                                                     playerConnection.toggleLike()
                                                 }
                                             },
@@ -1492,10 +1492,10 @@ Spacer(Modifier.width(8.dp))
                                         onClick = {
                                             if (!isEpisode && isDisliked && !isFavorite) {
                                                 scope.launch(Dispatchers.IO) {
-                                                    ListeningTasteTracker.setExcluded(
+                                                    ListeningTasteTracker.setDisliked(
                                                         context = context,
                                                         songId = mediaMetadata.id,
-                                                        excluded = false,
+                                                        disliked = false,
                                                     )
                                                 }
                                             }
@@ -1525,22 +1525,22 @@ Spacer(Modifier.width(8.dp))
                                                     .size(32.dp)
                                                     .padding(4.dp),
                                             onClick = {
-                                                val exclude = !isDisliked
+                                                val disliked = !isDisliked
                                                 scope.launch(Dispatchers.IO) {
-                                                    ListeningTasteTracker.setExcluded(
+                                                    ListeningTasteTracker.setDisliked(
                                                         context = context,
                                                         songId = mediaMetadata.id,
-                                                        excluded = exclude,
+                                                        disliked = disliked,
                                                         title = mediaMetadata.title,
                                                         artists = mediaMetadata.artists.map { it.name },
                                                     )
-                                                    if (exclude) {
+                                                    if (disliked) {
                                                         playerConnection.service.onSongDisliked(mediaMetadata.id)
                                                     } else {
                                                         playerConnection.service.onSongUndisliked(mediaMetadata.id)
                                                     }
                                                 }
-                                                if (exclude && isFavorite) {
+                                                if (disliked && isFavorite) {
                                                     playerConnection.toggleLike()
                                                 }
                                             },

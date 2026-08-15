@@ -397,7 +397,7 @@ fun LibrarySongsScreen(
                 }
             }
 
-            item(
+            stickyHeader(
                 key = "header",
                 contentType = CONTENT_TYPE_HEADER,
             ) {

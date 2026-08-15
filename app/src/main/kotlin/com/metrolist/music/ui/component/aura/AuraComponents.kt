@@ -760,22 +760,26 @@ fun AuraHeroPanel(
     Row(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .height(64.dp)
+            .clip(RoundedCornerShape(32.dp))
             .background(AuraPlayerChrome)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .border(1.dp, AuraDividerColor, RoundedCornerShape(32.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        AuraIconButton(
-            onClick = onPlayClick,
-            enabled = enabled,
-            modifier = Modifier.size(42.dp),
-            containerColor = AuraSpotifyDark,
-            contentColor = AuraSpotifyGreen,
+        Box(
+            modifier =
+                Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(AuraSpotifyDark),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.radio),
                 contentDescription = null,
+                tint = AuraSpotifyGreen,
                 modifier = Modifier.size(20.dp),
             )
         }

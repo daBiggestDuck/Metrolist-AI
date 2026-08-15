@@ -6,6 +6,7 @@
 package com.metrolist.music.ai
 
 import android.content.Context
+import com.metrolist.music.constants.DislikedSongIdsKey
 import com.metrolist.music.constants.ListeningTasteActiveLaneKey
 import com.metrolist.music.constants.ListeningTasteArtistsKey
 import com.metrolist.music.constants.ListeningTasteCategoriesKey
@@ -289,10 +290,30 @@ object ListeningTasteTracker {
     fun snapshotExcludedSongIds(): Set<String> = memoryProfile?.excludedSongIds.orEmpty()
 
     /**
-     * Mark a song as disliked / excluded from Metro DJ taste and recommendations.
-     * Persists under [ListeningTasteExcludedSongIdsKey] (same pref as "Don't use for taste").
+     * Mark a song as explicitly disliked while keeping the separate taste-exclusion state in sync.
+     * Taste exclusions can also come from imports/settings and must not appear in the disliked auto playlist.
+     */
+    suspend fun setDisliked(
+        context: Context,
+        songId: String,
+        disliked: Boolean,
+        title: String = "",
+        artists: List<String> = emptyList(),
+    ) {
+        if (songId.isBlank()) return
+        context.safeDataStoreEdit { prefs ->
+            val current = prefs[DislikedSongIdsKey]?.toMutableSet() ?: mutableSetOf()
+            if (disliked) current += songId else current -= songId
+            prefs[DislikedSongIdsKey] = current
+        }
+        setExcluded(context, songId, disliked, title, artists)
+    }
+
+    /**
+     * Mark a song as excluded from Metro DJ taste and recommendations.
+     * Persists under [ListeningTasteExcludedSongIdsKey] (the "Don't use for taste" preference).
      * When [excluded] is true and metadata is provided, demotes matching artists/categories
-     * and drops the track from listening seeds so DJ treats it as bad taste.
+     * and drops the track from listening seeds.
      */
     suspend fun setExcluded(
         context: Context,

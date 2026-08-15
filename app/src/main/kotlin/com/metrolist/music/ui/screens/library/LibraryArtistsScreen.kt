@@ -255,7 +255,7 @@ fun LibraryArtistsScreen(
                         filterContent()
                     }
 
-                    item(
+                    stickyHeader(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -321,9 +321,8 @@ fun LibraryArtistsScreen(
                         filterContent()
                     }
 
-                    item(
+                    stickyHeader(
                         key = "header",
-                        span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         headerContent()

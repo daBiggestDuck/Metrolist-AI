@@ -504,6 +504,8 @@ val ListeningTasteLastUpdatedKey = longPreferencesKey("listeningTasteLastUpdated
 val ListeningTasteListenCountKey = intPreferencesKey("listeningTasteListenCount")
 /** Song IDs excluded from continuous taste updates ("Don't use for taste"). */
 val ListeningTasteExcludedSongIdsKey = stringSetPreferencesKey("listeningTasteExcludedSongIds")
+/** Song IDs explicitly marked disliked by the listener. */
+val DislikedSongIdsKey = stringSetPreferencesKey("dislikedSongIds")
 /** Last active Metro DJ lane id (chill/hype/focus/nostalgia/artist_radio). */
 val ListeningTasteActiveLaneKey = stringPreferencesKey("listeningTasteActiveLane")
 
