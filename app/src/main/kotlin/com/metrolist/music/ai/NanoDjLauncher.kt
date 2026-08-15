@@ -84,6 +84,7 @@ object NanoDjLauncher {
 
             val merged = ListeningTasteTracker.loadMergedTaste(context)
             val excludedSongIds = ListeningTasteTracker.snapshotExcludedSongIds()
+            val dislikedSignals = ListeningTasteTracker.loadDislikedSignals(context)
 
             if (
                 merged.seedTracks.isEmpty() &&
@@ -115,6 +116,7 @@ object NanoDjLauncher {
                     categories = merged.categories,
                     lane = merged.lane,
                     excludedSongIds = excludedSongIds,
+                    dislikedSignals = dislikedSignals,
                 )
             if (replaceCurrentQueue) {
                 playerConnection.service.clearAutomix()

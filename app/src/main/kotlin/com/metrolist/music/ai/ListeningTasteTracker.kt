@@ -7,6 +7,7 @@ package com.metrolist.music.ai
 
 import android.content.Context
 import com.metrolist.music.constants.DislikedSongIdsKey
+import com.metrolist.music.constants.DislikedSongMetadataKey
 import com.metrolist.music.constants.ListeningTasteActiveLaneKey
 import com.metrolist.music.constants.ListeningTasteArtistsKey
 import com.metrolist.music.constants.ListeningTasteCategoriesKey
@@ -305,8 +306,41 @@ object ListeningTasteTracker {
             val current = prefs[DislikedSongIdsKey]?.toMutableSet() ?: mutableSetOf()
             if (disliked) current += songId else current -= songId
             prefs[DislikedSongIdsKey] = current
+
+            val metadata =
+                prefs[DislikedSongMetadataKey]
+                    .orEmpty()
+                    .lineSequence()
+                    .filter { it.substringBefore('\t') != songId }
+                    .toMutableList()
+            if (disliked && (title.isNotBlank() || artists.isNotEmpty())) {
+                val cleanTitle = title.replace('\n', ' ').replace('\t', ' ').trim()
+                val cleanArtists = artists.joinToString(", ") { it.replace('\n', ' ').replace('\t', ' ').trim() }
+                metadata += "$songId\t$cleanTitle\t$cleanArtists"
+            }
+            prefs[DislikedSongMetadataKey] = metadata.takeLast(200).joinToString("\n")
         }
-        setExcluded(context, songId, disliked, title, artists)
+        // A dislike excludes this exact track, but does not demote its artist or category.
+        // Metro DJ may generalize only after seeing a clear repeated pattern.
+        setExcluded(context, songId, disliked)
+    }
+
+    /**
+     * Returns explicit dislike examples for Metro DJ. The AI is instructed to use these only
+     * when several examples form a clear pattern; a single disliked track is never generalized.
+     */
+    suspend fun loadDislikedSignals(context: Context, limit: Int = 24): List<String> {
+        val prefs = prefsSnapshot(context)
+        return prefs.getOr(DislikedSongMetadataKey, "")
+            .lineSequence()
+            .mapNotNull { line ->
+                val parts = line.split('\t', limit = 3)
+                val title = parts.getOrNull(1).orEmpty().trim()
+                val artists = parts.getOrNull(2).orEmpty().trim()
+                if (title.isBlank()) null else if (artists.isBlank()) title else "$title — $artists"
+            }
+            .toList()
+            .takeLast(limit)
     }
 
     /**

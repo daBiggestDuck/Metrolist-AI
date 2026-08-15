@@ -404,6 +404,16 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(
+        route = "settings/dj/taste",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
+        SpotifyTasteScreen(navController)
+    }
+
+    composable(
         route = "settings/player",
         enterTransition = { nestedScreenEnter() },
         exitTransition = { nestedScreenExit() },

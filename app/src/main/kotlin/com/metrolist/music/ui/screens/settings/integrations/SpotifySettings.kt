@@ -37,13 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalDatabase
-import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.ai.TasteSummary
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.ListeningTasteSummaryKey
-import com.metrolist.music.constants.NanoDjSpeakKey
 import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyDisplayNameKey
 import com.metrolist.music.constants.SpotifyTasteHintsKey
@@ -63,7 +60,6 @@ import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.component.aura.AuraBanner
 import com.metrolist.music.ui.component.aura.AuraDivider
 import com.metrolist.music.ui.component.aura.AuraHeader
-import com.metrolist.music.ui.component.aura.AuraHeroPanel
 import com.metrolist.music.ui.component.aura.AuraRow
 import com.metrolist.music.ui.component.aura.AuraScreen
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
@@ -83,7 +79,6 @@ fun SpotifySettings(
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
-    val playerConnection = LocalPlayerConnection.current
     val scope = rememberCoroutineScope()
 
     var clientId by rememberPreference(
@@ -97,13 +92,6 @@ fun SpotifySettings(
     var topTracksPref by rememberPreference(SpotifyTopTracksKey, "")
     var listeningSummary by rememberPreference(ListeningTasteSummaryKey, "")
     val enableGeminiNano by rememberPreference(EnableGeminiNanoKey, true)
-    val (nanoDjSpeak, _) = rememberPreference(NanoDjSpeakKey, true)
-
-    val displayTasteSummary =
-        remember(listeningSummary, tasteSummary) {
-            TasteSummary.coalesce(tasteSummary, listeningSummary)
-        }
-
     var isConnected by remember {
         mutableStateOf(!SpotifyTokenStore.retrieve().isNullOrBlank())
     }
@@ -552,18 +540,6 @@ fun SpotifySettings(
 
         AuraBanner(text = stringResource(R.string.spotify_oauth_premium_disclaimer))
 
-        AuraSectionLabel(stringResource(R.string.spotify_taste_my_section))
-        AuraRow(
-            title = stringResource(R.string.spotify_view_taste),
-            subtitle =
-                displayTasteSummary?.take(120)
-                    ?: stringResource(R.string.spotify_view_taste_desc),
-            enabled = !isBusy,
-            showChevron = true,
-            onClick = { navController.navigate("settings/integrations/spotify/taste") },
-        )
-        AuraDivider()
-
         AuraSectionLabel(stringResource(R.string.spotify_section_account))
         AuraRow(
             title = stringResource(R.string.spotify_client_id),
@@ -636,102 +612,6 @@ fun SpotifySettings(
             },
         )
 
-        AuraSectionLabel(stringResource(R.string.spotify_section_taste_dj))
-        AuraHeroPanel(
-            title = stringResource(R.string.nano_dj_section),
-            subtitle = stringResource(R.string.nano_dj_start_desc),
-            enabled = !isBusy && playerConnection != null,
-            playContentDescription = stringResource(R.string.nano_dj_start),
-            onPlayClick = {
-                val connection = playerConnection ?: return@AuraHeroPanel
-                scope.launch {
-                    isBusy = true
-                    statusMessage = null
-                    progress = SpotifyImportProgress(phase = "Starting Metro DJ")
-                    val result =
-                        NanoDjLauncher.start(
-                            context = context,
-                            playerConnection = connection,
-                            speak = nanoDjSpeak,
-                        )
-                    statusMessage =
-                        result.fold(
-                            onSuccess = {
-                                context.getString(R.string.nano_dj_started)
-                            },
-                            onFailure = { it.message },
-                        )
-                    isBusy = false
-                }
-            },
-        )
-
-        Spacer(Modifier.height(8.dp))
-        AuraRow(
-            title = stringResource(R.string.nano_recommendations_generate),
-            subtitle = stringResource(R.string.nano_recommendations_generate_desc),
-            enabled = !isBusy,
-            onClick = {
-                scope.launch {
-                    isBusy = true
-                    statusMessage = null
-                    progress = SpotifyImportProgress(phase = "Updating recommendations")
-                    val manager = SpotifyImportManager(database, context)
-                    try {
-                        val result =
-                            manager.generateRecommendations(
-                                clientId = clientId,
-                                enableGeminiNano = enableGeminiNano,
-                                cachedSummary =
-                                    TasteSummary
-                                        .coalesce(tasteSummary, listeningSummary)
-                                        .orEmpty(),
-                                cachedHints =
-                                    tasteHints
-                                        .split('\n')
-                                        .map { it.trim() }
-                                        .filter { it.isNotBlank() && TasteSummary.isUsable(it) },
-                                onProgress = { p ->
-                                    scope.launch(Dispatchers.Main) {
-                                        progress = p
-                                    }
-                                },
-                            )
-                        result.tasteAnalysis?.let { analysis ->
-                            TasteSummary.sanitizeOrNull(analysis.summary)?.let {
-                                tasteSummary = it
-                                listeningSummary = it
-                            }
-                            tasteHints =
-                                analysis.searchHints
-                                    .filter { TasteSummary.isUsable(it) }
-                                    .joinToString("\n")
-                        }
-                        persistTasteProfile(result.topArtists, result.topTracks)
-                        statusMessage =
-                            context.getString(
-                                R.string.nano_recommendations_result,
-                                result.matched,
-                                result.failed,
-                            )
-                    } catch (e: Exception) {
-                        statusMessage = e.message
-                        reportException(e)
-                    } finally {
-                        manager.close()
-                        isBusy = false
-                    }
-                }
-            },
-        )
-        AuraDivider()
-        AuraRow(
-            title = stringResource(R.string.dj_settings_title),
-            subtitle = stringResource(R.string.dj_settings_spotify_link),
-            showChevron = true,
-            onClick = { navController.navigate("settings/dj") },
-        )
-
         if (isConnected) {
             AuraSectionLabel(stringResource(R.string.spotify_import))
             AuraRow(
@@ -785,23 +665,6 @@ fun SpotifySettings(
             )
             AuraDivider()
 
-
-            displayTasteSummary?.let { summary ->
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.spotify_taste_summary),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 6,
-                    softWrap = true,
-                )
-            }
 
             AuraSectionLabel(stringResource(R.string.spotify_playlists))
             if (playlists.isEmpty()) {

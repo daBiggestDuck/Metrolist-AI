@@ -102,6 +102,7 @@ import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
+import com.metrolist.music.constants.UseFloatingNavigationBarKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.ui.component.DefaultDialog
@@ -275,6 +276,11 @@ fun AppearanceSettings(
         rememberPreference(
             SlimNavBarKey,
             defaultValue = false,
+        )
+    val (useFloatingNavigationBar, onUseFloatingNavigationBarChange) =
+        rememberPreference(
+            UseFloatingNavigationBarKey,
+            defaultValue = true,
         )
 
     // Density scale preferences
@@ -1696,6 +1702,28 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) },
+                    ),
+                    Material3SettingsItem(
+                        searchKey = "floating_navigation_bar",
+                        icon = painterResource(R.drawable.nav_bar),
+                        title = { Text(stringResource(R.string.floating_navigation_bar)) },
+                        description = { Text(stringResource(R.string.floating_navigation_bar_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = useFloatingNavigationBar,
+                                onCheckedChange = onUseFloatingNavigationBarChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (useFloatingNavigationBar) R.drawable.check else R.drawable.close,
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                },
+                            )
+                        },
+                        onClick = { onUseFloatingNavigationBarChange(!useFloatingNavigationBar) },
                     ),
                     Material3SettingsItem(
                         searchKey = "slim_navbar",

@@ -35,6 +35,7 @@ class NanoDjQueue(
     private val categories: List<String> = emptyList(),
     private val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
     private val excludedSongIds: Set<String> = emptySet(),
+    private val dislikedSignals: List<String> = emptyList(),
 ) : Queue {
     override val preloadItem: MediaMetadata? = null
 
@@ -208,6 +209,7 @@ class NanoDjQueue(
             recentTitles = playedTitles.toList(),
             seedArtists = seedArtists,
             seedTracks = seedTracks,
+            dislikedSignals = dislikedSignals,
             avoidTitles = (playedTitles + skippedTitles).toList(),
             categories = categories,
             lane = lane,
@@ -230,6 +232,7 @@ class NanoDjQueue(
             categories: List<String> = emptyList(),
             lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
             excludedSongIds: Set<String> = emptySet(),
+            dislikedSignals: List<String> = emptyList(),
         ): NanoDjQueue =
             NanoDjQueue(
                 tasteSummary = tasteSummary,
@@ -241,6 +244,7 @@ class NanoDjQueue(
                 categories = categories,
                 lane = lane,
                 excludedSongIds = excludedSongIds,
+                dislikedSignals = dislikedSignals,
             )
     }
 }

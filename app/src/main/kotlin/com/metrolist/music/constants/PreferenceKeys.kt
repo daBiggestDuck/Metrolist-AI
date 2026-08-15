@@ -53,6 +53,7 @@ enum class DensityScale(
 
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
+val UseFloatingNavigationBarKey = booleanPreferencesKey("useFloatingNavigationBar")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
 val SquigglySliderKey = booleanPreferencesKey("squigglySlider")
@@ -506,6 +507,8 @@ val ListeningTasteListenCountKey = intPreferencesKey("listeningTasteListenCount"
 val ListeningTasteExcludedSongIdsKey = stringSetPreferencesKey("listeningTasteExcludedSongIds")
 /** Song IDs explicitly marked disliked by the listener. */
 val DislikedSongIdsKey = stringSetPreferencesKey("dislikedSongIds")
+/** Lightweight dislike metadata for conservative Metro DJ pattern detection; not a database field. */
+val DislikedSongMetadataKey = stringPreferencesKey("dislikedSongMetadata")
 /** Last active Metro DJ lane id (chill/hype/focus/nostalgia/artist_radio). */
 val ListeningTasteActiveLaneKey = stringPreferencesKey("listeningTasteActiveLane")
 

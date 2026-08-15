@@ -55,6 +55,8 @@ import com.metrolist.music.ui.component.aura.AuraFloatingPillShape
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.screens.Screens
+import com.metrolist.music.constants.UseFloatingNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -278,6 +280,7 @@ fun AppNavigationBar(
     onSearchLongClick: (() -> Unit)? = null
 ) {
     val containerColor = if (pureBlack) Color.Black else AuraNavPillBg
+    val useFloatingNavigationBar by rememberPreference(UseFloatingNavigationBarKey, defaultValue = true)
     val pillHeight = if (slimNav) 52.dp else 56.dp
     val resolvedSelectedIndex = remember(currentRoute, navigationItems) {
         navigationTabIndex(currentRoute, navigationItems)
@@ -312,10 +315,16 @@ fun AppNavigationBar(
                     .height(pillHeight)
                     // elevation 0: pill translates with the player sheet every frame — soft
                     // shadows here were a major overdraw source during expand/collapse.
-                    .auraFloatingIsland(
-                        shape = AuraFloatingPillShape,
-                        color = containerColor,
-                        elevation = 0.dp,
+                    .then(
+                        if (useFloatingNavigationBar) {
+                            Modifier.auraFloatingIsland(
+                                shape = AuraFloatingPillShape,
+                                color = containerColor,
+                                elevation = 0.dp,
+                            )
+                        } else {
+                            Modifier.background(containerColor)
+                        },
                     ),
         ) {
             val tabCount = navigationItems.size.coerceAtLeast(1)

@@ -29,6 +29,8 @@ object NanoDjEngine {
         val recentTitles: List<String>,
         val seedArtists: List<String>,
         val seedTracks: List<String>,
+        /** Explicit dislikes, used only for conservative pattern avoidance. */
+        val dislikedSignals: List<String> = emptyList(),
         val avoidTitles: List<String> = emptyList(),
         val categories: List<String> = emptyList(),
         val lane: ListeningTasteTracker.DjLane = ListeningTasteTracker.DjLane.ARTIST_RADIO,
@@ -81,6 +83,12 @@ object NanoDjEngine {
             Mood categories: ${context.categories.take(6).joinToString(", ").ifBlank { lane.displayName }}
             Favorite artists: ${context.seedArtists.take(12).joinToString(", ").ifBlank { "(unknown)" }}
             Favorite tracks: ${context.seedTracks.take(12).joinToString("; ").ifBlank { "(unknown)" }}
+            Explicitly disliked examples: ${context.dislikedSignals.take(24).joinToString("; ").ifBlank { "(none)" }}
+            Use dislikes conservatively: only avoid a repeated, clear pattern supported by several examples
+            (for example, the same artist appearing repeatedly). If no clear pattern exists, do not
+            generalize at all. Never avoid the listener's liked tracks, most-listened tracks, or favorite
+            artists merely because one related song was disliked. A dislike is a hard block for that
+            exact track, not permission to block its artist or genre.
             Recently played: ${context.recentTitles.take(10).joinToString("; ").ifBlank { "(none)" }}
             Avoid repeating: ${context.avoidTitles.take(20).joinToString("; ").ifBlank { "(none)" }}
             Recent skip pressure: ${context.skipPressure} (if this is high, deliberately change

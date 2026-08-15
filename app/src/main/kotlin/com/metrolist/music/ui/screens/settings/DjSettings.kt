@@ -355,6 +355,20 @@ fun DjSettings(navController: NavController) {
         )
 
         Material3SettingsGroup(
+            title = stringResource(R.string.spotify_taste_title),
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.discover_tune),
+                    title = { Text(stringResource(R.string.spotify_taste_title)) },
+                    description = { Text(stringResource(R.string.spotify_taste_screen_subtitle)) },
+                    onClick = { navController.navigate("settings/dj/taste") },
+                ),
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(27.dp))
+
+        Material3SettingsGroup(
             title = stringResource(R.string.dj_settings_section_ai),
             items =
                 buildList {

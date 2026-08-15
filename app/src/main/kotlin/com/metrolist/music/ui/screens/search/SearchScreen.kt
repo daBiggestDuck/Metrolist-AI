@@ -200,6 +200,10 @@ fun SearchScreen(
         }
     }
 
+    LaunchedEffect(isSearchActive) {
+        savedStateHandle["searchFieldFocused"] = isSearchActive
+    }
+
     LaunchedEffect(isSearchActive, isPlayerExpanded) {
         if (isSearchActive && !isPlayerExpanded) {
             kotlinx.coroutines.delay(100)
@@ -372,10 +376,7 @@ fun SearchScreen(
                             .fillMaxSize(),
 
             ) {
-                // Keep the browse hub (and its headers) visible while the field is focused but
-                // empty; suggestions only take over once the listener starts typing. This avoids
-                // the jarring swap to a blank screen on focus.
-                if (!isSearchActive || query.text.isEmpty()) {
+                if (!isSearchActive) {
                     SearchBrowseHub(
                         listState = hubListState,
                         onCategoryClick = { browseId, params ->

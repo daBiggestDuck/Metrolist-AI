@@ -138,7 +138,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.constants.CropAlbumArtKey
-import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
+import com.metrolist.music.constants.DislikedSongIdsKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
@@ -328,7 +328,7 @@ fun BottomSheetPlayer(
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
-    val excludedTasteIds by rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
+    val dislikedSongIds by rememberPreference(DislikedSongIdsKey, defaultValue = emptySet<String>())
     val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
     val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
@@ -1116,7 +1116,7 @@ fun BottomSheetPlayer(
                                 // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                val isDisliked = !isEpisode && mediaMetadata.id in excludedTasteIds
+                                val isDisliked = !isEpisode && mediaMetadata.id in dislikedSongIds
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -1474,7 +1474,7 @@ Spacer(Modifier.width(8.dp))
                                 // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                val isDisliked = !isEpisode && mediaMetadata.id in excludedTasteIds
+                                val isDisliked = !isEpisode && mediaMetadata.id in dislikedSongIds
                                 Row(
                                     modifier = Modifier.align(Alignment.Center),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),

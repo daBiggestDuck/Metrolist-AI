@@ -90,6 +90,7 @@ import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.AuraTransportButton
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
+import com.metrolist.music.constants.DislikedSongIdsKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
@@ -203,6 +204,7 @@ private fun NewMiniPlayer(
     // Player states - only collect what's needed at this level
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val dislikedSongIds by rememberPreference(DislikedSongIdsKey, defaultValue = emptySet<String>())
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
 
@@ -499,12 +501,23 @@ private fun NewMiniPlayer(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                mediaMetadata?.let { FavoriteButton(
-                    songId = it.id,
-                    errorColor = errorColor,
-                    outlineColor = outlineColor,
-                    onSurfaceColor = onSurfaceColor,
-                )
+                mediaMetadata?.let { metadata ->
+                    if (!metadata.isEpisode) {
+                        MiniDislikeButton(
+                            metadata = metadata,
+                            isDisliked = metadata.id in dislikedSongIds,
+                            tint = onSurfaceColor,
+                            activeTint = errorColor,
+                            outlineColor = outlineColor,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    FavoriteButton(
+                        songId = metadata.id,
+                        errorColor = errorColor,
+                        outlineColor = outlineColor,
+                        onSurfaceColor = onSurfaceColor,
+                    )
                 }
             }
         }
@@ -710,6 +723,7 @@ private fun LegacyMiniPlayer(
 
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val dislikedSongIds by rememberPreference(DislikedSongIdsKey, defaultValue = emptySet<String>())
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
 
@@ -881,6 +895,18 @@ private fun LegacyMiniPlayer(
                 playerConnection = playerConnection,
                 listenTogetherManager = listenTogetherManager,
             )
+
+            mediaMetadata?.let { metadata ->
+                if (!metadata.isEpisode) {
+                    MiniDislikeButton(
+                        metadata = metadata,
+                        isDisliked = metadata.id in dislikedSongIds,
+                        tint = Color.White,
+                        activeTint = AuraSpotifyGreen,
+                        outlineColor = Color.White.copy(alpha = 0.18f),
+                    )
+                }
+            }
 
             AuraTransportButton(
                 enabled = canSkipNext && !isListenTogetherGuest,
@@ -1102,6 +1128,69 @@ private fun AddToPlaylistButton(
             painter = painterResource(R.drawable.add),
             contentDescription = contentDescription,
             tint = onSurfaceColor.copy(alpha = 0.7f),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun MiniDislikeButton(
+    metadata: MediaMetadata,
+    isDisliked: Boolean,
+    tint: Color,
+    activeTint: Color,
+    outlineColor: Color,
+) {
+    val context = LocalContext.current
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val scope = rememberCoroutineScope()
+    val contentDescription =
+        stringResource(if (isDisliked) R.string.undislike_cd else R.string.dislike_cd)
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = if (isDisliked) activeTint.copy(alpha = 0.6f) else outlineColor.copy(alpha = 0.3f),
+                shape = CircleShape,
+            )
+            .background(
+                color = if (isDisliked) activeTint.copy(alpha = 0.12f) else Color.Transparent,
+                shape = CircleShape,
+            )
+            .clickable {
+                val nextDisliked = !isDisliked
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        com.metrolist.music.ai.ListeningTasteTracker.setDisliked(
+                            context = context,
+                            songId = metadata.id,
+                            disliked = nextDisliked,
+                            title = metadata.title,
+                            artists = metadata.artists.map { it.name },
+                        )
+                    }
+                    if (nextDisliked) {
+                        playerConnection.service.onSongDisliked(metadata.id)
+                    } else {
+                        playerConnection.service.onSongUndisliked(metadata.id)
+                    }
+                }
+            },
+    ) {
+        Icon(
+            painter = painterResource(
+                if (isDisliked) {
+                    R.drawable.media3_icon_thumb_down_filled
+                } else {
+                    R.drawable.media3_icon_thumb_down_unfilled
+                },
+            ),
+            contentDescription = contentDescription,
+            tint = if (isDisliked) activeTint else tint.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp),
         )
     }

@@ -803,6 +803,9 @@ class MainActivity : ComponentActivity() {
                 // The pager's Search page is not the NavHost's duplicate root destination;
                 // keep its focus/reselect state stable for the lifetime of the activity.
                 val mainSearchSavedStateHandle = remember { SavedStateHandle() }
+                val searchFieldFocused by mainSearchSavedStateHandle
+                    .getStateFlow("searchFieldFocused", false)
+                    .collectAsStateWithLifecycle()
                 // Keep the NavHost visible while an overlay/detail destination is still part of
                 // the transition. Looking only at currentRoute hides Settings too early when its
                 // pop animation is moving back to a main tab.
@@ -1018,7 +1021,7 @@ class MainActivity : ComponentActivity() {
 
                 var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
 
-                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar) {
+                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar, searchFieldFocused) {
                     val currentRoute = navBackStackEntry?.destination?.route
                     val isListenTogetherScreen =
                         currentRoute == Screens.ListenTogether.route ||
@@ -1028,6 +1031,7 @@ class MainActivity : ComponentActivity() {
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
                         currentRoute != Screens.Home.route &&
+                        !(currentRoute == Screens.Search.route && searchFieldFocused) &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
