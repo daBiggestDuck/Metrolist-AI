@@ -68,6 +68,7 @@ import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
 import com.metrolist.music.constants.PlaylistViewTypeKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
+import com.metrolist.music.constants.ShowDislikedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
@@ -112,14 +113,6 @@ fun LibraryPlaylistsScreen(
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val database = LocalDatabase.current
-    val dislikedPlaylistName = stringResource(R.string.nano_dj_disliked_playlist_name)
-
-    LaunchedEffect(dislikedPlaylistName) {
-        withContext(Dispatchers.IO) {
-            runCatching { database.ensureLocalPlaylist(dislikedPlaylistName) }
-        }
-    }
-
     val coroutineScope = rememberCoroutineScope()
 
     var viewType by rememberEnumPreference(PlaylistViewTypeKey, LibraryViewType.LIST)
@@ -154,6 +147,7 @@ fun LibraryPlaylistsScreen(
     val myTopName = stringResource(R.string.my_top) + " $topSize"
     val uploadedName = stringResource(R.string.uploaded_playlist)
     val cachedName = stringResource(R.string.cached_playlist)
+    val dislikedName = stringResource(R.string.disliked_songs)
 
     val likedPlaylist = remember(likedName) {
         Playlist(
@@ -190,16 +184,25 @@ fun LibraryPlaylistsScreen(
             songThumbnails = emptyList(),
         )
     }
+    val dislikedPlaylist = remember(dislikedName) {
+        Playlist(
+            playlist = PlaylistEntity(id = "auto_disliked", name = dislikedName),
+            songCount = 0,
+            songThumbnails = emptyList(),
+        )
+    }
 
     val (showLiked) = rememberPreference(ShowLikedPlaylistKey, true)
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)
     val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
+    val (showDisliked) = rememberPreference(ShowDislikedPlaylistKey, true)
     val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
         showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
     val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
+    val showDislikedPlaylists = showDisliked && matchesNormalizedQuery(normalizedQuery, dislikedPlaylist.playlist.name)
     val showTopPlaylists = showTop && matchesNormalizedQuery(normalizedQuery, topPlaylist.playlist.name)
     val showUploadedPlaylists =
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
@@ -209,6 +212,7 @@ fun LibraryPlaylistsScreen(
         showLikedPlaylist,
         showDownloadedPlaylist,
         showCachedPlaylists,
+        showDislikedPlaylists,
         showTopPlaylists,
         showUploadedPlaylists,
         topSize,
@@ -241,6 +245,16 @@ fun LibraryPlaylistsScreen(
                         playlist = cachedPlaylist,
                         autoPlaylist = true,
                         route = "cache_playlist/cached",
+                    ),
+                )
+            }
+            if (showDislikedPlaylists) {
+                add(
+                    VisiblePlaylistItem(
+                        key = "dislikedPlaylist",
+                        playlist = dislikedPlaylist,
+                        autoPlaylist = true,
+                        route = "auto_playlist/disliked",
                     ),
                 )
             }
@@ -482,7 +496,7 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    item(
+                    stickyHeader(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -573,9 +587,8 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    item(
+                    stickyHeader(
                         key = "header",
-                        span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         if (!inSelectMode) {

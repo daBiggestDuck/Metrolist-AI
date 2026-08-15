@@ -89,14 +89,6 @@ class App :
         // (bundled asset + cached overlay) is captured, not just the async remote refresh.
         Timber.plant(Timber.DebugTree())
 
-        // Seed the playlist before the Library is first opened. The helper also repairs rows
-        // created by older builds without bookmarkedAt, which otherwise hides them from Library.
-        applicationScope.launch(Dispatchers.IO) {
-            runCatching {
-                database.ensureLocalPlaylist(getString(R.string.nano_dj_disliked_playlist_name))
-            }.onFailure { Timber.e(it, "Could not ensure Metro DJ disliked playlist") }
-        }
-
         SpotifyTokenStore.init(this)
 
         // Initialize cipher deobfuscator for WEB_REMIX streaming

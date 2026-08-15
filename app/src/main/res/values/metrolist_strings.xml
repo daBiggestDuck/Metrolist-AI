@@ -168,6 +168,7 @@
     <string name="enable_song_cache">Enable song cache</string>
     <string name="enable_song_cache_desc">Automatically cache songs for faster future playback</string>
     <string name="show_uploaded_playlist">Show Uploaded playlist</string>
+    <string name="show_disliked_playlist">Show Disliked songs</string>
     <string name="show_most_stats_playlists">Show Weekly and Monthly Most playlists</string>
     <string name="show_most_stats_playlists_desc">Create and show stats-based Most playlists in Stats and Library</string>
     <string name="shuffle_playlist_first">Shuffle playlist or album first</string>
@@ -1173,6 +1174,7 @@
     <string name="nano_dj_added_to_playlist">Added the selection to “%1$s”.</string>
     <string name="nano_dj_disliked">Marked “%1$s” as not for your taste.</string>
     <string name="nano_dj_disliked_playlist_name">Metro DJ Disliked</string>
+    <string name="disliked_songs">Disliked songs</string>
     <string name="nano_dj_dislike_removed">Removed “%1$s” from your disliked songs.</string>
     <string name="nano_dj_playing_next">I’ll play the current song next.</string>
     <string name="nano_dj_explanation_unavailable">I don’t have a selection explanation for this block yet.</string>

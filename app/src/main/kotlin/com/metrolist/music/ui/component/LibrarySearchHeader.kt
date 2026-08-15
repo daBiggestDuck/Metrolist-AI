@@ -65,6 +65,8 @@ fun LibrarySearchHeader(
         modifier =
             modifier
                 .fillMaxWidth()
+                // Opaque backing keeps the search field readable while this row is sticky.
+                .background(com.metrolist.music.ui.component.aura.AuraPlayerCanvas)
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
     ) {
         if (isSearchActive) {

@@ -89,6 +89,7 @@ import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.RespectAgentPositioningKey
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
+import com.metrolist.music.constants.ShowDislikedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
@@ -337,6 +338,11 @@ fun AppearanceSettings(
     val (showUploadedPlaylist, onShowUploadedPlaylistChange) =
         rememberPreference(
             ShowUploadedPlaylistKey,
+            defaultValue = true,
+        )
+    val (showDislikedPlaylist, onShowDislikedPlaylistChange) =
+        rememberPreference(
+            ShowDislikedPlaylistKey,
             defaultValue = true,
         )
 
@@ -1877,6 +1883,27 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onShowUploadedPlaylistChange(!showUploadedPlaylist) },
+                    ),
+                    Material3SettingsItem(
+                        searchKey = "show_disliked_playlist",
+                        icon = painterResource(R.drawable.close),
+                        title = { Text(stringResource(R.string.show_disliked_playlist)) },
+                        trailingContent = {
+                            Switch(
+                                checked = showDislikedPlaylist,
+                                onCheckedChange = onShowDislikedPlaylistChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (showDislikedPlaylist) R.drawable.check else R.drawable.close,
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                },
+                            )
+                        },
+                        onClick = { onShowDislikedPlaylistChange(!showDislikedPlaylist) },
                     ),
                 ),
         )

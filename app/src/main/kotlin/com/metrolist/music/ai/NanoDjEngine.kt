@@ -71,6 +71,10 @@ object NanoDjEngine {
             - <Song Title> - <Artist>
             - <Song Title> - <Artist>
             (exactly $batchSize NEXT lines, real song names that fit the ${lane.displayName} lane)
+            Every NEXT line must be a specific, playable song in the form Title - Artist. Never
+            output a playlist, radio, mix, genre, artist-only, or "songs like" query. Favor a
+            coherent arc: one familiar anchor at most, then adjacent artists, deep cuts, or
+            rediscoveries with a clear reason they belong in this set.
 
             Listener taste: ${context.tasteSummary.ifBlank { "general popular music" }}
             Active lane: ${lane.id} (${lane.displayName})
@@ -90,7 +94,7 @@ object NanoDjEngine {
         if (raw.isBlank()) return fallback
 
         val parsed = parseDjPick(raw, batchSize, usedAi = true, lane = lane)
-        return if (parsed != null) {
+        return if (parsed != null && parsed.queries.isNotEmpty()) {
             parsed.copy(commentary = interstitialOnly(parsed.commentary))
         } else {
             fallback.copy(
@@ -159,7 +163,11 @@ object NanoDjEngine {
             Regex("""(?im)^[-*]\s*(.+)$""")
                 .findAll(raw)
                 .map { it.groupValues[1].trim() }
-                .filter { it.isNotBlank() && !it.equals("NEXT:", ignoreCase = true) }
+                .filter {
+                    it.isNotBlank() &&
+                        !it.equals("NEXT:", ignoreCase = true) &&
+                        (" - " in it || " — " in it)
+                }
                 .distinct()
                 .take(batchSize.coerceAtLeast(1))
                 .toList()

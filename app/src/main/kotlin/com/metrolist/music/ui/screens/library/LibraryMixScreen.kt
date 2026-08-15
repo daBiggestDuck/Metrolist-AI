@@ -81,6 +81,7 @@ import com.metrolist.music.constants.MixSortDescendingKey
 import com.metrolist.music.constants.MixSortType
 import com.metrolist.music.constants.MixSortTypeKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
+import com.metrolist.music.constants.ShowDislikedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
@@ -164,6 +165,7 @@ fun LibraryMixScreen(
     val myTopName = stringResource(R.string.my_top) + " $topSize"
     val cachedName = stringResource(R.string.cached_playlist)
     val uploadedName = stringResource(R.string.uploaded_playlist)
+    val dislikedName = stringResource(R.string.disliked_songs)
 
     // Stable auto-playlist identities — random UUIDs every recomposition forced Lazy rebuilds.
     val likedPlaylist = remember(likedName) {
@@ -201,12 +203,20 @@ fun LibraryMixScreen(
             songThumbnails = emptyList(),
         )
     }
+    val dislikedPlaylist = remember(dislikedName) {
+        Playlist(
+            playlist = PlaylistEntity(id = "auto_disliked", name = dislikedName),
+            songCount = 0,
+            songThumbnails = emptyList(),
+        )
+    }
 
     val (showLiked) = rememberPreference(ShowLikedPlaylistKey, true)
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)
     val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
+    val (showDisliked) = rememberPreference(ShowDislikedPlaylistKey, true)
     
     val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
@@ -215,6 +225,7 @@ fun LibraryMixScreen(
     val showUploadedPlaylists =
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
     val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
+    val showDislikedPlaylists = showDisliked && matchesNormalizedQuery(normalizedQuery, dislikedPlaylist.playlist.name)
 
     // Pre-sorted Mix cache from ViewModel (albums+artists+playlists).
     val mixItems by viewModel.mixItems.collectAsStateWithLifecycle()
@@ -498,7 +509,7 @@ fun LibraryMixScreen(
                         }
                     }
 
-                    item(
+                    stickyHeader(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -559,6 +570,21 @@ fun LibraryMixScreen(
                                         navController.navigate("cache_playlist/cached")
                                     }
                                     .animateItem(),
+                            )
+                        }
+                    }
+
+                    if (showDislikedPlaylists) {
+                        item(
+                            key = "dislikedPlaylist",
+                            contentType = { CONTENT_TYPE_PLAYLIST },
+                        ) {
+                            PlaylistListItem(
+                                playlist = dislikedPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    navController.navigate("auto_playlist/disliked")
+                                }.animateItem(),
                             )
                         }
                     }
@@ -828,6 +854,7 @@ fun LibraryMixScreen(
                         !showLikedPlaylist &&
                         !showDownloadedPlaylist &&
                         !showCachedPlaylists &&
+                        !showDislikedPlaylists &&
                         !showTopPlaylists &&
                         !showUploadedPlaylists &&
                         searchQuery.isNotBlank()
@@ -859,9 +886,8 @@ fun LibraryMixScreen(
                         }
                     }
 
-                    item(
+                    stickyHeader(
                         key = "header",
-                        span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         if (!inSelectMode) {
@@ -930,6 +956,22 @@ fun LibraryMixScreen(
                                         },
                                     )
                                     .animateItem(),
+                            )
+                        }
+                    }
+
+                    if (showDislikedPlaylists) {
+                        item(
+                            key = "dislikedPlaylist",
+                            contentType = { CONTENT_TYPE_PLAYLIST },
+                        ) {
+                            PlaylistGridItem(
+                                playlist = dislikedPlaylist,
+                                fillMaxWidth = true,
+                                autoPlaylist = true,
+                                modifier = Modifier.fillMaxWidth().combinedClickable {
+                                    navController.navigate("auto_playlist/disliked")
+                                }.animateItem(),
                             )
                         }
                     }
@@ -1125,6 +1167,7 @@ fun LibraryMixScreen(
                         !showLikedPlaylist &&
                         !showDownloadedPlaylist &&
                         !showCachedPlaylists &&
+                        !showDislikedPlaylists &&
                         !showTopPlaylists &&
                         !showUploadedPlaylists &&
                         searchQuery.isNotBlank()

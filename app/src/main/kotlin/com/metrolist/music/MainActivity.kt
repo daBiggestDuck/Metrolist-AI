@@ -155,7 +155,6 @@ import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
-import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
@@ -871,13 +870,23 @@ class MainActivity : ComponentActivity() {
                         0.dp
                     }
 
-                // Keep State — `by` would recompose Scaffold / NavHost every nav-hide spring frame.
-                val navigationBarHeight =
-                    animateDpAsState(
-                        targetValue = if (shouldShowNavigationBar && !showRail) NavigationBarHeight else 0.dp,
-                        animationSpec = NavigationBarAnimationSpec,
-                        label = "navBarHeight",
+                // Start at the current target so the navigation pill is not animated up from
+                // below the window during the first frame of app startup. Later route changes
+                // retain the existing smooth hide/show animation.
+                val navigationBarTarget = if (shouldShowNavigationBar && !showRail) {
+                    NavigationBarHeight
+                } else {
+                    0.dp
+                }
+                val navigationBarHeight = remember {
+                    Animatable(navigationBarTarget.value)
+                }
+                LaunchedEffect(navigationBarTarget) {
+                    navigationBarHeight.animateTo(
+                        targetValue = navigationBarTarget.value,
+                        animationSpec = tween(durationMillis = 220),
                     )
+                }
 
                 val playerBottomSheetState =
                     rememberBottomSheetState(
@@ -1008,28 +1017,17 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
-                val searchActiveFlow =
-                    remember(navBackStackEntry?.id) {
-                        navBackStackEntry?.savedStateHandle?.getStateFlow("searchActive", false)
-                            ?: kotlinx.coroutines.flow.MutableStateFlow(false)
-                    }
-                val searchActive by searchActiveFlow.collectAsStateWithLifecycle()
 
-                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar, searchActive) {
+                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar) {
                     val currentRoute = navBackStackEntry?.destination?.route
                     val isListenTogetherScreen =
                         currentRoute == Screens.ListenTogether.route ||
                             currentRoute == "listen_together_from_topbar"
-                    val isSearchTyping =
-                        currentRoute == Screens.Search.route && searchActive
-                    // Search owns its complete header/search hierarchy. Rendering the shell
-                    // Search title and the SearchScreen field together created the exact overlap
-                    // seen while the keyboard was open, so never add the shell bar on that route.
+                    // Search keeps the shared shell row visible while its field is focused;
+                    // the field is rendered as a separate sticky row directly below it.
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
                         currentRoute != Screens.Home.route &&
-                        currentRoute != Screens.Search.route &&
-                        !isSearchTyping &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
@@ -1327,7 +1325,9 @@ class MainActivity : ComponentActivity() {
                                                 // Use graphicsLayer instead of offset to avoid recomposition
                                                 // graphicsLayer runs during draw phase, not composition phase
                                                 .graphicsLayer {
-                                                    val navBarHeightPx = navigationBarHeight.value.toPx()
+                                                    val navBarHeightPx = with(density) {
+                                                        navigationBarHeight.value.dp.toPx()
+                                                    }
                                                     val totalHeightPx = navBarTotalHeight.toPx()
 
                                                     translationY =

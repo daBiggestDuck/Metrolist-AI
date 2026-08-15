@@ -24,6 +24,9 @@ object NanoDjSession {
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active.asStateFlow()
 
+    private val _sessionId = MutableStateFlow(0L)
+    val sessionId: StateFlow<Long> = _sessionId.asStateFlow()
+
     private val _commentary = MutableStateFlow<String?>(null)
     val commentary: StateFlow<String?> = _commentary.asStateFlow()
 
@@ -77,6 +80,7 @@ object NanoDjSession {
 
     @Synchronized
     fun start(openingLine: String?, usedAi: Boolean = false) {
+        _sessionId.value++
         _active.value = true
         pendingTransitionMediaId = null
         publish(openingLine, usedAi)
