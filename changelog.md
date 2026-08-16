@@ -1,3 +1,11 @@
+---v15.3
+# What's new
+- Metro DJ description no longer says "on-device": it's a general AI radio host that picks music using your configured model and API key
+- Removed the DJ's pinned commentary banner from the top of the chat (commentary still appears as regular chat messages)
+- Chat messages now stay above the keyboard whenever the text box is focused, so the whole conversation stays readable
+- Send button is now a paper-plane icon instead of the word "Send"
+- Recommendation actions now appear as plain links under the latest DJ reply with a right arrow, and tapping one sends it straight to the DJ
+
 ---v15.2
 # What's new
 - Metro DJ chat now reliably keeps every message above the composer when the keyboard is open, and the sheet still never grows past the status bar

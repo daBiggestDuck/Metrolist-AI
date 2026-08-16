@@ -1126,7 +1126,7 @@
     <!-- Metro DJ (Spotify DJ replacement) -->
     <string name="nano_dj_section">Metro DJ</string>
     <string name="nano_dj_start">Start Metro DJ</string>
-    <string name="nano_dj_start_desc">On-device AI radio host that replaces Spotify DJ — Gemini Nano curates mood/category lanes from your live listening taste and talks between songs</string>
+    <string name="nano_dj_start_desc">AI radio host that curates mood-based lanes from your listening taste and talks between songs</string>
     <string name="nano_dj_started">Metro DJ is on air</string>
     <string name="nano_dj_speak">DJ voice</string>
     <string name="nano_dj_speak_desc">Speak Metro DJ commentary aloud with on-device text-to-speech</string>
@@ -1235,7 +1235,7 @@
     <string name="spotify_playlist_taste_use">Use for taste</string>
     <string name="spotify_playlist_taste_use_desc">Analyze this Spotify playlist for Metro DJ without re-importing songs</string>
     <string name="spotify_import">Import</string>
-    <string name="nano_dj_home_subtitle">On-device AI radio that replaces Spotify DJ</string>
+    <string name="nano_dj_home_subtitle">AI radio host that curates music from your taste and talks between songs</string>
     <string name="spotify_import_taste">Import taste (top tracks)</string>
     <string name="spotify_import_taste_desc">Creates a “Spotify Taste Import” playlist and feeds Metro DJ (Gemini Nano) your listening profile</string>
     <string name="spotify_taste_summary">Taste summary</string>

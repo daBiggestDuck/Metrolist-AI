@@ -62,10 +62,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -90,7 +89,6 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.ui.component.aura.AuraBottomSheet
-import com.metrolist.music.ui.component.aura.AuraDivider
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraPlayerChrome
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
@@ -99,7 +97,6 @@ import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -597,19 +594,13 @@ fun MetroDjChatSheet(
         }
     }
 
-    // Keep the conversation pinned to the newest message so chat never drifts off-screen,
-    // and lift the latest message above the keyboard when the composer gains focus.
-    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    LaunchedEffect(messages.size, imeVisible) {
+    // Keep the conversation pinned to the newest message. The sheet shrinks when the IME
+    // opens, which resizes the list and would otherwise leave the latest message cut off,
+    // so we also re-scroll whenever the list's measured height changes.
+    var messagesHeight by remember { mutableStateOf(0) }
+    LaunchedEffect(messages.size, messagesHeight) {
         if (messages.isNotEmpty()) {
-            if (imeVisible) {
-                // Wait for the IME/sheet resize animation to settle so the latest message
-                // lands fully above the keyboard instead of being covered by the composer.
-                delay(250)
-                messagesListState.scrollToItem(messages.lastIndex)
-            } else {
-                messagesListState.animateScrollToItem(messages.lastIndex)
-            }
+            messagesListState.scrollToItem(messages.lastIndex)
         }
     }
 
@@ -844,63 +835,12 @@ fun MetroDjChatSheet(
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
-            commentary?.let { line ->
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(AuraSpotifyGreen.copy(alpha = 0.10f))
-                            .padding(14.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.nano_dj_badge),
-                        color = AuraSpotifyGreen,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Text(
-                        text = line,
-                        color = Color.White.copy(alpha = 0.86f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-            }
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color.White.copy(alpha = 0.04f)),
-            ) {
-                quickActions.forEachIndexed { index, action ->
-                    if (index > 0) AuraDivider()
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !busy) { runCommand(action.command) }
-                                .padding(horizontal = 14.dp, vertical = 13.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = action.label,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.55f),
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            }
             LazyColumn(
                 state = messagesListState,
-                modifier = Modifier.weight(1f),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { messagesHeight = it.size.height },
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(messages) { message ->
@@ -959,6 +899,35 @@ fun MetroDjChatSheet(
                         }
                     }
                 }
+                if (messages.lastOrNull()?.fromDj == true && !busy) {
+                    item(key = "dj_suggestions") {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            quickActions.forEach { action ->
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable(enabled = !busy) { runCommand(action.command) }
+                                            .padding(horizontal = 2.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = action.label,
+                                        color = AuraSpotifyGreen,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Icon(
+                                        painter = painterResource(R.drawable.arrow_forward),
+                                        contentDescription = null,
+                                        tint = AuraSpotifyGreen.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
             // The composer is a fixed footer below the scrollable conversation.
             Row(
@@ -977,16 +946,7 @@ fun MetroDjChatSheet(
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .onFocusChanged { state ->
-                            if (state.isFocused && messages.isNotEmpty()) {
-                                scope.launch {
-                                    messagesListState.scrollToItem(messages.lastIndex)
-                                }
-                            }
-                        },
+                modifier = Modifier.weight(1f),
                 placeholder = { Text(stringResource(R.string.nano_dj_chat_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -1020,7 +980,11 @@ fun MetroDjChatSheet(
                 enabled = input.isNotBlank() && !busy,
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
             ) {
-                Text(stringResource(R.string.send))
+                Icon(
+                    painter = painterResource(R.drawable.send),
+                    contentDescription = stringResource(R.string.send),
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
     }
