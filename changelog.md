@@ -1,3 +1,14 @@
+---v15.2
+# What's new
+- Metro DJ chat now reliably keeps every message above the composer when the keyboard is open, and the sheet still never grows past the status bar
+- Added a voice button next to Send in Metro DJ chat: tap it and it turns into a 3-bar waveform that pulses with your voice, then transcribes what you said and auto-sends it to the DJ — no Google voice dialog
+- Voice input uses the device's built-in speech recognition in the background (mic permission required) and falls back gracefully on devices without a recognizer
+
+## Platform integration notes
+- Android Auto: supported as a media app (browse, search, and playback through the media session). Android Auto renders its own templated UI, so Metrolist's custom Aura styling cannot be applied there
+- Oxygen OS Fluid Cloud: not shipped as a separate APK/feature — Metrolist already surfaces playback through a standard media notification, which Oxygen OS can show in Fluid Cloud automatically when enabled on the device
+- Oxygen OS Game Assistant sidebar: not implemented — OnePlus's game-assistant media panel is not open to third-party apps; Metrolist controls remain available in the notification shade and lock screen during gameplay
+
 ---v15.1.2
 # What's new
 - Metro DJ chat now pushes the conversation up when the composer is focused so all messages stay readable above the keyboard

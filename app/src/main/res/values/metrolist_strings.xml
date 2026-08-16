@@ -1150,6 +1150,10 @@
     <string name="nano_dj_action_chat_music">Tell me something about music</string>
     <string name="nano_dj_chat_welcome">I’m here. Ask me anything about music, your current set, or what you’re in the mood for.</string>
     <string name="nano_dj_you">You</string>
+    <string name="nano_dj_voice">Talk to Metro DJ</string>
+    <string name="nano_dj_voice_permission">Microphone permission is needed to talk to Metro DJ</string>
+    <string name="nano_dj_voice_unavailable">Voice input is not available on this device</string>
+    <string name="nano_dj_voice_error">I didn’t catch that. Tap the mic and try again.</string>
     <string name="nano_dj_stopped">Metro DJ is off air</string>
     <string name="nano_dj_skipped">Skipping to the next track</string>
     <string name="nano_dj_added_queue">Added the current track to the queue</string>

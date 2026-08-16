@@ -5,7 +5,18 @@
 
 package com.metrolist.music.ui.component
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -17,13 +28,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,12 +50,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +70,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.DownloadRequest
@@ -86,6 +99,7 @@ import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -588,8 +602,10 @@ fun MetroDjChatSheet(
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     LaunchedEffect(messages.size, imeVisible) {
         if (messages.isNotEmpty()) {
-            // Instant jump while the keyboard is opening; smooth scroll for new messages.
             if (imeVisible) {
+                // Wait for the IME/sheet resize animation to settle so the latest message
+                // lands fully above the keyboard instead of being covered by the composer.
+                delay(250)
                 messagesListState.scrollToItem(messages.lastIndex)
             } else {
                 messagesListState.animateScrollToItem(messages.lastIndex)
@@ -624,27 +640,142 @@ fun MetroDjChatSheet(
             )
         }
 
+    // Voice input via a headless SpeechRecognizer — no Google dialog. The mic button morphs
+    // into a loudness-reactive waveform while listening and auto-sends the transcription.
+    var isListening by remember { mutableStateOf(false) }
+    var voiceRms by remember { mutableStateOf(0f) }
+    val speechRecognizer = remember { mutableStateOf<SpeechRecognizer?>(null) }
+    val runCommandState = rememberUpdatedState<(String) -> Unit>({ runCommand(it) })
+    var pendingVoiceStart by remember { mutableStateOf(false) }
+    val voicePermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                pendingVoiceStart = true
+            } else {
+                Toast.makeText(context, R.string.nano_dj_voice_permission, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    fun startListening() {
+        val recognizer = speechRecognizer.value
+        if (recognizer == null) {
+            Toast.makeText(context, R.string.nano_dj_voice_unavailable, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        val intent =
+            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+            }
+        voiceRms = 0f
+        isListening = true
+        runCatching { recognizer.startListening(intent) }.onFailure {
+            isListening = false
+            Toast.makeText(context, R.string.nano_dj_voice_error, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun stopListening() {
+        runCatching { speechRecognizer.value?.stopListening() }
+        isListening = false
+        voiceRms = 0f
+    }
+
+    val startListeningAction = rememberUpdatedState<() -> Unit>({ startListening() })
+
+    // Resume listening once the user grants mic permission via the system dialog.
+    LaunchedEffect(pendingVoiceStart) {
+        if (pendingVoiceStart) {
+            pendingVoiceStart = false
+            startListeningAction.value()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        val recognizer =
+            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                runCatching { SpeechRecognizer.createSpeechRecognizer(context) }.getOrNull()
+            } else {
+                null
+            }
+        speechRecognizer.value = recognizer
+        recognizer?.setRecognitionListener(
+            object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    isListening = true
+                    voiceRms = 0f
+                }
+
+                override fun onBeginningOfSpeech() {}
+
+                override fun onRmsChanged(rmsdB: Float) {
+                    voiceRms = rmsdB
+                }
+
+                override fun onBufferReceived(buffer: ByteArray?) {}
+
+                override fun onEndOfSpeech() {
+                    // Keep the waveform until results or an error arrive.
+                }
+
+                override fun onError(error: Int) {
+                    isListening = false
+                    voiceRms = 0f
+                    if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                        Toast.makeText(context, R.string.nano_dj_voice_error, Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onResults(results: Bundle?) {
+                    isListening = false
+                    voiceRms = 0f
+                    val text =
+                        results
+                            ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                            ?.firstOrNull()
+                            ?.trim()
+                    if (!text.isNullOrBlank()) {
+                        runCommandState.value(text)
+                    }
+                }
+
+                override fun onPartialResults(partialResults: Bundle?) {}
+
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            },
+        )
+        onDispose {
+            runCatching { speechRecognizer.value?.destroy() }
+            speechRecognizer.value = null
+            isListening = false
+            voiceRms = 0f
+        }
+    }
+
     AuraBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = AuraElevated,
+        contentWindowInsets = { WindowInsets.ime },
     ) {
-        // The sheet height is capped so it can only grow up to the status bar, and the IME
-        // padding keeps the composer and conversation above the keyboard when it opens.
-        Box(
+        // The sheet is capped so it can only grow up to the status bar, and the IME window
+        // insets lift the whole sheet (conversation + composer) above the keyboard when open.
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .heightIn(max = 640.dp)
-                    .imePadding(),
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 92.dp),
-            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -829,15 +960,11 @@ fun MetroDjChatSheet(
                     }
                 }
             }
-            // The composer is rendered by the fixed footer below the scrollable conversation.
-        }
-        Row(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
+            // The composer is a fixed footer below the scrollable conversation.
+            Row(
+                modifier =
+                    Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 8.dp)
                     .auraFloatingIsland(
                         shape = RoundedCornerShape(28.dp),
                         color = AuraPlayerChrome,
@@ -871,6 +998,22 @@ fun MetroDjChatSheet(
                     unfocusedContainerColor = Color.Transparent,
                 ),
             )
+            AuraIconButton(
+                onClick = { if (isListening) stopListening() else startListening() },
+                modifier = Modifier.size(44.dp),
+                containerColor = if (isListening) AuraSpotifyGreen.copy(alpha = 0.22f) else Color.Transparent,
+                contentColor = if (isListening) AuraSpotifyGreen else Color.White.copy(alpha = 0.72f),
+            ) {
+                if (isListening) {
+                    VoiceWave(voiceRms, Modifier.size(22.dp))
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.mic),
+                        contentDescription = stringResource(R.string.nano_dj_voice),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
             AuraPrimaryButton(
                 onClick = { runCommand(input) },
                 modifier = Modifier.height(48.dp),
@@ -904,5 +1047,38 @@ fun MetroDjChatSheet(
                 }) { Text(stringResource(android.R.string.cancel)) }
             },
         )
+    }
+}
+
+/**
+ * Three-bar equalizer that pulses with the speaker's loudness (driven by SpeechRecognizer's
+ * onRmsChanged values, 0..~10 dB). Used in place of the mic icon while the DJ is listening.
+ */
+@Composable
+private fun VoiceWave(
+    rms: Float,
+    modifier: Modifier = Modifier,
+    color: Color = AuraSpotifyGreen,
+) {
+    val smooth by animateFloatAsState(
+        targetValue = (rms / 10f).coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 60),
+        label = "voiceWaveRms",
+    )
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        listOf(0.45f, 1f, 0.65f).forEach { multiplier ->
+            val fraction = (0.25f + 0.75f * smooth * multiplier).coerceIn(0.25f, 1f)
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(5.dp + 13.dp * fraction)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color),
+            )
+        }
     }
 }
