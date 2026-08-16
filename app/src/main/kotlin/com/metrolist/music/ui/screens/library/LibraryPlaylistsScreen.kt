@@ -63,9 +63,6 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.LibraryViewType
-import com.metrolist.music.constants.PlaylistSortDescendingKey
-import com.metrolist.music.constants.PlaylistSortType
-import com.metrolist.music.constants.PlaylistSortTypeKey
 import com.metrolist.music.constants.PlaylistViewTypeKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDislikedPlaylistKey
@@ -83,7 +80,6 @@ import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.ui.menu.SelectionPlaylistMenu
@@ -116,14 +112,6 @@ fun LibraryPlaylistsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var viewType by rememberEnumPreference(PlaylistViewTypeKey, LibraryViewType.LIST)
-    val (sortType, onSortTypeChange) = rememberEnumPreference(
-        PlaylistSortTypeKey,
-        PlaylistSortType.CREATE_DATE
-    )
-    val (sortDescending, onSortDescendingChange) = rememberPreference(
-        PlaylistSortDescendingKey,
-        true
-    )
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
@@ -424,21 +412,6 @@ fun LibraryPlaylistsScreen(
             keyboardController = keyboardController,
             modifier = Modifier,
         ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        PlaylistSortType.CREATE_DATE -> R.string.sort_by_create_date
-                        PlaylistSortType.NAME -> R.string.sort_by_name
-                        PlaylistSortType.SONG_COUNT -> R.string.sort_by_song_count
-                        PlaylistSortType.LAST_UPDATED -> R.string.sort_by_last_updated
-                    }
-                },
-            )
-
             Spacer(Modifier.weight(1f))
 
             Text(
@@ -450,7 +423,6 @@ fun LibraryPlaylistsScreen(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.secondary,
             )
-
         }
     }
 
@@ -474,7 +446,7 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    stickyHeader(
+                    item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -565,7 +537,7 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    stickyHeader(
+                    item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {

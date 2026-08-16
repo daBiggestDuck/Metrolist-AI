@@ -377,7 +377,6 @@ fun LibraryMixScreen(
             modifier = Modifier,
         ) {
             Spacer(Modifier.weight(1f))
-
         }
     }
 
@@ -463,7 +462,7 @@ fun LibraryMixScreen(
                         }
                     }
 
-                    stickyHeader(
+                    item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -840,7 +839,7 @@ fun LibraryMixScreen(
                         }
                     }
 
-                    stickyHeader(
+                    item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {

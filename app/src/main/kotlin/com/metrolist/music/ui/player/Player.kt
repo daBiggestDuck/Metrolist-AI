@@ -1019,6 +1019,8 @@ fun BottomSheetPlayer(
                         }
                     }
                 }
+
+                MetroDjChatButton(tint = iconButtonColor)
             }
 
             if (useNewPlayerDesign) {
@@ -1041,10 +1043,13 @@ fun BottomSheetPlayer(
                     val middleShape = RoundedCornerShape(3.dp)
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = PlayerHorizontalPadding),
                     ) {
-                        MetroDjChatButton(tint = iconButtonColor)
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                             if (showLyrics) {
                                 AuraIconButton(onClick = { isFullScreen = !isFullScreen },
@@ -1201,9 +1206,14 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        MetroDjChatButton(tint = iconButtonColor)
-                        Spacer(Modifier.width(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = PlayerHorizontalPadding),
+                    ) {
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                         if (showLyrics) {
                             Box(

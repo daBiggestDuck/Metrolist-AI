@@ -71,9 +71,6 @@ import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.CONTENT_TYPE_SONG
 import com.metrolist.music.constants.PodcastFilter
 import com.metrolist.music.constants.PodcastFilterKey
-import com.metrolist.music.constants.SongSortDescendingKey
-import com.metrolist.music.constants.SongSortType
-import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.PodcastEntity
@@ -87,7 +84,6 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.utils.joinByBullet
@@ -114,13 +110,6 @@ fun LibraryPodcastsScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     var podcastFilter by rememberEnumPreference(PodcastFilterKey, PodcastFilter.EPISODES)
-
-    val (sortType, onSortTypeChange) =
-        rememberEnumPreference(
-            SongSortTypeKey,
-            SongSortType.CREATE_DATE,
-        )
-    val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
 
     val subscribedChannels by viewModel.subscribedChannels.collectAsStateWithLifecycle()
     val downloadedEpisodes by viewModel.downloadedEpisodes.collectAsStateWithLifecycle()
@@ -215,7 +204,7 @@ fun LibraryPodcastsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
+                    stickyHeader(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
                         libraryFilterContent()
                     }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
@@ -280,7 +269,7 @@ fun LibraryPodcastsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
+                    stickyHeader(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
                         libraryFilterContent()
                     }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
@@ -351,40 +340,25 @@ fun LibraryPodcastsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
+                    stickyHeader(key = "library_filter", contentType = CONTENT_TYPE_HEADER) {
                         libraryFilterContent()
                     }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }
 
-                    item(key = "sort_header", contentType = CONTENT_TYPE_HEADER) {
+                    item(key = "episodes_count", contentType = CONTENT_TYPE_HEADER) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         ) {
-                            SortHeader(
-                                sortType = sortType,
-                                sortDescending = sortDescending,
-                                onSortTypeChange = onSortTypeChange,
-                                onSortDescendingChange = onSortDescendingChange,
-                                sortTypeText = { st ->
-                                    when (st) {
-                                        SongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                        SongSortType.NAME -> R.string.sort_by_name
-                                        SongSortType.ARTIST -> R.string.sort_by_artist
-                                        SongSortType.PLAY_TIME -> R.string.sort_by_play_time
-                                    }
-                                },
-                            )
                             Spacer(Modifier.weight(1f))
                             Text(
-                                text =
-                                    pluralStringResource(
-                                        R.plurals.n_episode,
-                                        downloadedEpisodes.size,
-                                        downloadedEpisodes.size,
-                                    ),
+                                text = pluralStringResource(
+                                    R.plurals.n_episode,
+                                    downloadedEpisodes.size,
+                                    downloadedEpisodes.size,
+                                ),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.secondary,
                             )

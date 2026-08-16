@@ -140,12 +140,7 @@ fun AuraBottomSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        modifier =
-            modifier.border(
-                width = 1.dp,
-                color = AuraHairline,
-                shape = shape,
-            ),
+        modifier = modifier,
         sheetState = sheetState,
         shape = shape,
         containerColor = containerColor,

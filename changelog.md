@@ -1,3 +1,22 @@
+---v16.6
+# What's new
+- Metro DJ now remembers the conversation: the last few exchanges are sent with each request so the DJ knows what you're talking about, and its replies are shorter and brisker
+- DJ-made playlists no longer dump you into the library — the chat shows a cropped preview card (songs fading into the background) with Play and Add to library buttons
+- Destructive DJ actions (clear queue, delete playlist, download) ask for confirmation before running
+- Library: the section filter chips stay pinned at the top while scrolling, and the duplicate search / layout buttons that appeared twice in the header are removed
+- Main player: share/like/dislike buttons sit on the right, and the Metro DJ button stays at the top-right of the song title while the DJ is on air
+- Metro DJ page: the big on-air / lane banner is gone; the title bubble, profile button, and recent-chats bubble live in a clean top bar
+- Mini player like/dislike: thinner, less slanted divider, icons pushed further into the corners, and a wider button
+- Settings search bar sits closer to the title, and popup sheets no longer show the faint white outline
+- Metro DJ shows at most 3 quick suggestions
+
+---v16.5
+# What's new
+- Library filters remain attached to the header while scrolling, and the list/grid switch lives beside search instead of in a separate control row
+- Removed Library sorting controls so the page stays focused on browsing and search
+- Metro DJ fallback actions now execute directly without confirmation phrases; responses remain based on verified action results
+- Release builds are versioned and published as METROLIST 16.5
+
 ---v16.1
 # What's new
 - Metro DJ is now a tab in the bottom navigation bar (toggle it on or off in DJ settings) and works even when the radio isn't on air — the mini player DJ button opens the chat popup again, just like before

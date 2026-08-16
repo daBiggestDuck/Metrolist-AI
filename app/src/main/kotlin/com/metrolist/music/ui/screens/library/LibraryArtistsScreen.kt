@@ -54,9 +54,6 @@ import com.metrolist.music.ui.component.aura.auraStickyChromeBackground
 import com.metrolist.music.R
 import com.metrolist.music.constants.ArtistFilter
 import com.metrolist.music.constants.ArtistFilterKey
-import com.metrolist.music.constants.ArtistSortDescendingKey
-import com.metrolist.music.constants.ArtistSortType
-import com.metrolist.music.constants.ArtistSortTypeKey
 import com.metrolist.music.constants.ArtistViewTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_ARTIST
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
@@ -71,7 +68,6 @@ import com.metrolist.music.ui.component.LibraryArtistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryArtistsViewModel
@@ -93,11 +89,6 @@ fun LibraryArtistsScreen(
     var viewType by rememberEnumPreference(ArtistViewTypeKey, LibraryViewType.GRID)
 
     var filter by rememberEnumPreference(ArtistFilterKey, ArtistFilter.LIKED)
-    val (sortType, onSortTypeChange) = rememberEnumPreference(
-        ArtistSortTypeKey,
-        ArtistSortType.CREATE_DATE
-    )
-    val (sortDescending, onSortDescendingChange) = rememberPreference(ArtistSortDescendingKey, true)
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
@@ -170,21 +161,6 @@ fun LibraryArtistsScreen(
             keyboardController = keyboardController,
             modifier = Modifier,
         ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        ArtistSortType.CREATE_DATE -> R.string.sort_by_create_date
-                        ArtistSortType.NAME -> R.string.sort_by_name
-                        ArtistSortType.SONG_COUNT -> R.string.sort_by_song_count
-                        ArtistSortType.PLAY_TIME -> R.string.sort_by_play_time
-                    }
-                },
-            )
-
             Spacer(Modifier.weight(1f))
 
             Text(
@@ -196,17 +172,6 @@ fun LibraryArtistsScreen(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.secondary,
             )
-
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-
         }
     }
 
@@ -219,26 +184,26 @@ fun LibraryArtistsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(
+                    stickyHeader(
                         key = "library_filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         libraryFilterContent()
                     }
 
-                    item(
-                        key = "filter",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        filterContent()
-                    }
+            item(
+                key = "filter",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                filterContent()
+            }
 
-                    stickyHeader(
-                        key = "header",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
+            item(
+                key = "header",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                headerContent()
+            }
 
                     filteredArtists.let { artists ->
                         if (artists.isEmpty()) {
@@ -283,28 +248,26 @@ fun LibraryArtistsScreen(
                     ),
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(
+                    stickyHeader(
                         key = "library_filter",
-                        span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         libraryFilterContent()
                     }
 
-                    item(
-                        key = "filter",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        filterContent()
-                    }
+            item(
+                key = "filter",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                filterContent()
+            }
 
-                    stickyHeader(
-                        key = "header",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
+            item(
+                key = "header",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                headerContent()
+            }
 
                     filteredArtists.let { artists ->
                         if (artists.isEmpty()) {

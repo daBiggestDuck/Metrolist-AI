@@ -1342,10 +1342,10 @@ private fun LikeDislikeSwipeButton(
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .border(1.dp, outlineColor.copy(alpha = 0.3f), CircleShape)
-                .background(Color.Transparent, CircleShape)
+                .size(width = 52.dp, height = 40.dp)
+                .clip(RoundedCornerShape(percent = 50))
+                .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(percent = 50))
+                .background(Color.Transparent, RoundedCornerShape(percent = 50))
                 .pointerInput(metadata.id) {
                     detectVerticalDragGestures(
                         onDragEnd = {
@@ -1388,7 +1388,7 @@ private fun LikeDislikeSwipeButton(
                 modifier =
                     Modifier
                         .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 8.dp)
+                        .padding(start = 11.dp, top = 10.dp)
                         .graphicsLayer {
                             scaleX = heartScale
                             scaleY = heartScale
@@ -1407,7 +1407,7 @@ private fun LikeDislikeSwipeButton(
                 modifier =
                     Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 8.dp, bottom = 8.dp)
+                        .padding(end = 11.dp, bottom = 10.dp)
                         .graphicsLayer {
                             scaleX = dislikeScale
                             scaleY = dislikeScale
@@ -1433,9 +1433,9 @@ private fun LikeDislikeSwipeButton(
                 modifier =
                     Modifier
                         .align(Alignment.Center)
-                        .size(width = 2.dp, height = 28.dp)
+                        .size(width = 1.5.dp, height = 30.dp)
                         .graphicsLayer {
-                            rotationZ = 45f
+                            rotationZ = 20f
                             alpha = dividerAlpha
                         }
                         .background(outlineColor.copy(alpha = 0.45f)),

@@ -66,6 +66,16 @@ import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.metrolist.music.viewmodels.HomeViewModel
+import com.metrolist.music.ui.component.aura.AuraFloatingChromeButton
+import com.metrolist.music.ui.component.aura.AuraFloatingTitleIsland
+import com.metrolist.music.ui.component.aura.AuraProfileMenuItem
+import com.metrolist.music.ui.component.aura.AuraProfileMenuSheet
 
 /** A single archived Metro DJ conversation, kept in memory for the recent-chats sidebar. */
 data class DjChatRecord(
@@ -97,6 +107,11 @@ fun DjScreen(navController: NavController) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
     val welcomeText = stringResource(R.string.nano_dj_chat_welcome)
+
+    val homeViewModel: HomeViewModel = hiltViewModel()
+    val accountName by homeViewModel.accountName.collectAsStateWithLifecycle()
+    val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
+    var showProfileMenu by remember { mutableStateOf(false) }
 
     // Archive the conversation when leaving the page so it shows up under Recent chats.
     DisposableEffect(Unit) {
@@ -311,24 +326,51 @@ fun DjScreen(navController: NavController) {
                         .windowInsetsPadding(
                             LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                IconButton(
+                AuraFloatingTitleIsland(modifier = Modifier.widthIn(max = 320.dp)) {
+                    Text(
+                        text = stringResource(R.string.dj_page_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                AuraFloatingChromeButton(
                     onClick = { scope.launch { drawerState.open() } },
-                    onLongClick = {},
+                    contentDescription = stringResource(R.string.dj_recent_chats),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.history),
-                        contentDescription = stringResource(R.string.dj_recent_chats),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
-                Text(
-                    text = stringResource(R.string.dj_page_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.weight(1f),
-                )
+                AuraFloatingChromeButton(
+                    onClick = { showProfileMenu = true },
+                    contentDescription = stringResource(R.string.your_profile),
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    if (accountImageUrl != null) {
+                        AsyncImage(
+                            model = accountImageUrl,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape),
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.account),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -338,5 +380,41 @@ fun DjScreen(navController: NavController) {
                 )
             }
         }
+    }
+
+    if (showProfileMenu) {
+        AuraProfileMenuSheet(
+            accountName = accountName,
+            accountImageUrl = accountImageUrl,
+            onDismiss = { showProfileMenu = false },
+            items =
+                listOf(
+                    AuraProfileMenuItem(
+                        titleRes = R.string.account,
+                        icon = painterResource(R.drawable.account),
+                        onClick = { navController.navigate("account") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.history,
+                        icon = painterResource(R.drawable.history),
+                        onClick = { navController.navigate("history") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.stats,
+                        icon = painterResource(R.drawable.stats),
+                        onClick = { navController.navigate("stats") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.settings,
+                        icon = painterResource(R.drawable.settings),
+                        onClick = { navController.navigate("settings") },
+                    ),
+                    AuraProfileMenuItem(
+                        titleRes = R.string.integrations,
+                        icon = painterResource(R.drawable.integration),
+                        onClick = { navController.navigate("settings/integrations") },
+                    ),
+                ),
+        )
     }
 }

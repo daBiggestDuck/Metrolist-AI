@@ -406,6 +406,8 @@
     <string name="settings_section_notifications">Notifications</string>
     <string name="settings_section_about_data">Data</string>
     <string name="search_settings">Search settings</string>
+    <string name="switch_to_grid">Switch to grid layout</string>
+    <string name="switch_to_list">Switch to list layout</string>
     <string name="your_profile">Your profile</string>
     <string name="whats_new">What\'s new</string>
     <string name="guest">Guest</string>
@@ -1200,6 +1202,10 @@
     <string name="nano_dj_delete_playlist_confirm">Delete “%1$s”? This cannot be undone.</string>
     <string name="nano_dj_playlist_deleted">Deleted “%1$s”.</string>
     <string name="nano_dj_playlist_created">Created the “%1$s” playlist.</string>
+    <string name="nano_dj_playlist_preview">Here’s your “%1$s” playlist — play it now or save it to your library:</string>
+    <string name="nano_dj_playlist_play">Play</string>
+    <string name="nano_dj_playlist_add_to_library">Add to library</string>
+    <string name="nano_dj_playlist_saved">Saved “%1$s” to your library.</string>
     <string name="nano_dj_rename_playlist_format">Use “rename playlist old name to new name”.</string>
     <string name="nano_dj_playlist_renamed">Renamed the playlist to “%1$s”.</string>
     <string name="nano_dj_download_confirm">Download %1$d song(s) for offline playback?</string>

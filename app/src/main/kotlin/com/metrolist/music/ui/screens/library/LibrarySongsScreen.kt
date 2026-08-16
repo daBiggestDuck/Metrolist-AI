@@ -345,7 +345,7 @@ fun LibrarySongsScreen(
             state = lazyListState,
             contentPadding = auraContentPaddingBelowChrome(),
         ) {
-            item(
+            stickyHeader(
                 key = "library_filter",
                 contentType = CONTENT_TYPE_HEADER,
             ) {
@@ -386,7 +386,7 @@ fun LibrarySongsScreen(
                 }
             }
 
-            stickyHeader(
+            item(
                 key = "header",
                 contentType = CONTENT_TYPE_HEADER,
             ) {
@@ -413,16 +413,6 @@ fun LibrarySongsScreen(
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.secondary,
                     )
-
-                    IconButton(
-                        onClick = { isSearchActive = true },
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp).size(40.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = stringResource(R.string.search),
-                        )
-                    }
                 }
             }
 

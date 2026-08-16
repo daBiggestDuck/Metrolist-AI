@@ -56,9 +56,6 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumFilter
 import com.metrolist.music.constants.AlbumFilterKey
-import com.metrolist.music.constants.AlbumSortDescendingKey
-import com.metrolist.music.constants.AlbumSortType
-import com.metrolist.music.constants.AlbumSortTypeKey
 import com.metrolist.music.constants.AlbumViewTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_ALBUM
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
@@ -77,7 +74,6 @@ import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryAlbumsViewModel
@@ -102,12 +98,6 @@ fun LibraryAlbumsScreen(
 
     var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.GRID)
     var filter by rememberEnumPreference(AlbumFilterKey, AlbumFilter.LIKED)
-    val (sortType, onSortTypeChange) =
-        rememberEnumPreference(
-            AlbumSortTypeKey,
-            AlbumSortType.CREATE_DATE,
-        )
-    val (sortDescending, onSortDescendingChange) = rememberPreference(AlbumSortDescendingKey, true)
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
@@ -192,24 +182,6 @@ fun LibraryAlbumsScreen(
             keyboardController = keyboardController,
             modifier = Modifier,
         ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        AlbumSortType.CREATE_DATE -> R.string.sort_by_create_date
-                        AlbumSortType.NAME -> R.string.sort_by_name
-                        AlbumSortType.ARTIST -> R.string.sort_by_artist
-                        AlbumSortType.YEAR -> R.string.sort_by_year
-                        AlbumSortType.SONG_COUNT -> R.string.sort_by_song_count
-                        AlbumSortType.LENGTH -> R.string.sort_by_length
-                        AlbumSortType.PLAY_TIME -> R.string.sort_by_play_time
-                    }
-                },
-            )
-
             Spacer(Modifier.weight(1f))
 
             Text(
@@ -217,17 +189,6 @@ fun LibraryAlbumsScreen(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.secondary,
             )
-
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-
         }
     }
 
@@ -240,26 +201,26 @@ fun LibraryAlbumsScreen(
                     state = lazyListState,
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(
+                    stickyHeader(
                         key = "library_filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         libraryFilterContent()
                     }
 
-                    item(
-                        key = "filter",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        filterContent()
-                    }
+            item(
+                key = "filter",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                filterContent()
+            }
 
-                    stickyHeader(
-                        key = "header",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
+            item(
+                key = "header",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                headerContent()
+            }
 
                     filteredAlbums.let { albums ->
                         if (albums.isEmpty()) {
@@ -303,28 +264,26 @@ fun LibraryAlbumsScreen(
                         ),
                     contentPadding = auraContentPaddingBelowChrome(),
                 ) {
-                    item(
+                    stickyHeader(
                         key = "library_filter",
-                        span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         libraryFilterContent()
                     }
 
-                    item(
-                        key = "filter",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        filterContent()
-                    }
+            item(
+                key = "filter",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                filterContent()
+            }
 
-                    stickyHeader(
-                        key = "header",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
+            item(
+                key = "header",
+                contentType = CONTENT_TYPE_HEADER,
+            ) {
+                headerContent()
+            }
 
                     filteredAlbums.let { albums ->
                         if (albums.isEmpty()) {

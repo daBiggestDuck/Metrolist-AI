@@ -58,6 +58,7 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalChangelogState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.IconButton
@@ -547,7 +548,9 @@ fun SettingsScreen(
             ),
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // AuraTopBar is layered above the scroll content; reserve just enough height so the
+        // search field begins right below the title pill instead of floating low.
+        Spacer(modifier = Modifier.height(AppBarHeight - 8.dp))
 
         SettingsSearchBar(
             query = searchQuery,

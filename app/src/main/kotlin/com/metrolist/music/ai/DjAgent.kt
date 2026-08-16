@@ -49,6 +49,7 @@ object DjAgent {
         - queue_song { query }                          search "query" and append the first match to the END of the queue
         - play_next { query }                           search "query" and insert it right after the current track so it plays next (omit query to move the current track next)
         - insert_song { query, after }                  search "query" and insert it right after the track titled "after" (omit "after" to insert after the current track)
+        - insert_at { query, position }                 search "query" and insert it at zero-based queue position "position"
         - like                                          like the current track
         - dislike                                       dislike the current track
         - undo_dislike                                  undo the dislike of the current track
@@ -88,13 +89,14 @@ object DjAgent {
             - "add <song> to the queue" or "queue <song>" means queue_song (append to the end).
             - "play <song> after <song>" or "insert <song> after <song>" means insert_song with
               query = <song> and after = the other song.
+            - "insert <song> at position N" means insert_at with query = <song> and position = N.
             - If the listener asks you to do something you CAN do, output a JSON object with a list
               of the actions needed, in execution order. Use plain arguments (no quotes inside names
               unless they are part of the name).
             - If a request needs multiple steps, include all of them (for example "make a chainsaw
               man playlist" is create_playlist then add_to_playlist with query "chainsaw man").
             - If the listener just wants to talk (a question, a greeting, music chat), output a chat
-              reply instead of actions.
+              reply instead of actions. Chat replies must be short and brisk (one or two sentences).
             - If the listener asks for something you CANNOT do, output a chat reply saying plainly
               that you can't do it and (briefly) why. Never invent actions that are not in the list.
             - Never promise a result; the app executes the actions and will tell the listener the
@@ -124,6 +126,7 @@ object DjAgent {
         client: GeminiNanoClient,
         userMessage: String,
         results: List<DjActionResult>,
+        conversation: String = "",
     ): String? {
         val resultsText =
             results.joinToString("\n") { r ->
@@ -133,10 +136,14 @@ object DjAgent {
         val prompt =
             """
             You are Metro DJ, a casual music-nerd radio host. You just carried out (or tried to
-            carry out) the listener's request. Report the outcome in ONE short, natural sentence
-            (max two sentences). Be honest: if something failed, say exactly what failed and why,
-            and if you could not do something the listener asked, say so plainly. Mention what you
-            DID accomplish when relevant. No markdown, no emoji, no bullet points, no "as an AI".
+            carry out) the listener's request. Report the outcome in ONE short, brisk, natural
+            sentence (max two sentences). Be honest: if something failed, say exactly what failed
+            and why, and if you could not do something the listener asked, say so plainly. Mention
+            what you DID accomplish when relevant. No markdown, no emoji, no bullet points, no
+            "as an AI".
+
+            Recent conversation:
+            ${conversation.ifBlank { "(none)" }}
 
             Listener request: $userMessage
             Results:
