@@ -115,6 +115,7 @@ fun PlayerMenu(
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
     onShowDetailsDialog: () -> Unit,
+    onShowSleepTimer: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
@@ -737,6 +738,24 @@ fun PlayerMenu(
             Material3MenuGroup(
                 items =
                     buildList {
+                        if (onShowSleepTimer != null) {
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.sleep_timer)) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.bedtime),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        onShowSleepTimer()
+                                        onDismiss()
+                                    },
+                                ),
+                            )
+                        }
                         add(
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.details)) },

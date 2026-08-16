@@ -1124,6 +1124,17 @@
     <string name="dj_ai_status_needs_key">Add an API key to use this provider</string>
 
     <!-- Metro DJ (Spotify DJ replacement) -->
+    <string name="mini_player_settings_title">Mini player</string>
+    <string name="mini_player_settings_intro">Customize the buttons shown on the mini player and Metro DJ.</string>
+    <string name="mini_player_settings_section">Mini player</string>
+    <string name="mini_player_like_dislike_swipe">Swipe to like / dislike</string>
+    <string name="mini_player_like_dislike_swipe_desc">Pull the combined heart/thumb button up to like or down to dislike. Turn off for the classic separate buttons.</string>
+    <string name="mini_player_show_add_to_playlist">Add-to-playlist button</string>
+    <string name="mini_player_metro_dj_section">Metro DJ</string>
+    <string name="mini_player_show_dj_button">Metro DJ chat button</string>
+    <string name="mini_player_show_dj_button_desc">Show the Metro DJ button on the mini player. Turn off to hide Metro DJ entirely.</string>
+    <string name="nano_dj_hold_to_voice">Hold to talk to the DJ</string>
+    <string name="nano_dj_hold_to_voice_desc">Hold the DJ button to speak a command without opening the chat — the DJ reads the result back.</string>
     <string name="nano_dj_section">Metro DJ</string>
     <string name="nano_dj_start">Start Metro DJ</string>
     <string name="nano_dj_start_desc">AI radio host that curates mood-based lanes from your listening taste and talks between songs</string>

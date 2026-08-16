@@ -97,6 +97,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import com.metrolist.music.LocalNavController
+import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -181,6 +182,10 @@ fun Queue(
 
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+
+    val database = LocalDatabase.current
+    val librarySong by database.song(mediaMetadata?.id ?: "").collectAsStateWithLifecycle(initialValue = null)
+    val isInLibrary = librarySong?.song?.inLibrary != null
 
     val currentFormat by playerConnection.currentFormat.collectAsStateWithLifecycle(initialValue = null)
 
@@ -289,16 +294,12 @@ fun Queue(
                         playerBackground = playerBackground,
                     )
 
-                    SleepTimerQueueButton(
-                        onClick = {
-                            if (sleepTimerEnabled) {
-                                playerConnection.service.sleepTimer?.clear()
-                            } else {
-                                showSleepTimerDialog = true
-                            }
-                        },
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        playerConnection = playerConnection,
+                    // Add to library — moved onto the button row; the sleep timer now lives
+                    // inside the ⋮ menu.
+                    PlayerQueueButton(
+                        icon = if (isInLibrary) R.drawable.library_add_check else R.drawable.library_add,
+                        onClick = { playerConnection.toggleLibrary() },
+                        isActive = isInLibrary,
                         enabled = !isListenTogetherGuest,
                         shape = middleShape,
                         modifier = Modifier.size(buttonSize),
@@ -373,6 +374,7 @@ fun Queue(
                                         PlayerMenu(
                                             mediaMetadata = mediaMetadata,
                                             playerBottomSheetState = playerBottomSheetState,
+                                            onShowSleepTimer = { showSleepTimerDialog = true },
                                             onShowDetailsDialog = {
                                                 mediaMetadata?.id?.let {
                                                     bottomSheetPageState.show {

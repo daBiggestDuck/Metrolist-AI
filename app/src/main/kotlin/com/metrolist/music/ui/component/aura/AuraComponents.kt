@@ -8,6 +8,7 @@ package com.metrolist.music.ui.component.aura
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -663,6 +664,7 @@ fun AuraIconButton(
     contentColor: Color = AuraSpotifyOnDark,
     borderColor: Color? = null,
     interactionSource: MutableInteractionSource? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val resolvedInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
@@ -679,12 +681,25 @@ fun AuraIconButton(
                         Modifier
                     },
                 )
-                .clickable(
-                    enabled = enabled,
-                    onClick = onClick,
-                    role = Role.Button,
-                    interactionSource = resolvedInteractionSource,
-                    indication = indication,
+                .then(
+                    if (onLongClick != null) {
+                        Modifier.combinedClickable(
+                            enabled = enabled,
+                            onClick = onClick,
+                            onLongClick = onLongClick,
+                            role = Role.Button,
+                            interactionSource = resolvedInteractionSource,
+                            indication = indication,
+                        )
+                    } else {
+                        Modifier.clickable(
+                            enabled = enabled,
+                            onClick = onClick,
+                            role = Role.Button,
+                            interactionSource = resolvedInteractionSource,
+                            indication = indication,
+                        )
+                    },
                 ),
         contentAlignment = Alignment.Center,
     ) {

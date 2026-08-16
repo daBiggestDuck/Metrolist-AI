@@ -40,8 +40,9 @@ object NanoDjLauncher {
         playerConnection: PlayerConnection,
         speak: Boolean = true,
         replaceCurrentQueue: Boolean = false,
-    ): Result<Unit> =
-        runCatching {
+    ): Result<Unit> {
+        NanoDjSession.setStarting(true)
+        return runCatching {
             NanoDjSession.ensureTts(context)
             NanoDjSession.setSpeakEnabled(speak)
 
@@ -124,7 +125,10 @@ object NanoDjLauncher {
                 playerConnection.player.clearMediaItems()
             }
             playerConnection.playQueue(queue)
+        }.also {
+            NanoDjSession.setStarting(false)
         }
+    }
 
     private suspend fun Context.safePersistSpotifyTops(
         artists: List<String>,

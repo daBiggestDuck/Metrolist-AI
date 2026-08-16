@@ -11,6 +11,7 @@ import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,6 +20,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -54,6 +56,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,12 +66,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
@@ -83,6 +88,7 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ui.component.aura.AuraPlayButton
 import com.metrolist.music.ui.component.aura.AuraPlayerChrome
 import com.metrolist.music.ui.component.aura.AuraHairline
@@ -91,6 +97,9 @@ import com.metrolist.music.ui.component.aura.AuraTransportButton
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DislikedSongIdsKey
+import com.metrolist.music.constants.MiniPlayerLikeDislikeSwipeKey
+import com.metrolist.music.constants.MiniPlayerShowAddToPlaylistKey
+import com.metrolist.music.constants.MiniPlayerShowDjButtonKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
@@ -186,6 +195,11 @@ private fun NewMiniPlayer(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current
+
+    // Customizable mini player buttons (Settings → Mini player)
+    val showDjButton by rememberPreference(MiniPlayerShowDjButtonKey, true)
+    val showAddToPlaylist by rememberPreference(MiniPlayerShowAddToPlaylistKey, true)
+    val useLikeDislikeSwipe by rememberPreference(MiniPlayerLikeDislikeSwipeKey, true)
 
     // Theme settings - these rarely change
     val miniPlayerBackground by rememberEnumPreference(
@@ -464,12 +478,14 @@ private fun NewMiniPlayer(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                MetroDjChatButton(
-                    modifier = Modifier.size(40.dp),
-                    tint = onSurfaceColor,
-                )
+                if (showDjButton) {
+                    MetroDjChatButton(
+                        modifier = Modifier.size(40.dp),
+                        tint = onSurfaceColor,
+                    )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
 
                 // Cast indicator
                 if (isCasting) {
@@ -483,41 +499,53 @@ private fun NewMiniPlayer(
                 }
 
                 // Add to playlist — person/subscribe lives only on the expanded player.
-                mediaMetadata?.let { metadata ->
-                    AddToPlaylistButton(
-                        onClick = {
-                            menuState.show {
-                                AddToPlaylistDialog(
-                                    isVisible = true,
-                                    onGetSong = { listOf(metadata.id) },
-                                    onDismiss = menuState::dismiss,
-                                )
-                            }
-                        },
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
-                    )
+                if (showAddToPlaylist) {
+                    mediaMetadata?.let { metadata ->
+                        AddToPlaylistButton(
+                            onClick = {
+                                menuState.show {
+                                    AddToPlaylistDialog(
+                                        isVisible = true,
+                                        onGetSong = { listOf(metadata.id) },
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            },
+                            outlineColor = outlineColor,
+                            onSurfaceColor = onSurfaceColor,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
                 mediaMetadata?.let { metadata ->
-                    if (!metadata.isEpisode) {
-                        MiniDislikeButton(
+                    if (!metadata.isEpisode && useLikeDislikeSwipe) {
+                        LikeDislikeSwipeButton(
                             metadata = metadata,
                             isDisliked = metadata.id in dislikedSongIds,
                             tint = onSurfaceColor,
                             activeTint = errorColor,
                             outlineColor = outlineColor,
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    } else {
+                        if (!metadata.isEpisode) {
+                            MiniDislikeButton(
+                                metadata = metadata,
+                                isDisliked = metadata.id in dislikedSongIds,
+                                tint = onSurfaceColor,
+                                activeTint = errorColor,
+                                outlineColor = outlineColor,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        FavoriteButton(
+                            songId = metadata.id,
+                            errorColor = errorColor,
+                            outlineColor = outlineColor,
+                            onSurfaceColor = onSurfaceColor,
+                        )
                     }
-                    FavoriteButton(
-                        songId = metadata.id,
-                        errorColor = errorColor,
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
-                    )
                 }
             }
         }
@@ -1231,5 +1259,173 @@ private fun FavoriteButton(
             tint = if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp),
         )
+    }
+}
+
+/**
+ * Combined like/dislike control: a heart on one side of a diagonal divider, thumbs-down on the
+ * other. Swipe UP to like (heart grows, reddens, the rest fades away), swipe DOWN to dislike
+ * (thumbs-down grows while the heart and divider fade). Releasing past the threshold commits the
+ * action — and the gesture keeps working even when the song is already liked or disliked.
+ *
+ * The vertical drag is consumed here so it never conflicts with pulling up the main player page.
+ */
+@Composable
+private fun LikeDislikeSwipeButton(
+    metadata: MediaMetadata,
+    isDisliked: Boolean,
+    tint: Color,
+    activeTint: Color,
+    outlineColor: Color,
+) {
+    val context = LocalContext.current
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val database = LocalDatabase.current
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val librarySong by database.song(metadata.id).collectAsStateWithLifecycle(initialValue = null)
+    val isLiked = librarySong?.song?.liked == true
+
+    val currentLiked by rememberUpdatedState(isLiked)
+    val currentDisliked by rememberUpdatedState(isDisliked)
+
+    var pull by remember { mutableFloatStateOf(0f) } // 1 = liked drag, -1 = disliked drag
+    val likeProgress = pull.coerceIn(0f, 1f)
+    val dislikeProgress = (-pull).coerceIn(0f, 1f)
+
+    val heartColor = lerp(if (isLiked) activeTint else tint, activeTint, likeProgress)
+    val heartAlpha = (1f - 0.9f * dislikeProgress).coerceIn(0.15f, 1f)
+    val heartScale = 1f + 1.15f * likeProgress
+    val dislikeColor = if (isDisliked) activeTint else tint.copy(alpha = 0.7f)
+    val dislikeAlpha = (1f - 0.9f * likeProgress).coerceIn(0.15f, 1f)
+    val dislikeScale = 1f + 1.15f * dislikeProgress
+    val dividerAlpha = (1f - likeProgress - dislikeProgress).coerceIn(0f, 1f)
+
+    fun commitLike() {
+        scope.launch {
+            // Mirror the classic like button: also clear a dislike on the same track.
+            if (currentDisliked && !currentLiked) {
+                withContext(Dispatchers.IO) {
+                    ListeningTasteTracker.setDisliked(context, metadata.id, false)
+                }
+            }
+            playerConnection.service.toggleLike()
+        }
+    }
+
+    fun commitDislike() {
+        scope.launch {
+            val next = !currentDisliked
+            withContext(Dispatchers.IO) {
+                ListeningTasteTracker.setDisliked(
+                    context = context,
+                    songId = metadata.id,
+                    disliked = next,
+                    title = metadata.title,
+                    artists = metadata.artists.map { it.name },
+                )
+            }
+            if (next) {
+                playerConnection.service.onSongDisliked(metadata.id)
+            } else {
+                playerConnection.service.onSongUndisliked(metadata.id)
+            }
+            if (next && currentLiked) {
+                playerConnection.toggleLike()
+            }
+        }
+    }
+
+    val thresholdPx = with(density) { 90.dp.toPx() }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(width = 78.dp, height = 40.dp)
+                .clip(RoundedCornerShape(50))
+                .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(50))
+                .background(Color.Transparent, RoundedCornerShape(50))
+                .pointerInput(metadata.id) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                if (pull >= 0.5f) {
+                                    commitLike()
+                                    pull = 1.25f
+                                } else if (pull <= -0.5f) {
+                                    commitDislike()
+                                    pull = -1.25f
+                                }
+                                animate(
+                                    initialValue = pull,
+                                    targetValue = 0f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+                                ) { value, _ -> pull = value }
+                            }
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            pull = (pull - dragAmount / thresholdPx).coerceIn(-1f, 1f)
+                        },
+                    )
+                },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier.graphicsLayer {
+                        scaleX = heartScale
+                        scaleY = heartScale
+                        alpha = heartAlpha
+                    },
+            ) {
+                Icon(
+                    painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                    contentDescription = stringResource(if (isLiked) R.string.unlike_cd else R.string.like_cd),
+                    tint = heartColor,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Box(
+                modifier =
+                    Modifier
+                        .size(width = 2.dp, height = 24.dp)
+                        .graphicsLayer {
+                            rotationZ = 45f
+                            alpha = dividerAlpha
+                        }
+                        .background(outlineColor.copy(alpha = 0.45f)),
+            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier.graphicsLayer {
+                        scaleX = dislikeScale
+                        scaleY = dislikeScale
+                        alpha = dislikeAlpha
+                    },
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (isDisliked) {
+                            R.drawable.media3_icon_thumb_down_filled
+                        } else {
+                            R.drawable.media3_icon_thumb_down_unfilled
+                        },
+                    ),
+                    contentDescription = stringResource(
+                        if (isDisliked) R.string.undislike_cd else R.string.dislike_cd,
+                    ),
+                    tint = dislikeColor,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
     }
 }

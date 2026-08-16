@@ -174,6 +174,7 @@ fun SettingsScreen(
     val contentTitle = stringResource(R.string.content)
     val aiLyricsTitle = stringResource(R.string.ai_lyrics_translation)
     val nanoDjTitle = stringResource(R.string.dj_settings_title)
+    val miniPlayerTitle = stringResource(R.string.mini_player_settings_title)
     val androidAutoTitle = stringResource(R.string.android_auto)
     val playerTitle = stringResource(R.string.player_and_audio)
     val streamSourcesTitle = stringResource(R.string.stream_sources)
@@ -199,6 +200,7 @@ fun SettingsScreen(
     val languageIcon = painterResource(R.drawable.language)
     val translateIcon = painterResource(R.drawable.translate)
     val nanoDjIcon = painterResource(R.drawable.radio)
+    val miniPlayerIcon = painterResource(R.drawable.queue_music)
     val androidAutoIcon = painterResource(R.drawable.ic_android_auto)
     val playIcon = painterResource(R.drawable.play)
     val radioIcon = painterResource(R.drawable.radio)
@@ -313,6 +315,17 @@ fun SettingsScreen(
                         icon = nanoDjIcon,
                         description = stringResource(R.string.dj_settings_desc),
                         onClick = { navController.navigate("settings/dj") },
+                    ),
+                )
+            }
+            if (matches(miniPlayerTitle, playbackSectionTitle) ||
+                catalogMatchesRoute("settings/mini_player")
+            ) {
+                add(
+                    SettingsHubEntry(
+                        title = miniPlayerTitle,
+                        icon = miniPlayerIcon,
+                        onClick = { navController.navigate("settings/mini_player") },
                     ),
                 )
             }

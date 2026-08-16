@@ -1,3 +1,11 @@
+---v15.4.4
+# What's new
+- Hold the Metro DJ button on the mini player to talk to it: the button morphs into a live voice waveform, listens to your command without opening the chat, and the DJ reads back what it did
+- Buttons that take a while (like starting Metro DJ) now show a loading spinner instead of looking frozen
+- New combined like/dislike control on the mini player: a heart on one side of a diagonal divider with thumbs-down on the other — swipe up to like (heart grows and reddens as the rest fades away) or swipe down to dislike, and it keeps working even when the song is already liked/disliked
+- The player's sleep timer moved into the ⋮ menu, and an add-to-library button took its place in the bottom button row
+- New Settings → Mini player screen: turn the like/dislike swipe gesture on or off (classic separate buttons), show/hide the Metro DJ button (turn Metro DJ off entirely), show/hide the add-to-playlist button, and enable or disable hold-to-talk
+
 ---v15.4.3
 # What's new
 - "Play <any song>" now catches natural phrasing ("after this song, can you play…", "put on…", "add … to the queue") and actually finds the song on YouTube Music and adds it to the queue — no more "I'll add it" followed by nothing

@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +91,7 @@ import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.ai.NanoDjSession
+import com.metrolist.music.constants.NanoDjHoldToVoiceKey
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
@@ -97,6 +99,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.ui.component.aura.AuraBottomSheet
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.ui.component.aura.AuraElevated
 import com.metrolist.music.ui.component.aura.AuraPlayerChrome
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
@@ -214,28 +217,64 @@ fun MetroDjChatButton(
     modifier: Modifier = Modifier,
     tint: Color = Color.White,
 ) {
+    val context = LocalContext.current
     val active by NanoDjSession.active.collectAsStateWithLifecycle()
+    val starting by NanoDjSession.starting.collectAsStateWithLifecycle()
+    val (holdToVoice, _) = rememberPreference(NanoDjHoldToVoiceKey, true)
     var showChat by remember { mutableStateOf(false) }
+    // Hold-to-voice: long-pressing morphs the button into a live voice button, runs the command
+    // headlessly (no popup), and speaks the result back.
+    var voiceActive by remember { mutableStateOf(false) }
+    var voiceListening by remember { mutableStateOf(false) }
+    var voiceRms by remember { mutableStateOf(0f) }
     // Only the launcher button is gated on being on air. The chat sheet must stay composed even
     // while a radio restart flips `active` off momentarily (e.g. "more like this"), otherwise the
     // sheet's coroutine scope is cancelled mid-rebuild and the action never completes.
     if (active) {
         AuraIconButton(
             onClick = { showChat = true },
+            onLongClick = if (holdToVoice) ({ voiceActive = true }) else null,
             modifier = modifier.size(42.dp),
-            containerColor = Color.White.copy(alpha = 0.1f),
+            containerColor =
+                if (voiceListening) AuraSpotifyGreen.copy(alpha = 0.22f)
+                else Color.White.copy(alpha = 0.1f),
             contentColor = tint,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.radio),
-                contentDescription = stringResource(R.string.nano_dj_open_chat),
-                modifier = Modifier.size(20.dp),
-            )
+            when {
+                starting ->
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = AuraSpotifyGreen,
+                    )
+                voiceListening -> VoiceWave(voiceRms, Modifier.size(20.dp))
+                else ->
+                    Icon(
+                        painter = painterResource(R.drawable.radio),
+                        contentDescription = stringResource(R.string.nano_dj_open_chat),
+                        modifier = Modifier.size(20.dp),
+                    )
+            }
         }
     }
 
     if (showChat) {
         MetroDjChatSheet(onDismiss = { showChat = false })
+    }
+    if (voiceActive) {
+        MetroDjChatSheet(
+            onDismiss = { voiceActive = false },
+            headless = true,
+            onVoiceState = { listening, rms ->
+                voiceListening = listening
+                voiceRms = rms
+            },
+            onSpokenReply = { text ->
+                NanoDjSession.announce(text)
+                Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+                voiceActive = false
+            },
+        )
     }
 }
 
@@ -243,6 +282,9 @@ fun MetroDjChatButton(
 @Composable
 fun MetroDjChatSheet(
     onDismiss: () -> Unit,
+    headless: Boolean = false,
+    onVoiceState: ((Boolean, Float) -> Unit)? = null,
+    onSpokenReply: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -261,6 +303,7 @@ fun MetroDjChatSheet(
     val messagesListState = rememberLazyListState()
     fun reply(text: String) {
         messages += MetroDjMessage(true, text)
+        if (headless) onSpokenReply?.invoke(text)
     }
 
     fun requestConfirmation(message: String, action: () -> Unit) {
@@ -873,6 +916,7 @@ fun MetroDjChatSheet(
         val recognizer = speechRecognizer.value
         if (recognizer == null) {
             Toast.makeText(context, R.string.nano_dj_voice_unavailable, Toast.LENGTH_SHORT).show()
+            if (headless) onDismiss()
             return
         }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
@@ -890,9 +934,12 @@ fun MetroDjChatSheet(
             }
         voiceRms = 0f
         isListening = true
+        onVoiceState?.invoke(true, 0f)
         runCatching { recognizer.startListening(intent) }.onFailure {
             isListening = false
+            onVoiceState?.invoke(false, 0f)
             Toast.makeText(context, R.string.nano_dj_voice_error, Toast.LENGTH_SHORT).show()
+            if (headless) onDismiss()
         }
     }
 
@@ -900,6 +947,12 @@ fun MetroDjChatSheet(
         runCatching { speechRecognizer.value?.stopListening() }
         isListening = false
         voiceRms = 0f
+        onVoiceState?.invoke(false, 0f)
+    }
+
+    // Hold-to-voice: start listening the moment the headless sheet appears (no popup).
+    LaunchedEffect(headless) {
+        if (headless) startListening()
     }
 
     val startListeningAction = rememberUpdatedState<() -> Unit>({ startListening() })
@@ -925,12 +978,14 @@ fun MetroDjChatSheet(
                 override fun onReadyForSpeech(params: Bundle?) {
                     isListening = true
                     voiceRms = 0f
+                    onVoiceState?.invoke(true, 0f)
                 }
 
                 override fun onBeginningOfSpeech() {}
 
                 override fun onRmsChanged(rmsdB: Float) {
                     voiceRms = rmsdB
+                    if (isListening) onVoiceState?.invoke(true, rmsdB)
                 }
 
                 override fun onBufferReceived(buffer: ByteArray?) {}
@@ -942,14 +997,17 @@ fun MetroDjChatSheet(
                 override fun onError(error: Int) {
                     isListening = false
                     voiceRms = 0f
+                    onVoiceState?.invoke(false, 0f)
                     if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
                         Toast.makeText(context, R.string.nano_dj_voice_error, Toast.LENGTH_SHORT).show()
                     }
+                    if (headless) onDismiss()
                 }
 
                 override fun onResults(results: Bundle?) {
                     isListening = false
                     voiceRms = 0f
+                    onVoiceState?.invoke(false, 0f)
                     val text =
                         results
                             ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -957,6 +1015,8 @@ fun MetroDjChatSheet(
                             ?.trim()
                     if (!text.isNullOrBlank()) {
                         runCommandState.value(text)
+                    } else if (headless) {
+                        onDismiss()
                     }
                 }
 
@@ -971,6 +1031,12 @@ fun MetroDjChatSheet(
             isListening = false
             voiceRms = 0f
         }
+    }
+
+    if (headless) {
+        // Headless mode: no popup at all — the recognizer above listens and runCommand handles
+        // the request; replies are spoken via onSpokenReply.
+        return
     }
 
     AuraBottomSheet(

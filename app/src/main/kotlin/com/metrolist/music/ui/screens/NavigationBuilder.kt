@@ -53,6 +53,7 @@ import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.DjSettings
+import com.metrolist.music.ui.screens.settings.MiniPlayerSettings
 import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
@@ -421,6 +422,16 @@ fun NavGraphBuilder.navigationBuilder(
         popExitTransition = { nestedScreenPopExit() },
     ) {
         PlayerSettings(navController)
+    }
+
+    composable(
+        route = "settings/mini_player",
+        enterTransition = { nestedScreenEnter() },
+        exitTransition = { nestedScreenExit() },
+        popEnterTransition = { nestedScreenPopEnter() },
+        popExitTransition = { nestedScreenPopExit() },
+    ) {
+        MiniPlayerSettings(navController)
     }
 
     composable(

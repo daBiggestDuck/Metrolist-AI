@@ -30,6 +30,14 @@ object NanoDjSession {
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active.asStateFlow()
 
+    /** True while a radio session is being composed (seed resolve / AI queue build). */
+    private val _starting = MutableStateFlow(false)
+    val starting: StateFlow<Boolean> = _starting.asStateFlow()
+
+    fun setStarting(starting: Boolean) {
+        _starting.value = starting
+    }
+
     private val _sessionId = MutableStateFlow(0L)
     val sessionId: StateFlow<Long> = _sessionId.asStateFlow()
 
@@ -145,6 +153,7 @@ object NanoDjSession {
     @Synchronized
     fun stop() {
         _active.value = false
+        _starting.value = false
         _commentary.value = null
         _usedAi.value = false
         lastAnnouncedLine = null
