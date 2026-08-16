@@ -1,3 +1,9 @@
+---v15.0.5
+# What's new
+- Metro DJ chat now keeps the latest message above the keyboard when the composer is focused
+- Selected tab label reads white instead of green for clearer contrast
+- Smoother Metro DJ chat: the on-air pulse animates in the draw phase instead of recomposing every frame
+
 ---v15.0.4
 # What's new
 - Tab switching is smoother: removed the redundant NavHost slide transition and a second nav-bar animation that competed for frames with the page slide

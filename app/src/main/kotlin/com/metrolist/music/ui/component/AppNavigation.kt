@@ -375,7 +375,7 @@ fun AppNavigationBar(
                             onSearchLongClick = onSearchLongClick,
                         )
                     val iconTint = if (isSelected) AuraNavSelected else AuraNavUnselected
-                    val labelTint = if (isSelected) AuraSpotifyGreen else AuraNavUnselected
+                    val labelTint = if (isSelected) AuraNavSelected else AuraNavUnselected
 
                     Column(
                         modifier =

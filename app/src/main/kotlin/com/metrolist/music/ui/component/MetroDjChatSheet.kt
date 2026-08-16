@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,7 +50,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -581,10 +582,17 @@ fun MetroDjChatSheet(
         }
     }
 
-    // Keep the conversation pinned to the newest message so chat never drifts off-screen.
-    LaunchedEffect(messages.size) {
+    // Keep the conversation pinned to the newest message so chat never drifts off-screen,
+    // and lift the latest message above the keyboard when the composer gains focus.
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    LaunchedEffect(messages.size, imeVisible) {
         if (messages.isNotEmpty()) {
-            messagesListState.animateScrollToItem(messages.lastIndex)
+            // Instant jump while the keyboard is opening; smooth scroll for new messages.
+            if (imeVisible) {
+                messagesListState.scrollToItem(messages.lastIndex)
+            } else {
+                messagesListState.animateScrollToItem(messages.lastIndex)
+            }
         }
     }
 
@@ -632,7 +640,6 @@ fun MetroDjChatSheet(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .imePadding()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 92.dp),
             ) {
@@ -671,8 +678,9 @@ fun MetroDjChatSheet(
                                     Modifier
                                         .padding(end = 6.dp)
                                         .size(8.dp)
+                                        .graphicsLayer { alpha = pulse }
                                         .clip(CircleShape)
-                                        .background(AuraSpotifyGreen.copy(alpha = pulse)),
+                                        .background(AuraSpotifyGreen),
                             )
                         }
                         Text(
