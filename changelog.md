@@ -1,3 +1,7 @@
+---v15.0.4
+# What's new
+- Tab switching is smoother: removed the redundant NavHost slide transition and a second nav-bar animation that competed for frames with the page slide
+
 ---v15.0.3
 # What's new
 - Home, Search, and Library pages stay pre-loaded in memory, so switching tabs with the bottom navigation bar is instant instead of laggy

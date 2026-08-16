@@ -21,6 +21,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -182,7 +184,6 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
-import com.metrolist.music.ui.component.AuraTabTravelOffsetSpring
 import com.metrolist.music.ui.component.AuraTabTravelSpring
 import com.metrolist.music.ui.component.navigationTabIndex
 import com.metrolist.music.ui.component.ChipsRow
@@ -1492,14 +1493,11 @@ class MainActivity : ComponentActivity() {
                                             else -> Screens.Home
                                         }.route,
                                     enterTransition = {
-                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
-                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideInHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                initialOffsetX = { fullWidth -> direction * fullWidth },
-                                            )
+                                        val fromRoute = initialState.destination.route
+                                        val toRoute = targetState.destination.route
+                                        if (fromRoute != null && toRoute != null && fromRoute in mainTabRoutes && toRoute in mainTabRoutes) {
+                                            // Main-tab anchors are empty; the shared strip already slides.
+                                            EnterTransition.None
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1508,14 +1506,10 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     exitTransition = {
-                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
-                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideOutHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
-                                            )
+                                        val fromRoute = initialState.destination.route
+                                        val toRoute = targetState.destination.route
+                                        if (fromRoute != null && toRoute != null && fromRoute in mainTabRoutes && toRoute in mainTabRoutes) {
+                                            ExitTransition.None
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1524,14 +1518,10 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     popEnterTransition = {
-                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
-                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideInHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                initialOffsetX = { fullWidth -> direction * fullWidth },
-                                            )
+                                        val fromRoute = initialState.destination.route
+                                        val toRoute = targetState.destination.route
+                                        if (fromRoute != null && toRoute != null && fromRoute in mainTabRoutes && toRoute in mainTabRoutes) {
+                                            EnterTransition.None
                                         } else {
                                             slideInHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -1540,14 +1530,10 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     popExitTransition = {
-                                        val toTab = navigationTabIndex(targetState.destination.route, navigationItems)
-                                        val fromTab = navigationTabIndex(initialState.destination.route, navigationItems)
-                                        if (fromTab != null && toTab != null && fromTab != toTab) {
-                                            val direction = if (toTab > fromTab) 1 else -1
-                                            slideOutHorizontally(
-                                                animationSpec = AuraTabTravelOffsetSpring,
-                                                targetOffsetX = { fullWidth -> -direction * fullWidth },
-                                            )
+                                        val fromRoute = initialState.destination.route
+                                        val toRoute = targetState.destination.route
+                                        if (fromRoute != null && toRoute != null && fromRoute in mainTabRoutes && toRoute in mainTabRoutes) {
+                                            ExitTransition.None
                                         } else {
                                             slideOutHorizontally(
                                                 animationSpec = tween(300, easing = FastOutSlowInEasing),

@@ -74,10 +74,6 @@ private val AuraNavPillBg = AuraElevated
 val AuraTabTravelSpring =
     tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
 
-/** Same travel feel as [AuraTabTravelSpring], for NavHost slide offsets. */
-val AuraTabTravelOffsetSpring =
-    tween<androidx.compose.ui.unit.IntOffset>(durationMillis = 260, easing = FastOutSlowInEasing)
-
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
@@ -160,11 +156,15 @@ fun AppNavigationRail(
     }
     val selectedIndex = resolvedSelectedIndex ?: lastSelectedIndex.intValue
     val animatedIndex = remember { Animatable(selectedIndex.toFloat()) }
-    LaunchedEffect(selectedIndex) {
-        animatedIndex.animateTo(
-            targetValue = selectedIndex.toFloat(),
-            animationSpec = AuraTabTravelSpring,
-        )
+    if (indicatorPosition == null) {
+        // Only the shared strip/bubble Animatable should drive travel; a second per-bar
+        // spring here competed for frames on every tab switch.
+        LaunchedEffect(selectedIndex) {
+            animatedIndex.animateTo(
+                targetValue = selectedIndex.toFloat(),
+                animationSpec = AuraTabTravelSpring,
+            )
+        }
     }
     val animatedPosition = indicatorPosition ?: { animatedIndex.value }
 
@@ -250,7 +250,7 @@ fun AppNavigationRail(
                                     .graphicsLayer {
                                         // Track bubble travel — one spring drives icon scale (no per-tab springs).
                                         val proximity =
-                                            (1f - abs(animatedIndex.value - index)).coerceIn(0f, 1f)
+                                            (1f - abs(animatedPosition() - index)).coerceIn(0f, 1f)
                                         val scale = 1f + 0.10f * proximity
                                         scaleX = scale
                                         scaleY = scale
@@ -292,11 +292,15 @@ fun AppNavigationBar(
     }
     val selectedIndex = selectedIndexOverride ?: resolvedSelectedIndex ?: lastSelectedIndex.intValue
     val animatedIndex = remember { Animatable(selectedIndex.toFloat()) }
-    LaunchedEffect(selectedIndex) {
-        animatedIndex.animateTo(
-            targetValue = selectedIndex.toFloat(),
-            animationSpec = AuraTabTravelSpring,
-        )
+    if (indicatorPosition == null) {
+        // Only the shared strip/bubble Animatable should drive travel; a second per-bar
+        // spring here competed for frames on every tab switch.
+        LaunchedEffect(selectedIndex) {
+            animatedIndex.animateTo(
+                targetValue = selectedIndex.toFloat(),
+                animationSpec = AuraTabTravelSpring,
+            )
+        }
     }
     val animatedPosition = indicatorPosition ?: { animatedIndex.value }
 
@@ -401,7 +405,7 @@ fun AppNavigationBar(
                                     .graphicsLayer {
                                         // Same spring as the bubble — icons light up as it travels.
                                         val proximity =
-                                            (1f - abs(animatedIndex.value - index)).coerceIn(0f, 1f)
+                                            (1f - abs(animatedPosition() - index)).coerceIn(0f, 1f)
                                         val scale = 1f + 0.12f * proximity
                                         scaleX = scale
                                         scaleY = scale
@@ -420,7 +424,7 @@ fun AppNavigationBar(
                                 modifier =
                                     Modifier.graphicsLayer {
                                         val proximity =
-                                            (1f - abs(animatedIndex.value - index)).coerceIn(0f, 1f)
+                                            (1f - abs(animatedPosition() - index)).coerceIn(0f, 1f)
                                         alpha = 0.72f + 0.28f * proximity
                                     },
                             )
