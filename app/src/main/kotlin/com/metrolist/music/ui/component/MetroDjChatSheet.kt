@@ -124,6 +124,89 @@ private object NanoDjChatHistory {
 
     /** Session the current conversation belongs to; Long.MIN_VALUE means no session yet. */
     var sessionId: Long = Long.MIN_VALUE
+
+    /** Last DJ host line already shown in chat, so the same line never bubbles up twice. */
+    var lastCommentaryLine: String? = null
+}
+
+/**
+ * Phrase fragments that are NOT a song request when they follow "play" / "add ... to the queue"
+ * (e.g. "play this song", "play the next one"). Anything here falls back to normal chat.
+ */
+private val SONG_QUERY_STOPWORDS =
+    setOf(
+        "next song",
+        "the next song",
+        "this song",
+        "the current song",
+        "current song",
+        "a song",
+        "some song",
+        "something",
+        "the queue",
+        "this",
+        "that",
+        "it",
+        "the next one",
+        "a track",
+        "the track",
+        "this track",
+        "the current track",
+        "my playlist",
+        "the playlist",
+        "a playlist",
+        "me a song",
+        "me something",
+        "some music",
+        "music",
+    )
+
+private val LANE_WORDS = listOf("chill", "hype", "focus", "nostalgia", "artist radio")
+
+/**
+ * Pulls a song-ish query out of a natural request like "after this song, can you play the chainsaw
+ * man intro", "add bohemian rhapsody to the queue", or "play <song>". Returns null when the
+ * message is really about something else (lane switches, playlists, "play this song", etc.).
+ */
+private fun extractSongQuery(raw: String): String? {
+    val command = raw.trim()
+    val normalized = command.lowercase()
+    if ("playlist" in normalized || "playing" in normalized || "play next" in normalized) return null
+
+    var query: String? = null
+    // "add <song> to the queue"
+    Regex("""\badd\s+(.+?)\s+to\s+the\s+queue\b""", RegexOption.IGNORE_CASE)
+        .find(command)
+        ?.let { query = it.groupValues[1].trim() }
+    // "queue <song>"
+    if (query == null && normalized.startsWith("queue ")) {
+        query = command.substringAfter("queue ").trim()
+    }
+    // "put on <song>"
+    if (query == null) {
+        Regex("""\bput on\s+(.+)$""", RegexOption.IGNORE_CASE)
+            .find(command)
+            ?.let { query = it.groupValues[1].trim() }
+    }
+    // "play <song>" / "can you play <song>" — everything after the last "play".
+    if (query == null && " play " in " $normalized ") {
+        val idx = command.lastIndexOf("play", ignoreCase = true)
+        if (idx >= 0) query = command.substring(idx + 4).trim()
+    }
+
+    query =
+        query
+            ?.trim()
+            ?.trim(',', '.', '"', '\'')
+            ?.removeSuffix(" please")
+            ?.removeSuffix(" now")
+            ?.trim()
+    if (query.isNullOrBlank() || query.length < 3) return null
+
+    val q = query.lowercase()
+    if (SONG_QUERY_STOPWORDS.any { q == it || q.startsWith("$it ") || q.endsWith(" $it") }) return null
+    if (LANE_WORDS.any { q.contains(it) }) return null
+    return query
 }
 
 @Composable
@@ -218,6 +301,12 @@ fun MetroDjChatSheet(
             radio: "more like this", "make it chill", "switch to hype", "why did you choose this?"
             taste: "dislike this", "like this"
             downloads & app: "download this", "open settings", "turn your voice off"
+            CRITICAL: You are a talker, not a doer. Never claim you performed or will perform an
+            action (added to a queue, created a playlist, changed a setting, skipped a song, ...) —
+            you didn't and you won't. If the listener asks you to do something, tell them the exact
+            short phrase to say (the app runs it), or say plainly that you can't. Never pretend a
+            task is done, never promise "I'll add it", "done", or "already queued" unless the app
+            actually did it. If you cannot do something, say so and why, briefly.
             Answer what the listener actually asked, about the current song, artist, lane, or the
             music itself. No markdown, no emoji, no bullet points, never "as an AI".
 
@@ -267,12 +356,53 @@ fun MetroDjChatSheet(
         DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false)
     }
 
+    /** Searches YouTube Music for [query] and adds the first result to the queue. Only replies
+     *  after the action actually completes (or fails), so the DJ never claims a false "done". */
+    suspend fun searchAndQueue(query: String) {
+        val item =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
+                        ?.items?.filterIsInstance<SongItem>()?.firstOrNull()
+                        ?.toMediaItem()
+                }.getOrNull()
+            }
+        if (item == null) {
+            reply(context.getString(R.string.nano_dj_song_not_found, query))
+        } else {
+            connection?.addToQueue(item)
+            val title = item.mediaMetadata.title?.toString().orEmpty()
+            reply(context.getString(R.string.nano_dj_song_added, title.ifBlank { query }))
+        }
+    }
+
+    /** Human-readable failure message instead of a raw exception dump. */
+    fun failureText(e: Throwable?): String {
+        val raw = (e?.message ?: "").trim()
+        val low = raw.lowercase()
+        val reason =
+            when {
+                "timed out" in low || "timeout" in low ->
+                    context.getString(R.string.nano_dj_failure_timeout)
+                "http 429" in low || "rate limit" in low ->
+                    context.getString(R.string.nano_dj_failure_rate_limited)
+                "http 401" in low || "http 403" in low || "api key" in low ->
+                    context.getString(R.string.nano_dj_failure_api_key)
+                "network" in low || "failed to connect" in low || "unable to resolve host" in low ||
+                    "no internet" in low -> context.getString(R.string.nano_dj_failure_network)
+                raw.isNotEmpty() -> raw.take(120)
+                else -> context.getString(R.string.nano_dj_failure_unknown)
+            }
+        return context.getString(R.string.nano_dj_action_failed_reason, reason)
+    }
+
     fun runCommand(raw: String) {
         val command = raw.trim()
         if (command.isBlank() || busy) return
         messages += MetroDjMessage(false, command)
         input = ""
         val normalized = command.lowercase()
+        val songRequest = extractSongQuery(command)
 
         if (pendingConfirmation != null) {
             when (normalized) {
@@ -356,7 +486,7 @@ fun MetroDjChatSheet(
                                     }.onSuccess {
                                         reply(context.getString(R.string.nano_dj_playlist_deleted, playlist.name))
                                     }.onFailure {
-                                        reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
+                                        reply(failureText(it))
                                     }
                                 }
                             }
@@ -380,7 +510,7 @@ fun MetroDjChatSheet(
                         }.onSuccess {
                             reply(context.getString(R.string.nano_dj_playlist_created, name))
                         }.onFailure {
-                            reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
+                            reply(failureText(it))
                         }
                     }
                 }
@@ -412,7 +542,7 @@ fun MetroDjChatSheet(
                             }.onSuccess {
                                 reply(context.getString(R.string.nano_dj_playlist_renamed, newName))
                             }.onFailure {
-                                reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
+                                reply(failureText(it))
                             }
                         }
                     }
@@ -457,7 +587,7 @@ fun MetroDjChatSheet(
                         launchBusy {
                             runCatching { items.forEach { enqueueDownload(it) } }
                                 .onSuccess { reply(context.getString(R.string.nano_dj_download_started, items.size)) }
-                                .onFailure { reply(it.message ?: context.getString(R.string.nano_dj_action_failed)) }
+                                .onFailure { reply(failureText(it)) }
                         }
                     }
                 }
@@ -496,7 +626,7 @@ fun MetroDjChatSheet(
                             }.onSuccess {
                                 reply(context.getString(R.string.nano_dj_added_to_playlist, name))
                             }.onFailure {
-                                reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
+                                reply(failureText(it))
                             }
                         }
                     }
@@ -560,8 +690,14 @@ fun MetroDjChatSheet(
             }
 
             normalized.contains("add") && normalized.contains("queue") -> {
-                currentMedia()?.toMediaItem()?.let { connection?.addToQueue(it) }
-                reply(context.getString(R.string.nano_dj_added_queue))
+                // "add <any song> to the queue" searches and queues that song; messages without
+                // a song name ("add this to the queue") still queue the current track.
+                if (songRequest != null) {
+                    launchBusy { searchAndQueue(songRequest) }
+                } else {
+                    currentMedia()?.toMediaItem()?.let { connection?.addToQueue(it) }
+                    reply(context.getString(R.string.nano_dj_added_queue))
+                }
             }
 
             normalized.contains("refresh") || normalized.contains("rebuild") || normalized.contains("more like") -> {
@@ -580,7 +716,7 @@ fun MetroDjChatSheet(
                             NanoDjSession.isSpeakEnabled(),
                             replaceCurrentQueue = true,
                         ).onFailure {
-                            reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
+                            reply(failureText(it))
                         }
                     }
                 }
@@ -618,45 +754,16 @@ fun MetroDjChatSheet(
                             NanoDjSession.isSpeakEnabled(),
                             replaceCurrentQueue = true,
                         ).onFailure {
-                            reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
+                            reply(failureText(it))
                         }
                     }
                 }
             }
 
-            normalized.startsWith("play ") -> {
-                // "play <any song>" searches YouTube Music and adds the result to the queue,
-                // not just songs already in the current set.
-                val query =
-                    command
-                        .substringAfter("play ")
-                        .trim()
-                        .trim('"', '\'')
-                        .removeSuffix(" please")
-                        .removeSuffix(" now")
-                        .removeSuffix(".")
-                        .trim()
-                if (query.length < 2) {
-                    reply(context.getString(R.string.nano_dj_song_query_needed))
-                } else {
-                    launchBusy {
-                        val item =
-                            withContext(Dispatchers.IO) {
-                                runCatching {
-                                    YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
-                                        ?.items?.filterIsInstance<SongItem>()?.firstOrNull()
-                                        ?.toMediaItem()
-                                }.getOrNull()
-                            }
-                        if (item == null) {
-                            reply(context.getString(R.string.nano_dj_song_not_found, query))
-                        } else {
-                            connection?.addToQueue(item)
-                            val title = item.mediaMetadata.title?.toString().orEmpty()
-                            reply(context.getString(R.string.nano_dj_song_added, title.ifBlank { query }))
-                        }
-                    }
-                }
+            songRequest != null -> {
+                // "play <any song>" / "can you play <song>" / "after this, play <song>" /
+                // "put on <song>" searches YouTube Music and adds the result to the queue.
+                launchBusy { searchAndQueue(songRequest) }
             }
 
             normalized.contains("why") || normalized.contains("explain") -> {
@@ -680,8 +787,13 @@ fun MetroDjChatSheet(
     }
 
     LaunchedEffect(commentary) {
+        // Host lines are republished on every queue batch; only show a line in chat once so the
+        // same commentary never bubbles up over and over.
         commentary?.takeIf { it.isNotBlank() }?.let { line ->
-            if (messages.lastOrNull()?.text != line) messages += MetroDjMessage(true, line)
+            if (NanoDjChatHistory.lastCommentaryLine != line) {
+                NanoDjChatHistory.lastCommentaryLine = line
+                messages += MetroDjMessage(true, line)
+            }
         }
     }
 
@@ -712,6 +824,7 @@ fun MetroDjChatSheet(
             input = ""
             confirmationText = null
             pendingConfirmation = null
+            NanoDjChatHistory.lastCommentaryLine = null
             messages += MetroDjMessage(true, context.getString(R.string.nano_dj_chat_welcome))
             if (carried.isNotEmpty()) messages += carried
             NanoDjChatHistory.sessionId = sessionId

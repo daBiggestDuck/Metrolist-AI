@@ -1173,6 +1173,12 @@
     <string name="nano_dj_command_help">Ask me about music or tell me what you want to hear. I’ll only change playback when you explicitly ask.</string>
     <string name="nano_dj_no_player">The player is not ready yet.</string>
     <string name="nano_dj_action_failed">I couldn’t complete that Metro DJ action.</string>
+    <string name="nano_dj_action_failed_reason">I couldn’t do that — %1$s</string>
+    <string name="nano_dj_failure_timeout">it took too long and timed out. Try again.</string>
+    <string name="nano_dj_failure_rate_limited">the AI service is rate-limited right now. Try again in a minute.</string>
+    <string name="nano_dj_failure_api_key">the DJ AI isn’t configured — the API key is missing or invalid.</string>
+    <string name="nano_dj_failure_network">there was a network problem. Check your connection.</string>
+    <string name="nano_dj_failure_unknown">something went wrong. Try again.</string>
     <string name="nano_dj_action_cancelled">Cancelled.</string>
     <string name="nano_dj_confirm_needed">Please confirm with Yes or No.</string>
     <string name="nano_dj_confirmation_title">Confirm Metro DJ action</string>

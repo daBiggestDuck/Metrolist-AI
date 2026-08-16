@@ -1,3 +1,10 @@
+---v15.4.3
+# What's new
+- "Play <any song>" now catches natural phrasing ("after this song, can you play…", "put on…", "add … to the queue") and actually finds the song on YouTube Music and adds it to the queue — no more "I'll add it" followed by nothing
+- Metro DJ never claims it did something it didn't: the AI is explicitly told it's a talker, not a doer, so it stops fabricating confirmations like "I'll add it to the queue" and instead gives the exact phrase to say or admits it can't
+- When an action does fail, the DJ now says it failed and why in plain language (timeout, rate-limited, API key missing, network problem) instead of dumping a raw error or staying silent
+- The same DJ host line no longer repeats in chat over and over — each commentary line is shown once per session
+
 ---v15.4.2
 # What's new
 - "Play <any song>" now actually finds the song on YouTube Music and adds it to the queue — it no longer says "it's not in my set" for anything outside the current radio queue
