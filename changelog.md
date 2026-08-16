@@ -1,3 +1,7 @@
+---v15.1.1
+# What's new
+- Reverted the Metro DJ on-air pulse rendering change, restoring the previous animated dot look
+
 ---v15.1
 # What's new
 - Metro DJ now talks Spotify-style: a short intro once per block of songs, then stays silent while the block plays — no more speaking on every track
