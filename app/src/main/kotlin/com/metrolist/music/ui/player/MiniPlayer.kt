@@ -1294,11 +1294,11 @@ private fun LikeDislikeSwipeButton(
     val dislikeProgress = (-pull).coerceIn(0f, 1f)
 
     val heartColor = lerp(if (isLiked) activeTint else tint, activeTint, likeProgress)
-    val heartAlpha = (1f - 0.9f * dislikeProgress).coerceIn(0.15f, 1f)
-    val heartScale = 1f + 1.15f * likeProgress
+    val heartAlpha = (1f - dislikeProgress).coerceIn(0f, 1f)
+    val heartScale = 1f + 1.35f * likeProgress
     val dislikeColor = if (isDisliked) activeTint else tint.copy(alpha = 0.7f)
-    val dislikeAlpha = (1f - 0.9f * likeProgress).coerceIn(0.15f, 1f)
-    val dislikeScale = 1f + 1.15f * dislikeProgress
+    val dislikeAlpha = (1f - likeProgress).coerceIn(0f, 1f)
+    val dislikeScale = 1f + 1.35f * dislikeProgress
     val dividerAlpha = (1f - likeProgress - dislikeProgress).coerceIn(0f, 1f)
 
     fun commitLike() {
@@ -1342,20 +1342,31 @@ private fun LikeDislikeSwipeButton(
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .size(width = 78.dp, height = 40.dp)
-                .clip(RoundedCornerShape(50))
-                .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(50))
-                .background(Color.Transparent, RoundedCornerShape(50))
+                .size(40.dp)
+                .clip(CircleShape)
+                .border(1.dp, outlineColor.copy(alpha = 0.3f), CircleShape)
+                .background(Color.Transparent, CircleShape)
                 .pointerInput(metadata.id) {
                     detectVerticalDragGestures(
                         onDragEnd = {
                             scope.launch {
-                                if (pull >= 0.5f) {
-                                    commitLike()
-                                    pull = 1.25f
-                                } else if (pull <= -0.5f) {
-                                    commitDislike()
-                                    pull = -1.25f
+                                val committed =
+                                    when {
+                                        pull >= 0.5f -> {
+                                            commitLike()
+                                            1f
+                                        }
+                                        pull <= -0.5f -> {
+                                            commitDislike()
+                                            -1f
+                                        }
+                                        else -> 0f
+                                    }
+                                if (committed != 0f) {
+                                    // The winning icon fills the whole button for a beat
+                                    // before easing back to the resting like/dislike state.
+                                    pull = committed
+                                    kotlinx.coroutines.delay(700)
                                 }
                                 animate(
                                     initialValue = pull,

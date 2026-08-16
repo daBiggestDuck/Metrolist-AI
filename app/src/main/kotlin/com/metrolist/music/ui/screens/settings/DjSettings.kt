@@ -50,6 +50,7 @@ import com.metrolist.music.constants.DjAiModelsByProviderKey
 import com.metrolist.music.constants.DjAiProviderKey
 import com.metrolist.music.constants.EnableGeminiNanoKey
 import com.metrolist.music.constants.NanoDjSpeakKey
+import com.metrolist.music.constants.ShowDjPageKey
 import com.metrolist.music.constants.OpenRouterApiKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
@@ -79,6 +80,7 @@ fun DjSettings(navController: NavController) {
     var djAiModelsByProvider by rememberPreference(DjAiModelsByProviderKey, "")
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val (nanoDjSpeak, onNanoDjSpeakChange) = rememberPreference(NanoDjSpeakKey, true)
+    val (showDjPage, onShowDjPageChange) = rememberPreference(ShowDjPageKey, true)
     val djAiProvider = DjAiProvider.fromId(djAiProviderId)
     var geminiStatus by rememberSaveable { mutableStateOf(GeminiNanoStatus.Unavailable) }
     var geminiBusy by rememberSaveable { mutableStateOf(false) }
@@ -564,6 +566,19 @@ fun DjSettings(navController: NavController) {
                             )
                         },
                         onClick = { onNanoDjSpeakChange(!nanoDjSpeak) },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.radio),
+                        title = { Text(stringResource(R.string.dj_page_show)) },
+                        searchKey = "dj_page_show",
+                        description = { Text(stringResource(R.string.dj_page_show_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = showDjPage,
+                                onCheckedChange = onShowDjPageChange,
+                            )
+                        },
+                        onClick = { onShowDjPageChange(!showDjPage) },
                     ),
                 ),
         )

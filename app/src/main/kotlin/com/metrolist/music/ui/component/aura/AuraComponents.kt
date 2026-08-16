@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -770,6 +771,7 @@ fun AuraHeroPanel(
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    loading: Boolean = false,
     playContentDescription: String? = null,
 ) {
     Row(
@@ -817,16 +819,24 @@ fun AuraHeroPanel(
         }
         AuraIconButton(
             onClick = onPlayClick,
-            enabled = enabled,
+            enabled = enabled && !loading,
             modifier = Modifier.size(42.dp),
             containerColor = AuraSpotifyGreen,
             contentColor = AuraSpotifyOnGreen,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.play),
-                contentDescription = playContentDescription,
-                modifier = Modifier.size(22.dp),
-            )
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = AuraSpotifyOnGreen,
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.play),
+                    contentDescription = playContentDescription,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }

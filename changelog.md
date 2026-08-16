@@ -1,3 +1,12 @@
+---v16.0
+# What's new
+- Metro DJ now actually does what you ask: it plans your request into real actions (create/rename/delete playlists, search and add songs to a playlist or queue, like/dislike, switch lanes, downloads, and more), executes them, then reports honestly what worked and what didn't — no more made-up confirmations or "say a phrase to run it"
+- New dedicated Metro DJ page: a full-screen chat with a toggleable sidebar of recent chats you can search by title or content, the same actions as the radio DJ, and voice input — open it from the mini player DJ button or the profile menu (toggle it in DJ settings)
+- The mini player like/dislike control is now the same size as the other buttons, and swiping grows the heart or thumb across the whole button for a beat before it settles back with the chosen side highlighted
+- The Metro DJ start button shows a loading spinner while the radio spins up instead of just dimming
+- Library: removed the name/date-added sort bar; the filter chips stay sticky under the header
+- Settings search bar now sits just below the title instead of floating low
+
 ---v15.4.4
 # What's new
 - Hold the Metro DJ button on the mini player to talk to it: the button morphs into a live voice waveform, listens to your command without opening the chat, and the DJ reads back what it did

@@ -547,7 +547,7 @@ fun SettingsScreen(
             ),
         )
 
-        Spacer(modifier = Modifier.height(56.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         SettingsSearchBar(
             query = searchQuery,

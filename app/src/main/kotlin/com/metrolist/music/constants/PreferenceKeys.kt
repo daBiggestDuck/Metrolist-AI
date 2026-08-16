@@ -65,6 +65,7 @@ val MiniPlayerLikeDislikeSwipeKey = booleanPreferencesKey("miniPlayerLikeDislike
 val MiniPlayerShowDjButtonKey = booleanPreferencesKey("miniPlayerShowDjButton")
 val MiniPlayerShowAddToPlaylistKey = booleanPreferencesKey("miniPlayerShowAddToPlaylist")
 val NanoDjHoldToVoiceKey = booleanPreferencesKey("nanoDjHoldToVoice")
+val ShowDjPageKey = booleanPreferencesKey("showDjPage")
 val HidePlayerThumbnailKey = booleanPreferencesKey("hidePlayerThumbnail")
 val CropAlbumArtKey = booleanPreferencesKey("cropAlbumArt")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -91,11 +92,17 @@ import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.ai.NanoDjSession
+import com.metrolist.music.ai.DjAgent
+import com.metrolist.music.ai.DjPlan
+import com.metrolist.music.ai.DjPlannedAction
+import com.metrolist.music.ai.DjActionResult
 import com.metrolist.music.constants.NanoDjHoldToVoiceKey
+import com.metrolist.music.constants.ShowDjPageKey
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.ui.component.aura.AuraBottomSheet
@@ -111,7 +118,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private data class MetroDjMessage(val fromDj: Boolean, val text: String)
+data class MetroDjMessage(val fromDj: Boolean, val text: String)
 
 private data class MetroDjQuickAction(
     val label: String,
@@ -122,7 +129,7 @@ private data class MetroDjQuickAction(
  * The DJ conversation outlives the chat sheet. It only resets when a new radio session
  * starts (NanoDjSession.sessionId changes), not every time the sheet is opened.
  */
-private object NanoDjChatHistory {
+object NanoDjChatHistory {
     val messages = mutableStateListOf<MetroDjMessage>()
 
     /** Session the current conversation belongs to; Long.MIN_VALUE means no session yet. */
@@ -218,9 +225,11 @@ fun MetroDjChatButton(
     tint: Color = Color.White,
 ) {
     val context = LocalContext.current
+    val navController = LocalNavController.current
     val active by NanoDjSession.active.collectAsStateWithLifecycle()
     val starting by NanoDjSession.starting.collectAsStateWithLifecycle()
     val (holdToVoice, _) = rememberPreference(NanoDjHoldToVoiceKey, true)
+    val (showDjPage, _) = rememberPreference(ShowDjPageKey, true)
     var showChat by remember { mutableStateOf(false) }
     // Hold-to-voice: long-pressing morphs the button into a live voice button, runs the command
     // headlessly (no popup), and speaks the result back.
@@ -232,7 +241,13 @@ fun MetroDjChatButton(
     // sheet's coroutine scope is cancelled mid-rebuild and the action never completes.
     if (active) {
         AuraIconButton(
-            onClick = { showChat = true },
+            onClick = {
+                if (showDjPage) {
+                    navController.navigate("dj")
+                } else {
+                    showChat = true
+                }
+            },
             onLongClick = if (holdToVoice) ({ voiceActive = true }) else null,
             modifier = modifier.size(42.dp),
             containerColor =
@@ -283,6 +298,7 @@ fun MetroDjChatButton(
 fun MetroDjChatSheet(
     onDismiss: () -> Unit,
     headless: Boolean = false,
+    fullScreen: Boolean = false,
     onVoiceState: ((Boolean, Float) -> Unit)? = null,
     onSpokenReply: ((String) -> Unit)? = null,
 ) {
@@ -336,22 +352,11 @@ fun MetroDjChatSheet(
             Talk like a real person, not an assistant: casual, first person, and SHORT. Reply in at
             most three short sentences. Never enumerate features or dump a list unprompted — if the
             listener asks what you can do, summarize the big ones in one friendly line.
-            You genuinely perform these actions, so when the listener asks for one, name the exact
-            short phrase once and nothing else:
-            playlists: "create playlist <name>", "rename playlist <old> to <new>", "delete playlist <name>",
-            "add this to playlist <name>", "open my playlists"
-            playback: "skip", "play next", "add to queue", "clear the queue", "stop Metro DJ"
-            radio: "more like this", "make it chill", "switch to hype", "why did you choose this?"
-            taste: "dislike this", "like this"
-            downloads & app: "download this", "open settings", "turn your voice off"
-            CRITICAL: You are a talker, not a doer. Never claim you performed or will perform an
-            action (added to a queue, created a playlist, changed a setting, skipped a song, ...) —
-            you didn't and you won't. If the listener asks you to do something, tell them the exact
-            short phrase to say (the app runs it), or say plainly that you can't. Never pretend a
-            task is done, never promise "I'll add it", "done", or "already queued" unless the app
-            actually did it. If you cannot do something, say so and why, briefly.
-            Answer what the listener actually asked, about the current song, artist, lane, or the
-            music itself. No markdown, no emoji, no bullet points, never "as an AI".
+            You are a talker, not a doer: the app carries out any actions the listener asks for,
+            so just answer conversationally. Never claim you personally performed an action, and
+            never tell the listener to "say a phrase" — just answer what they asked about the
+            current song, artist, lane, or the music itself. If they asked for something you can't
+            answer, say so briefly. No markdown, no emoji, no bullet points, never "as an AI".
 
             Current state: ${if (active) "on air" else "off air"}
             Lane: $laneName
@@ -399,9 +404,9 @@ fun MetroDjChatSheet(
         DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false)
     }
 
-    /** Searches YouTube Music for [query] and adds the first result to the queue. Only replies
-     *  after the action actually completes (or fails), so the DJ never claims a false "done". */
-    suspend fun searchAndQueue(query: String) {
+    /** Searches YouTube Music for [query] and adds the first result to the queue. Returns the
+     *  human-readable outcome instead of replying, so callers can report it honestly. */
+    suspend fun searchAndQueue(query: String): String {
         val item =
             withContext(Dispatchers.IO) {
                 runCatching {
@@ -410,14 +415,26 @@ fun MetroDjChatSheet(
                         ?.toMediaItem()
                 }.getOrNull()
             }
-        if (item == null) {
-            reply(context.getString(R.string.nano_dj_song_not_found, query))
+        return if (item == null) {
+            context.getString(R.string.nano_dj_song_not_found, query)
         } else {
             connection?.addToQueue(item)
             val title = item.mediaMetadata.title?.toString().orEmpty()
-            reply(context.getString(R.string.nano_dj_song_added, title.ifBlank { query }))
+            context.getString(R.string.nano_dj_song_added, title.ifBlank { query })
         }
     }
+
+    /** Searches YouTube Music for songs matching [query], returned as playable metadata. */
+    suspend fun searchSongs(query: String): List<MediaMetadata> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
+                    ?.items
+                    ?.filterIsInstance<SongItem>()
+                    ?.take(20)
+                    ?.map { it.toMediaMetadata() }
+            }.getOrNull().orEmpty()
+        }
 
     /** Human-readable failure message instead of a raw exception dump. */
     fun failureText(e: Throwable?): String {
@@ -439,32 +456,330 @@ fun MetroDjChatSheet(
         return context.getString(R.string.nano_dj_action_failed_reason, reason)
     }
 
-    fun runCommand(raw: String) {
-        val command = raw.trim()
-        if (command.isBlank() || busy) return
-        messages += MetroDjMessage(false, command)
-        input = ""
-        val normalized = command.lowercase()
-        val songRequest = extractSongQuery(command)
-
-        if (pendingConfirmation != null) {
-            when (normalized) {
-                "yes", "y", "confirm", "do it", "okay", "ok" -> {
-                    val action = pendingConfirmation
-                    pendingConfirmation = null
-                    confirmationText = null
-                    action?.invoke()
-                }
-                "no", "n", "cancel" -> {
-                    pendingConfirmation = null
-                    confirmationText = null
-                    reply(context.getString(R.string.nano_dj_action_cancelled))
-                }
-                else -> reply(context.getString(R.string.nano_dj_confirm_needed))
-            }
-            return
+    /** Snapshot of the live DJ state, fed to the AI planner so it can reason about context. */
+    fun currentState(): String {
+        val current = currentMedia()
+        val artistLine = current?.artists?.map { it.name }?.take(2)?.joinToString(", ")
+        val queueSize = runCatching { connection?.player?.mediaItemCount ?: 0 }.getOrDefault(0)
+        return buildString {
+            append("on air: ").append(active).append('\n')
+            append("lane: ").append(laneName).append('\n')
+            append("current song: ").append(current?.title.orEmpty().ifBlank { "none" })
+            if (!artistLine.isNullOrBlank()) append(" by ").append(artistLine)
+            append('\n')
+            append("host line: ").append(commentary.orEmpty().ifBlank { "none" }).append('\n')
+            append("queue size: ").append(queueSize)
         }
+    }
 
+    /**
+     * Executes a single planned action and reports the real outcome. Never throws — failures
+     * are turned into an honest [DjActionResult] so the DJ can say exactly what went wrong.
+     */
+    suspend fun executePlannedAction(planned: DjPlannedAction): DjActionResult {
+        val action = planned.action
+        val args = planned.args
+        fun ok(message: String) = DjActionResult(action, true, message)
+        fun fail(message: String) = DjActionResult(action, false, message)
+
+        return try {
+            when (action) {
+                "create_playlist" -> {
+                    val name = args["name"].orEmpty().trim().trim('"', '\'')
+                    if (name.isBlank()) {
+                        fail(context.getString(R.string.nano_dj_playlist_name_needed))
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            database.withTransaction {
+                                insert(PlaylistEntity(name = name, isEditable = true, isLocal = true))
+                            }
+                        }
+                        ok(context.getString(R.string.nano_dj_playlist_created, name))
+                    }
+                }
+
+                "add_to_playlist" -> {
+                    val name =
+                        args["name"].orEmpty().trim().trim('"', '\'')
+                            .ifBlank { SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME }
+                    val query = args["query"].orEmpty().trim()
+                    val playlist =
+                        withContext(Dispatchers.IO) {
+                            database.playlistEntitiesByNameAsc()
+                                .firstOrNull { it.name.equals(name, ignoreCase = true) }
+                        }
+                    if (playlist == null) {
+                        fail(context.getString(R.string.nano_dj_playlist_not_found, name))
+                    } else {
+                        val items =
+                            if (query.isNotBlank()) searchSongs(query)
+                            else listOfNotNull(currentMedia())
+                        if (items.isEmpty()) {
+                            fail(
+                                if (query.isNotBlank()) {
+                                    context.getString(R.string.nano_dj_song_not_found, query)
+                                } else {
+                                    context.getString(R.string.nano_dj_no_current_song)
+                                },
+                            )
+                        } else {
+                            withContext(Dispatchers.IO) {
+                                database.withTransaction {
+                                    items.forEach { upsert(it.toSongEntity()) }
+                                    playlistBlocking(playlist.id)?.let { local ->
+                                        addSongsToPlaylist(local, items.map { it.id to null })
+                                    }
+                                }
+                            }
+                            ok(context.getString(R.string.nano_dj_added_to_playlist, name))
+                        }
+                    }
+                }
+
+                "delete_playlist" -> {
+                    val name = args["name"].orEmpty().trim().trim('"', '\'')
+                    val playlist =
+                        withContext(Dispatchers.IO) {
+                            database.playlistEntitiesByNameAsc()
+                                .firstOrNull { it.name.equals(name, ignoreCase = true) }
+                        }
+                    if (playlist == null) {
+                        fail(context.getString(R.string.nano_dj_playlist_not_found, name))
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            database.withTransaction { delete(playlist) }
+                            playlist.browseId?.let { com.metrolist.innertube.YouTube.deletePlaylist(it) }
+                        }
+                        ok(context.getString(R.string.nano_dj_playlist_deleted, name))
+                    }
+                }
+
+                "rename_playlist" -> {
+                    val old = args["old"].orEmpty().trim().trim('"', '\'')
+                    val new = args["new"].orEmpty().trim().trim('"', '\'')
+                    val playlist =
+                        withContext(Dispatchers.IO) {
+                            database.playlistEntitiesByNameAsc()
+                                .firstOrNull { it.name.equals(old, ignoreCase = true) }
+                        }
+                    if (playlist == null) {
+                        fail(context.getString(R.string.nano_dj_playlist_not_found, old))
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            database.withTransaction {
+                                update(
+                                    playlist.copy(
+                                        name = new,
+                                        lastUpdateTime = java.time.LocalDateTime.now(),
+                                    ),
+                                )
+                            }
+                            playlist.browseId?.let { com.metrolist.innertube.YouTube.renamePlaylist(it, new) }
+                        }
+                        ok(context.getString(R.string.nano_dj_playlist_renamed, new))
+                    }
+                }
+
+                "queue_song" -> {
+                    val query = args["query"].orEmpty().trim()
+                    if (query.isBlank()) {
+                        fail(context.getString(R.string.nano_dj_song_query_needed))
+                    } else {
+                        ok(searchAndQueue(query))
+                    }
+                }
+
+                "like" -> {
+                    val media = currentMedia()
+                    if (media == null) {
+                        fail(context.getString(R.string.nano_dj_no_current_song))
+                    } else {
+                        connection?.toggleLike()
+                        ok(context.getString(R.string.nano_dj_liked, media.title))
+                    }
+                }
+
+                "dislike" -> {
+                    val media = currentMedia()
+                    if (media == null) {
+                        fail(context.getString(R.string.nano_dj_no_current_song))
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            ListeningTasteTracker.setDisliked(
+                                context,
+                                media.id,
+                                true,
+                                media.title,
+                                media.artists.map { it.name },
+                            )
+                        }
+                        connection?.service?.onSongDisliked(media.id)
+                        ok(context.getString(R.string.nano_dj_disliked, media.title))
+                    }
+                }
+
+                "undo_dislike" -> {
+                    val media = currentMedia()
+                    if (media == null) {
+                        fail(context.getString(R.string.nano_dj_no_current_song))
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            ListeningTasteTracker.setDisliked(context, media.id, false)
+                        }
+                        connection?.service?.onSongUndisliked(media.id)
+                        ok(context.getString(R.string.nano_dj_dislike_removed, media.title))
+                    }
+                }
+
+                "play_next" -> {
+                    currentMedia()?.toMediaItem()?.let { connection?.playNext(it) }
+                    ok(context.getString(R.string.nano_dj_playing_next))
+                }
+
+                "skip" -> {
+                    connection?.seekToNext()
+                    ok(context.getString(R.string.nano_dj_skipped))
+                }
+
+                "switch_lane" -> {
+                    val lane = ListeningTasteTracker.DjLane.fromId(args["lane"].orEmpty())
+                    val player = connection
+                    if (player == null) {
+                        fail(context.getString(R.string.nano_dj_no_player))
+                    } else {
+                        laneName = lane.displayName
+                        withContext(Dispatchers.IO) {
+                            ListeningTasteTracker.setActiveLane(context, lane)
+                        }
+                        NanoDjSession.stop()
+                        NanoDjLauncher.start(
+                            context,
+                            player,
+                            NanoDjSession.isSpeakEnabled(),
+                            replaceCurrentQueue = true,
+                        ).fold(
+                            onSuccess = {
+                                ok(context.getString(R.string.nano_dj_switching_now, lane.displayName))
+                            },
+                            onFailure = { fail(failureText(it)) },
+                        )
+                    }
+                }
+
+                "open_settings" -> {
+                    navController.navigate("settings")
+                    ok(context.getString(R.string.nano_dj_settings_opened))
+                }
+
+                "toggle_voice" -> {
+                    val rawOn = args["on"].orEmpty().lowercase()
+                    val on = rawOn.isNotBlank() && rawOn != "false" && rawOn != "off" && rawOn != "no"
+                    NanoDjSession.setSpeakEnabled(on)
+                    ok(
+                        if (on) context.getString(R.string.nano_dj_voice_on)
+                        else context.getString(R.string.nano_dj_voice_off),
+                    )
+                }
+
+                "open_disliked" -> {
+                    navController.navigate("auto_playlist/disliked")
+                    ok(context.getString(R.string.nano_dj_playlist_opened))
+                }
+
+                "open_recommendations" -> {
+                    val playlistId =
+                        withContext(Dispatchers.IO) {
+                            database.playlistEntitiesByNameAsc()
+                                .firstOrNull {
+                                    it.name.equals(
+                                        SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME,
+                                        ignoreCase = true,
+                                    )
+                                }?.id
+                        }
+                    if (playlistId == null) {
+                        fail(
+                            context.getString(
+                                R.string.nano_dj_playlist_not_found,
+                                SpotifyImportManager.RECOMMENDATIONS_PLAYLIST_NAME,
+                            ),
+                        )
+                    } else {
+                        navController.navigate("local_playlist/$playlistId")
+                        ok(context.getString(R.string.nano_dj_playlist_opened))
+                    }
+                }
+
+                "download" -> {
+                    val items =
+                        if (args["scope"].orEmpty().lowercase() == "queue") {
+                            queuedMedia()
+                        } else {
+                            listOfNotNull(currentMedia())
+                        }
+                    if (items.isEmpty()) {
+                        fail(context.getString(R.string.nano_dj_no_current_song))
+                    } else {
+                        items.forEach { enqueueDownload(it) }
+                        ok(context.getString(R.string.nano_dj_download_started, items.size))
+                    }
+                }
+
+                "stop" -> {
+                    if (active) {
+                        connection?.service?.stopMetroDj()
+                        connection?.player?.stop()
+                        connection?.player?.clearMediaItems()
+                    }
+                    ok(context.getString(R.string.nano_dj_stopped))
+                }
+
+                "clear_queue" -> {
+                    connection?.service?.stopMetroDj()
+                    connection?.player?.stop()
+                    connection?.player?.clearMediaItems()
+                    ok(context.getString(R.string.nano_dj_queue_cleared))
+                }
+
+                "refresh" -> {
+                    val player = connection
+                    if (player == null) {
+                        fail(context.getString(R.string.nano_dj_no_player))
+                    } else {
+                        NanoDjSession.stop()
+                        NanoDjLauncher.start(
+                            context,
+                            player,
+                            NanoDjSession.isSpeakEnabled(),
+                            replaceCurrentQueue = true,
+                        ).fold(
+                            onSuccess = { ok(context.getString(R.string.nano_dj_refreshing_now)) },
+                            onFailure = { fail(failureText(it)) },
+                        )
+                    }
+                }
+
+                else -> fail(context.getString(R.string.nano_dj_action_failed))
+            }
+        } catch (e: Throwable) {
+            fail(failureText(e))
+        }
+    }
+
+    /** Honest fallback when the AI summarizer is unavailable: report done + failed parts. */
+    fun fallbackSummary(results: List<DjActionResult>): String {
+        val failed = results.filter { !it.success }
+        val done = results.filter { it.success }
+        val donePart = done.lastOrNull()?.message
+        val failedPart =
+            failed.takeIf { it.isNotEmpty() }?.let {
+                context.getString(R.string.nano_dj_action_failed) + " " +
+                    it.joinToString(" ") { r -> r.message }
+            }
+        return listOfNotNull(donePart, failedPart).joinToString(" ")
+    }
+
+    suspend fun runLegacyCommand(command: String, normalized: String, songRequest: String?) {
         when {
             // DJ spoken-voice toggle. Must come before the plain "stop" branch so
             // "stop talking" quiets the voice instead of killing the radio.
@@ -736,7 +1051,7 @@ fun MetroDjChatSheet(
                 // "add <any song> to the queue" searches and queues that song; messages without
                 // a song name ("add this to the queue") still queue the current track.
                 if (songRequest != null) {
-                    launchBusy { searchAndQueue(songRequest) }
+                    launchBusy { reply(searchAndQueue(songRequest)) }
                 } else {
                     currentMedia()?.toMediaItem()?.let { connection?.addToQueue(it) }
                     reply(context.getString(R.string.nano_dj_added_queue))
@@ -806,7 +1121,7 @@ fun MetroDjChatSheet(
             songRequest != null -> {
                 // "play <any song>" / "can you play <song>" / "after this, play <song>" /
                 // "put on <song>" searches YouTube Music and adds the result to the queue.
-                launchBusy { searchAndQueue(songRequest) }
+                launchBusy { reply(searchAndQueue(songRequest)) }
             }
 
             normalized.contains("why") || normalized.contains("explain") -> {
@@ -825,6 +1140,51 @@ fun MetroDjChatSheet(
                 launchBusy {
                     reply(answerNaturally(command))
                 }
+            }
+        }
+    }
+
+    fun runCommand(raw: String) {
+        val command = raw.trim()
+        if (command.isBlank() || busy) return
+        messages += MetroDjMessage(false, command)
+        input = ""
+        val normalized = command.lowercase()
+        val songRequest = extractSongQuery(command)
+
+        if (pendingConfirmation != null) {
+            when (normalized) {
+                "yes", "y", "confirm", "do it", "okay", "ok" -> {
+                    val action = pendingConfirmation
+                    pendingConfirmation = null
+                    confirmationText = null
+                    action?.invoke()
+                }
+                "no", "n", "cancel" -> {
+                    pendingConfirmation = null
+                    confirmationText = null
+                    reply(context.getString(R.string.nano_dj_action_cancelled))
+                }
+                else -> reply(context.getString(R.string.nano_dj_confirm_needed))
+            }
+            return
+        }
+
+        scope.launch {
+            busy = true
+            try {
+                val plan = DjAgent.plan(GeminiNanoClient.get(context), command, currentState())
+                when (plan) {
+                    is DjPlan.Chat -> reply(plan.reply)
+                    is DjPlan.Actions -> {
+                        val results = plan.actions.map { executePlannedAction(it) }
+                        val summary = DjAgent.summarize(GeminiNanoClient.get(context), command, results)
+                        reply(summary ?: fallbackSummary(results))
+                    }
+                    null -> runLegacyCommand(command, normalized, songRequest)
+                }
+            } finally {
+                busy = false
             }
         }
     }
@@ -1039,22 +1399,19 @@ fun MetroDjChatSheet(
         return
     }
 
-    AuraBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = AuraElevated,
-        // IME lifts the sheet above the keyboard; system bars keep the sheet content clear of
-        // the status bar when the keyboard pushes it to the top of the screen, and off the
-        // navigation bar when the keyboard is closed.
-        contentWindowInsets = { WindowInsets.ime.union(WindowInsets.systemBars) },
-    ) {
-        // The sheet is capped so it can only grow up to the status bar, and the IME window
-        // insets lift the whole sheet (conversation + composer) above the keyboard when open.
+    val chatContent: @Composable () -> Unit = {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 640.dp)
+                    .then(
+                        if (fullScreen) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier.heightIn(max = 640.dp)
+                        },
+                    )
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
         ) {
@@ -1299,6 +1656,18 @@ fun MetroDjChatSheet(
             }
         }
     }
+    }
+
+    if (fullScreen) {
+        chatContent()
+    } else {
+        AuraBottomSheet(
+            onDismissRequest = onDismiss,
+            containerColor = AuraElevated,
+            contentWindowInsets = { WindowInsets.ime.union(WindowInsets.systemBars) },
+        ) {
+            chatContent()
+        }
     }
 
     if (pendingConfirmation != null) {

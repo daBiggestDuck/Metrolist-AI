@@ -165,6 +165,7 @@ import com.metrolist.music.constants.PreferredLyricsProviderKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
+import com.metrolist.music.constants.ShowDjPageKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.SlimNavBarHeight
 import com.metrolist.music.constants.SlimNavBarKey
@@ -1595,6 +1596,7 @@ class MainActivity : ComponentActivity() {
                             showUpdateBadge = latestVersionName != BuildConfig.VERSION_NAME,
                             onDismiss = { showProfileMenu = false },
                             onAccount = { showAccountDialog = true },
+                            onDj = { navController.navigate("dj") },
                             onHistory = { navController.navigate("history") },
                             onStats = { navController.navigate("stats") },
                             onSettings = { navController.navigate("settings") },
@@ -1871,6 +1873,7 @@ private fun AuraProfileMenuContent(
     showUpdateBadge: Boolean,
     onDismiss: () -> Unit,
     onAccount: () -> Unit,
+    onDj: () -> Unit,
     onHistory: () -> Unit,
     onStats: () -> Unit,
     onSettings: () -> Unit,
@@ -1882,6 +1885,7 @@ private fun AuraProfileMenuContent(
     // Collect eventCount only while the menu is open so history inserts do not recompose the shell.
     val database = LocalDatabase.current
     val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
+    val (showDjPage) = rememberPreference(ShowDjPageKey, defaultValue = true)
     val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
     val showHistory = !(pauseListenHistory && eventCount == 0)
 
@@ -1896,6 +1900,12 @@ private fun AuraProfileMenuContent(
                     icon = painterResource(R.drawable.account),
                     onClick = onAccount,
                     showBadge = showUpdateBadge,
+                ),
+                AuraProfileMenuItem(
+                    titleRes = R.string.nano_dj_section,
+                    icon = painterResource(R.drawable.radio),
+                    onClick = onDj,
+                    visible = showDjPage,
                 ),
                 AuraProfileMenuItem(
                     titleRes = R.string.history,

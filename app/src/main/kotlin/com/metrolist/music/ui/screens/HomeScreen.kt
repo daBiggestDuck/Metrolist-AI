@@ -1313,6 +1313,7 @@ fun HomeScreen(
                         title = stringResource(R.string.nano_dj_section),
                         subtitle = stringResource(R.string.nano_dj_home_subtitle),
                         enabled = !isListenTogetherGuest && !nanoDjStarting,
+                        loading = nanoDjStarting,
                         playContentDescription = stringResource(R.string.nano_dj_start),
                         onPlayClick = {
                             if (isListenTogetherGuest || nanoDjStarting) return@AuraHeroPanel

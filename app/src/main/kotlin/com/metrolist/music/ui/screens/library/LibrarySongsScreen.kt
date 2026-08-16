@@ -69,9 +69,6 @@ import com.metrolist.music.constants.CONTENT_TYPE_SONG
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.SongFilter
 import com.metrolist.music.constants.SongFilterKey
-import com.metrolist.music.constants.SongSortDescendingKey
-import com.metrolist.music.constants.SongSortType
-import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
@@ -84,7 +81,6 @@ import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.utils.isScrollingUp
 import com.metrolist.music.utils.rememberEnumPreference
@@ -116,13 +112,6 @@ fun LibrarySongsScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-
-    val (sortType, onSortTypeChange) =
-        rememberEnumPreference(
-            SongSortTypeKey,
-            SongSortType.CREATE_DATE,
-        )
-    val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
@@ -412,21 +401,6 @@ fun LibrarySongsScreen(
                     keyboardController = keyboardController,
                     modifier = Modifier,
                 ) {
-                    SortHeader(
-                        sortType = sortType,
-                        sortDescending = sortDescending,
-                        onSortTypeChange = onSortTypeChange,
-                        onSortDescendingChange = onSortDescendingChange,
-                        sortTypeText = { sortType ->
-                            when (sortType) {
-                                SongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                SongSortType.NAME -> R.string.sort_by_name
-                                SongSortType.ARTIST -> R.string.sort_by_artist
-                                SongSortType.PLAY_TIME -> R.string.sort_by_play_time
-                            }
-                        },
-                    )
-
                     Spacer(Modifier.weight(1f))
 
                     Text(
