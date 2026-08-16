@@ -1,3 +1,7 @@
+---v15.0.3
+# What's new
+- Home, Search, and Library pages stay pre-loaded in memory, so switching tabs with the bottom navigation bar is instant instead of laggy
+
 ---v15.0.2
 # What's new
 - Bottom navigation bubble now starts moving instantly on tab switches instead of lagging behind the page

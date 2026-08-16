@@ -798,7 +798,6 @@ class MainActivity : ComponentActivity() {
                 }
                 val currentMainTabIndex = navigationTabIndex(currentRoute, navigationItems)
                 var mainTabTarget by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
-                var mainTabSettled by rememberSaveable { mutableIntStateOf(initialMainTabIndex) }
                 val mainTabPosition = remember { Animatable(initialMainTabIndex.toFloat()) }
                 // The pager's Search page is not the NavHost's duplicate root destination;
                 // keep its focus/reselect state stable for the lifetime of the activity.
@@ -827,9 +826,6 @@ class MainActivity : ComponentActivity() {
                 }
                 LaunchedEffect(mainTabTarget) {
                     mainTabPosition.animateTo(mainTabTarget.toFloat(), AuraTabTravelSpring)
-                    // The container uses this completion signal to release the old page. This
-                    // stays synchronized even when a second tap cancels the first animation.
-                    mainTabSettled = mainTabTarget
                 }
 
                 // The strip uses page-space indices 0/1/2. If Listen Together is in the bar,
@@ -1476,8 +1472,6 @@ class MainActivity : ComponentActivity() {
                                 // destroy and recreate the expensive tab trees.
                                 MainTabContainer(
                                     position = { mainTabPosition.value },
-                                    targetPage = mainTabTarget,
-                                    settledPage = mainTabSettled,
                                     playerConnectionAvailable = playerConnection != null,
                                     pureBlack = pureBlack,
                                     snackbarHostState = snackbarHostState,
