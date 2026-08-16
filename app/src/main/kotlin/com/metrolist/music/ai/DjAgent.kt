@@ -46,11 +46,12 @@ object DjAgent {
         - add_to_playlist { name, query }               search "query" on YouTube Music and add the results to playlist "name"; omit query to add the current track
         - delete_playlist { name }
         - rename_playlist { old, new }
-        - queue_song { query }                          search "query" and add the first match to the playback queue
+        - queue_song { query }                          search "query" and append the first match to the END of the queue
+        - play_next { query }                           search "query" and insert it right after the current track so it plays next (omit query to move the current track next)
+        - insert_song { query, after }                  search "query" and insert it right after the track titled "after" (omit "after" to insert after the current track)
         - like                                          like the current track
         - dislike                                       dislike the current track
         - undo_dislike                                  undo the dislike of the current track
-        - play_next                                     move the current track to play next
         - skip                                          skip to the next track
         - switch_lane { lane }                          lane is one of: chill, hype, focus, nostalgia, artist_radio
         - open_settings
@@ -82,6 +83,11 @@ object DjAgent {
             $ACTIONS_CATALOG
 
             Rules:
+            - "play <song> next", "put <song> next", or "play <song> after this" means play_next
+              with query = <song> (insert right after the current track).
+            - "add <song> to the queue" or "queue <song>" means queue_song (append to the end).
+            - "play <song> after <song>" or "insert <song> after <song>" means insert_song with
+              query = <song> and after = the other song.
             - If the listener asks you to do something you CAN do, output a JSON object with a list
               of the actions needed, in execution order. Use plain arguments (no quotes inside names
               unless they are part of the name).

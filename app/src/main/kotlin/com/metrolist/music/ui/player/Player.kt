@@ -1019,10 +1019,9 @@ fun BottomSheetPlayer(
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                if (useNewPlayerDesign) {
+            if (useNewPlayerDesign) {
                     val shareShape =
                         RoundedCornerShape(
                             topStart = 50.dp,
@@ -1308,9 +1307,8 @@ fun BottomSheetPlayer(
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             PlayerSeekBar(
                 positionState = positionState,
@@ -1335,7 +1333,7 @@ fun BottomSheetPlayer(
                 useDarkTheme = useDarkTheme,
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
 
             AnimatedVisibility(
                 visible = !isFullScreen,

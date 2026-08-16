@@ -1382,45 +1382,37 @@ private fun LikeDislikeSwipeButton(
                     )
                 },
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxSize(),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
-                    Modifier.graphicsLayer {
-                        scaleX = heartScale
-                        scaleY = heartScale
-                        alpha = heartAlpha
-                    },
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 8.dp, top = 8.dp)
+                        .graphicsLayer {
+                            scaleX = heartScale
+                            scaleY = heartScale
+                            alpha = heartAlpha
+                        },
             ) {
                 Icon(
                     painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
                     contentDescription = stringResource(if (isLiked) R.string.unlike_cd else R.string.like_cd),
                     tint = heartColor,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(15.dp),
                 )
             }
             Box(
-                modifier =
-                    Modifier
-                        .size(width = 2.dp, height = 24.dp)
-                        .graphicsLayer {
-                            rotationZ = 45f
-                            alpha = dividerAlpha
-                        }
-                        .background(outlineColor.copy(alpha = 0.45f)),
-            )
-            Box(
                 contentAlignment = Alignment.Center,
                 modifier =
-                    Modifier.graphicsLayer {
-                        scaleX = dislikeScale
-                        scaleY = dislikeScale
-                        alpha = dislikeAlpha
-                    },
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 8.dp, bottom = 8.dp)
+                        .graphicsLayer {
+                            scaleX = dislikeScale
+                            scaleY = dislikeScale
+                            alpha = dislikeAlpha
+                        },
             ) {
                 Icon(
                     painter = painterResource(
@@ -1434,9 +1426,20 @@ private fun LikeDislikeSwipeButton(
                         if (isDisliked) R.string.undislike_cd else R.string.dislike_cd,
                     ),
                     tint = dislikeColor,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(15.dp),
                 )
             }
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.Center)
+                        .size(width = 2.dp, height = 28.dp)
+                        .graphicsLayer {
+                            rotationZ = 45f
+                            alpha = dividerAlpha
+                        }
+                        .background(outlineColor.copy(alpha = 0.45f)),
+            )
         }
     }
 }

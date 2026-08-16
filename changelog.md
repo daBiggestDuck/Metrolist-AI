@@ -1,3 +1,11 @@
+---v16.1
+# What's new
+- Metro DJ is now a tab in the bottom navigation bar (toggle it on or off in DJ settings) and works even when the radio isn't on air — the mini player DJ button opens the chat popup again, just like before
+- "Play <song> next" and "play <song> after <song>" now insert the song at that exact spot in the queue instead of just appending it
+- DJ page polish: the sidebar (recent chats) opens from a button on the left, the header no longer floats low, and the composer lifts above the keyboard
+- Main player: share, like, dislike and DJ buttons now sit under the song title, and the seek bar + transport are compressed so the title has room to breathe
+- Library: the grid/list layout toggle is now a round button next to search in the header, and the filter chips stay sticky
+
 ---v16.0
 # What's new
 - Metro DJ now actually does what you ask: it plans your request into real actions (create/rename/delete playlists, search and add songs to a playlist or queue, like/dislike, switch lanes, downloads, and more), executes them, then reports honestly what worked and what didn't — no more made-up confirmations or "say a phrase to run it"

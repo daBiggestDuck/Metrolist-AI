@@ -97,7 +97,6 @@ import com.metrolist.music.ai.DjPlan
 import com.metrolist.music.ai.DjPlannedAction
 import com.metrolist.music.ai.DjActionResult
 import com.metrolist.music.constants.NanoDjHoldToVoiceKey
-import com.metrolist.music.constants.ShowDjPageKey
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
@@ -225,11 +224,9 @@ fun MetroDjChatButton(
     tint: Color = Color.White,
 ) {
     val context = LocalContext.current
-    val navController = LocalNavController.current
     val active by NanoDjSession.active.collectAsStateWithLifecycle()
     val starting by NanoDjSession.starting.collectAsStateWithLifecycle()
     val (holdToVoice, _) = rememberPreference(NanoDjHoldToVoiceKey, true)
-    val (showDjPage, _) = rememberPreference(ShowDjPageKey, true)
     var showChat by remember { mutableStateOf(false) }
     // Hold-to-voice: long-pressing morphs the button into a live voice button, runs the command
     // headlessly (no popup), and speaks the result back.
@@ -241,13 +238,7 @@ fun MetroDjChatButton(
     // sheet's coroutine scope is cancelled mid-rebuild and the action never completes.
     if (active) {
         AuraIconButton(
-            onClick = {
-                if (showDjPage) {
-                    navController.navigate("dj")
-                } else {
-                    showChat = true
-                }
-            },
+            onClick = { showChat = true },
             onLongClick = if (holdToVoice) ({ voiceActive = true }) else null,
             modifier = modifier.size(42.dp),
             containerColor =
@@ -632,8 +623,67 @@ fun MetroDjChatSheet(
                 }
 
                 "play_next" -> {
-                    currentMedia()?.toMediaItem()?.let { connection?.playNext(it) }
-                    ok(context.getString(R.string.nano_dj_playing_next))
+                    val query = args["query"].orEmpty().trim()
+                    val item =
+                        if (query.isNotBlank()) {
+                            searchSongs(query).firstOrNull()?.toMediaItem()
+                        } else {
+                            currentMedia()?.toMediaItem()
+                        }
+                    if (item == null) {
+                        fail(
+                            if (query.isNotBlank()) {
+                                context.getString(R.string.nano_dj_song_not_found, query)
+                            } else {
+                                context.getString(R.string.nano_dj_no_current_song)
+                            },
+                        )
+                    } else {
+                        connection?.playNext(item)
+                        ok(
+                            if (query.isNotBlank()) {
+                                context.getString(R.string.nano_dj_song_playing_next, query)
+                            } else {
+                                context.getString(R.string.nano_dj_playing_next)
+                            },
+                        )
+                    }
+                }
+
+                "insert_song" -> {
+                    val query = args["query"].orEmpty().trim()
+                    val after = args["after"].orEmpty().trim()
+                    if (query.isBlank()) {
+                        fail(context.getString(R.string.nano_dj_song_query_needed))
+                    } else {
+                        val item = searchSongs(query).firstOrNull()?.toMediaItem()
+                        if (item == null) {
+                            fail(context.getString(R.string.nano_dj_song_not_found, query))
+                        } else {
+                            val player = connection?.player
+                            val targetIndex =
+                                if (after.isBlank() || after.equals("current", true) || after.equals("this", true)) {
+                                    (player?.currentMediaItemIndex ?: -1) + 1
+                                } else {
+                                    var idx = -1
+                                    val count = player?.mediaItemCount ?: 0
+                                    for (i in 0 until count) {
+                                        val title = player?.getMediaItemAt(i)?.mediaMetadata?.title?.toString()
+                                        if (title?.equals(after, ignoreCase = true) == true) {
+                                            idx = i
+                                            break
+                                        }
+                                    }
+                                    if (idx >= 0) idx + 1 else -1
+                                }
+                            if (targetIndex < 0) {
+                                fail(context.getString(R.string.nano_dj_song_not_found, after.ifBlank { query }))
+                            } else {
+                                connection?.insertAt(targetIndex, item)
+                                ok(context.getString(R.string.nano_dj_song_inserted, query))
+                            }
+                        }
+                    }
                 }
 
                 "skip" -> {

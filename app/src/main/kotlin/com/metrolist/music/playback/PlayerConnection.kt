@@ -302,6 +302,21 @@ class PlayerConnection(
         }
     }
 
+    fun insertAt(index: Int, item: MediaItem) = insertAt(index, listOf(item))
+
+    fun insertAt(index: Int, items: List<MediaItem>) {
+        if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
+            Timber.tag("PlayerConnection").d("insertAt blocked - Listen Together guest")
+            return
+        }
+        try {
+            service.insertAt(index, items)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in insertAt")
+            throw e
+        }
+    }
+
     fun toggleLike() {
         try {
             service.toggleLike()

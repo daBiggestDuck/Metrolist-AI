@@ -1211,6 +1211,8 @@
     <string name="disliked_songs">Disliked songs</string>
     <string name="nano_dj_dislike_removed">Removed “%1$s” from your disliked songs.</string>
     <string name="nano_dj_playing_next">I’ll play the current song next.</string>
+    <string name="nano_dj_song_playing_next">“%1$s” is up next.</string>
+    <string name="nano_dj_song_inserted">Inserted “%1$s” into the queue.</string>
     <string name="nano_dj_explanation_unavailable">I don’t have a selection explanation for this block yet.</string>
     <string name="nano_dj_playlist_opened">Opened Metro DJ Recommendations.</string>
     <string name="nano_dj_playlist_is_queue">The active Metro DJ playlist is the live queue. Ask me to refresh it, change the lane, or add tracks to Metro DJ Recommendations.</string>
@@ -1270,7 +1272,7 @@
     <string name="spotify_playlist_taste_use">Use for taste</string>
     <string name="spotify_playlist_taste_use_desc">Analyze this Spotify playlist for Metro DJ without re-importing songs</string>
     <string name="spotify_import">Import</string>
-    <string name="nano_dj_home_subtitle">AI radio host that curates music from your taste and talks between songs</string>
+    <string name="nano_dj_home_subtitle">Your personal AI DJ</string>
     <string name="spotify_import_taste">Import taste (top tracks)</string>
     <string name="spotify_import_taste_desc">Creates a “Spotify Taste Import” playlist and feeds Metro DJ (Gemini Nano) your listening profile</string>
     <string name="spotify_taste_summary">Taste summary</string>

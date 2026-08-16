@@ -141,8 +141,10 @@ import coil3.toBitmap
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
+import com.metrolist.music.constants.AlbumViewTypeKey
 import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.AppLanguageKey
+import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.CheckForUpdatesKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -719,12 +721,15 @@ class MainActivity : ComponentActivity() {
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
+                val (showDjPage) = rememberPreference(ShowDjPageKey, defaultValue = true)
                 val navigationItems =
-                    remember(listenTogetherInTopBar) {
-                        if (listenTogetherInTopBar) {
-                            Screens.MainScreens.filter { it != Screens.ListenTogether }
-                        } else {
-                            Screens.MainScreens
+                    remember(listenTogetherInTopBar, showDjPage) {
+                        Screens.MainScreens.filter { screen ->
+                            when (screen) {
+                                Screens.ListenTogether -> !listenTogetherInTopBar
+                                Screens.Dj -> showDjPage
+                                else -> true
+                            }
                         }
                     }
                 val routeTabIndex = navigationTabIndex(navBackStackEntry?.destination?.route, navigationItems)
@@ -914,7 +919,8 @@ class MainActivity : ComponentActivity() {
                     if (playerReady && playerMetadata != null) playerConnection else null
 
                 val isHomeRouteForInsets =
-                    navBackStackEntry?.destination?.route == Screens.Home.route
+                    navBackStackEntry?.destination?.route == Screens.Home.route ||
+                        navBackStackEntry?.destination?.route == Screens.Dj.route
                 val searchHeaderCollapsed =
                     currentRoute == Screens.Search.route && searchFieldFocused
                 val animatedTopChrome by
@@ -1089,6 +1095,7 @@ class MainActivity : ComponentActivity() {
                     }
                 val isHomeRoute = navBackStackEntry?.destination?.route == Screens.Home.route
                 val isLibraryRoute = navBackStackEntry?.destination?.route == Screens.Library.route
+                var libraryViewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.LIST)
                 val isSearchRoute = navBackStackEntry?.destination?.route == Screens.Search.route
                 val homePage by homeViewModel.homePage.collectAsStateWithLifecycle()
                 val selectedHomeChip by homeViewModel.selectedChip.collectAsStateWithLifecycle()
@@ -1215,6 +1222,28 @@ class MainActivity : ComponentActivity() {
                                             ) {
                                                 Icon(
                                                     painter = painterResource(R.drawable.search),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                            AuraFloatingChromeButton(
+                                                onClick = { libraryViewType = libraryViewType.toggle() },
+                                                contentDescription = stringResource(
+                                                    if (libraryViewType == LibraryViewType.LIST) {
+                                                        R.string.switch_to_grid_view
+                                                    } else {
+                                                        R.string.switch_to_list_view
+                                                    },
+                                                ),
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(
+                                                        if (libraryViewType == LibraryViewType.LIST) {
+                                                            R.drawable.grid_view
+                                                        } else {
+                                                            R.drawable.list
+                                                        },
+                                                    ),
                                                     contentDescription = null,
                                                     modifier = Modifier.size(20.dp),
                                                 )

@@ -119,13 +119,7 @@ fun NavGraphBuilder.navigationBuilder(
         NewReleaseScreen(navController)
     }
 
-    composable(
-        route = "dj",
-        enterTransition = { nestedScreenEnter() },
-        exitTransition = { nestedScreenExit() },
-        popEnterTransition = { nestedScreenPopEnter() },
-        popExitTransition = { nestedScreenPopExit() },
-    ) {
+    composable(Screens.Dj.route) {
         DjScreen(navController)
     }
 

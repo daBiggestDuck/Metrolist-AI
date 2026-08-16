@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -298,9 +299,10 @@ fun DjScreen(navController: NavController) {
                         LocalPlayerAwareWindowInsets.current.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                         ),
-                    ),
+                    )
+                    .imePadding(),
         ) {
-            // Top bar: back on the left, hamburger (sidebar) on the right.
+            // Top bar: sidebar (recent chats) toggle on the left, Gemini-style.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
@@ -312,12 +314,12 @@ fun DjScreen(navController: NavController) {
                         .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 IconButton(
-                    onClick = navController::navigateUp,
+                    onClick = { scope.launch { drawerState.open() } },
                     onLongClick = {},
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
+                        painter = painterResource(R.drawable.history),
+                        contentDescription = stringResource(R.string.dj_recent_chats),
                     )
                 }
                 Text(
@@ -327,15 +329,6 @@ fun DjScreen(navController: NavController) {
                     color = Color.White,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(
-                    onClick = { scope.launch { drawerState.open() } },
-                    onLongClick = {},
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.history),
-                        contentDescription = stringResource(R.string.dj_recent_chats),
-                    )
-                }
             }
 
             Box(modifier = Modifier.weight(1f)) {

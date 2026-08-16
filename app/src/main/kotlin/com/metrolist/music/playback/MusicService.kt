@@ -2296,6 +2296,21 @@ class MusicService :
         }
     }
 
+    fun insertAt(index: Int, items: List<MediaItem>) {
+        // If queue is empty or player is idle, play immediately instead
+        if (player.mediaItemCount == 0 || player.playbackState == STATE_IDLE) {
+            player.setMediaItems(items)
+            player.prepare()
+            if (castConnectionHandler?.isCasting?.value != true) {
+                player.play()
+            }
+            return
+        }
+        val safeIndex = index.coerceIn(0, player.mediaItemCount)
+        player.addMediaItems(safeIndex, items)
+        player.prepare()
+    }
+
     fun addToQueue(items: List<MediaItem>) {
         if (cachedPreventDuplicateTracks) {
             val itemIds = items.map { it.mediaId }.toSet()
