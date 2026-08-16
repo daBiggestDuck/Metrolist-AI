@@ -78,6 +78,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.pages.MoodAndGenres
 import com.metrolist.innertube.utils.YouTubeUrlParser
@@ -95,6 +96,7 @@ import com.metrolist.music.ui.component.aura.AuraPlayerCanvas
 import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
+import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.utils.RecentSearchesStore
 import com.metrolist.music.utils.SearchRoutes
 import com.metrolist.music.viewmodels.SearchHubViewModel
@@ -169,6 +171,20 @@ fun SearchScreen(
         isSearchActive = false
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
+    }
+
+    // Leaving the Search tab (closing the keyboard then pressing back) resets the field
+    // to its original empty state instead of carrying the typed text across tab switches.
+    val searchBackStackEntry by navController.currentBackStackEntryAsState()
+    val searchTabActive = remember(searchBackStackEntry?.destination?.route) {
+        val route = searchBackStackEntry?.destination?.route
+        route == Screens.Search.route || route?.startsWith("search/") == true
+    }
+    LaunchedEffect(searchTabActive) {
+        if (!searchTabActive) {
+            query = TextFieldValue("")
+            isSearchActive = false
+        }
     }
 
     BackHandler(enabled = isSearchActive) {

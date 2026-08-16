@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,11 +54,25 @@ fun MainTabContainer(
     visible: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val mountedPages by remember(settledPage, targetPage) {
+    // Mount the destination page one frame after the tap so the shared bubble/page
+    // animation starts immediately. Composing the full destination ViewModel/database tree
+    // in the tap frame used to stall the first animation frames and freeze the bottom-nav
+    // bubble before it moved. The full travel range still mounts right after, so the slide
+    // never drags a black gap across the middle page.
+    var readyTarget by remember { mutableIntStateOf(settledPage) }
+    LaunchedEffect(targetPage, settledPage) {
+        if (targetPage == settledPage) {
+            readyTarget = targetPage
+        } else {
+            withFrameNanos { }
+            readyTarget = targetPage
+        }
+    }
+    val mountedPages by remember(settledPage, readyTarget) {
         derivedStateOf {
             val pos = position().coerceIn(0f, 2f)
-            val low = minOf(settledPage, targetPage, floor(pos).toInt())
-            val high = maxOf(settledPage, targetPage, ceil(pos).toInt())
+            val low = minOf(settledPage, readyTarget, floor(pos).toInt())
+            val high = maxOf(settledPage, readyTarget, ceil(pos).toInt())
             low..high
         }
     }

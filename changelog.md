@@ -1,3 +1,8 @@
+---v15.0.2
+# What's new
+- Bottom navigation bubble now starts moving instantly on tab switches instead of lagging behind the page
+- Search text is reset when leaving the Search tab, instead of carrying typed text across tab switches
+
 ---v15.0.1
 # What's new
 - Metro DJ chat sheet redesigned with a floating composer bar and a fixed, scrollable conversation area
