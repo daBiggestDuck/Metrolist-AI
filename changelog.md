@@ -1,3 +1,7 @@
+---v15.1
+# What's new
+- Metro DJ now talks Spotify-style: a short intro once per block of songs, then stays silent while the block plays — no more speaking on every track
+
 ---v15.0.5
 # What's new
 - Metro DJ chat now keeps the latest message above the keyboard when the composer is focused

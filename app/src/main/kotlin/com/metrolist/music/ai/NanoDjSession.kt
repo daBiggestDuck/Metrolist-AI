@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -20,6 +19,13 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object NanoDjSession {
     private const val TAG = "NanoDJ"
+
+    /**
+     * Spotify-style cadence: the host speaks a short intro once per block of songs, then
+     * stays silent for the rest of the block. Speech is throttled here so it can never fire
+     * on every track, regardless of how often the queue prefetches new batches.
+     */
+    private const val DJ_BLOCK_SIZE = 4
 
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active.asStateFlow()
@@ -40,8 +46,9 @@ object NanoDjSession {
     private val speakEnabled = AtomicBoolean(true)
     private var lastAnnouncedLine: String? = null
     private var lastTransitionMediaId: String? = null
-    private val transitionCommentary = ConcurrentHashMap<String, String>()
-    private var pendingTransitionMediaId: String? = null
+    /** Latest block intro, held until the next block boundary. */
+    private var pendingBlockLine: String? = null
+    private var songsInBlock = 0
     @Volatile
     private var pendingAnnouncement: String? = null
 
@@ -82,9 +89,13 @@ object NanoDjSession {
     fun start(openingLine: String?, usedAi: Boolean = false) {
         _sessionId.value++
         _active.value = true
-        pendingTransitionMediaId = null
+        songsInBlock = 0
+        pendingBlockLine = null
+        lastTransitionMediaId = null
         publish(openingLine, usedAi)
         announceCurrent()
+        // The opening line is spoken now; do not repeat it at the next block boundary.
+        pendingBlockLine = null
     }
 
     /** Updates the visible host line without speaking during queue composition/prefetch. */
@@ -92,33 +103,39 @@ object NanoDjSession {
     fun publish(
         line: String?,
         usedAi: Boolean = false,
-        transitionMediaId: String? = null,
     ) {
         if (line.isNullOrBlank()) return
         _commentary.value = line.trim()
         _usedAi.value = usedAi
-        pendingTransitionMediaId = transitionMediaId?.takeIf { it.isNotBlank() }
-        transitionMediaId?.takeIf { it.isNotBlank() }?.let { id ->
-            transitionCommentary[id] = line.trim()
-        }
+        // Hold the freshest intro for the next block boundary instead of speaking per song.
+        pendingBlockLine = line.trim()
     }
 
-    /** Speaks a user-requested change immediately, bypassing transition deduplication. */
+    /** Speaks a user-requested change immediately, bypassing block-boundary gating. */
     @Synchronized
     fun announce(line: String?, usedAi: Boolean = false) {
         if (line.isNullOrBlank()) return
-        publish(line, usedAi)
+        _commentary.value = line.trim()
+        _usedAi.value = usedAi
         speakOnce(line.trim(), force = true)
     }
 
-    /** Announces the latest block commentary once, only after a real playback transition. */
+    /**
+     * Called on every real playback transition, but only speaks once a full block of songs
+     * has elapsed — the Spotify-style "talk once, then let the block play" cadence.
+     */
     @Synchronized
     fun announceTransition(mediaId: String?) {
         if (!_active.value || mediaId.isNullOrBlank() || mediaId == lastTransitionMediaId) return
-        val line = transitionCommentary.remove(mediaId) ?: return
         lastTransitionMediaId = mediaId
-        if (pendingTransitionMediaId == mediaId) pendingTransitionMediaId = null
-        speakOnce(line)
+        songsInBlock++
+        if (songsInBlock >= DJ_BLOCK_SIZE) {
+            songsInBlock = 0
+            pendingBlockLine?.let { line ->
+                pendingBlockLine = null
+                speakOnce(line)
+            }
+        }
     }
 
     private fun announceCurrent() {
@@ -132,8 +149,8 @@ object NanoDjSession {
         _usedAi.value = false
         lastAnnouncedLine = null
         lastTransitionMediaId = null
-        pendingTransitionMediaId = null
-        transitionCommentary.clear()
+        pendingBlockLine = null
+        songsInBlock = 0
         pendingAnnouncement = null
         runCatching { tts?.stop() }
     }

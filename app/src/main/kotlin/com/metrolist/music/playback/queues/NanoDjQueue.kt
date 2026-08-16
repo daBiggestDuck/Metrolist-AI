@@ -154,7 +154,6 @@ class NanoDjQueue(
         NanoDjSession.publish(
             pick.commentary,
             usedAi = pick.usedAi,
-            transitionMediaId = resolved.firstOrNull()?.mediaId,
         )
         if (skipPressure >= 2 && resolved.isNotEmpty()) {
             // The changed block has acknowledged the feedback; future skips can build pressure
