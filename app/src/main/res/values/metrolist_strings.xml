@@ -1162,6 +1162,8 @@
     <string name="nano_dj_liked">Liked “%1$s”.</string>
     <string name="nano_dj_added_queue">Added the current track to the queue</string>
     <string name="nano_dj_refreshing">I’ll rebuild the next block for you.</string>
+    <string name="nano_dj_refreshing_now">On it — rebuilding your mix, one sec.</string>
+    <string name="nano_dj_switching_now">Switching you to the %1$s lane — rebuilding your mix.</string>
     <string name="nano_dj_lane_changed">Switching to %1$s.</string>
     <string name="nano_dj_command_help">Ask me about music or tell me what you want to hear. I’ll only change playback when you explicitly ask.</string>
     <string name="nano_dj_no_player">The player is not ready yet.</string>

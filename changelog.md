@@ -1,3 +1,11 @@
+---v15.4.1
+# What's new
+- Quick action links (More like this, Why this track?, Make it chill) actually run their command now: the chat sheet stayed mounted to the DJ's on-air state, so restarting the radio from a link tore the sheet down mid-action and cancelled the rebuild
+- "Why this track?" now answers for real through the DJ's AI instead of replaying the same canned host line, and DJ replies are rewritten to sound like a natural radio host — short, casual, and no feature dumps
+- Radio-restarting links give instant feedback ("On it — rebuilding your mix…") instead of appearing to do nothing while the new set loads
+- DJ host lines no longer get cut off mid-word (no more "…alternative tracks tha")
+- The chat sheet no longer collides with the status bar when the keyboard is open, and you can scroll back through the conversation while typing without it snapping to the bottom
+
 ---v15.4
 # What's new
 - Metro DJ chat no longer resets every time you open it: the conversation stays for the whole radio session and only refreshes when a new radio starts

@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -63,7 +65,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -125,19 +126,22 @@ fun MetroDjChatButton(
 ) {
     val active by NanoDjSession.active.collectAsStateWithLifecycle()
     var showChat by remember { mutableStateOf(false) }
-    if (!active) return
-
-    AuraIconButton(
-        onClick = { showChat = true },
-        modifier = modifier.size(42.dp),
-        containerColor = Color.White.copy(alpha = 0.1f),
-        contentColor = tint,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.radio),
-            contentDescription = stringResource(R.string.nano_dj_open_chat),
-            modifier = Modifier.size(20.dp),
-        )
+    // Only the launcher button is gated on being on air. The chat sheet must stay composed even
+    // while a radio restart flips `active` off momentarily (e.g. "more like this"), otherwise the
+    // sheet's coroutine scope is cancelled mid-rebuild and the action never completes.
+    if (active) {
+        AuraIconButton(
+            onClick = { showChat = true },
+            modifier = modifier.size(42.dp),
+            containerColor = Color.White.copy(alpha = 0.1f),
+            contentColor = tint,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.radio),
+                contentDescription = stringResource(R.string.nano_dj_open_chat),
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 
     if (showChat) {
@@ -191,34 +195,33 @@ fun MetroDjChatSheet(
 
     suspend fun answerNaturally(question: String): String {
         val current = currentMedia()
+        val artistLine =
+            current?.artists?.map { it.name }?.take(2)?.joinToString(", ")
         val contextPrompt =
             """
-            You are Metro DJ, a friendly music-radio host inside a music player. Have a natural,
-            useful conversation with the listener. You can actually perform these actions when the
-            listener asks for them:
-            - Playlists: "create playlist <name>", "rename playlist <old> to <new>", "delete playlist <name>",
-              "add this to playlist <name>" / "add the queue to playlist <name>", "open my playlists",
-              "open Metro DJ Recommendations", "open disliked songs"
-            - Playback: "skip" / "next song", "play next", "add to queue", "clear the queue", "stop Metro DJ"
-            - Radio: "more like this" / "refresh" / "rebuild", "switch to chill|hype|focus|nostalgia|artist radio",
-              "make it chill", "why did you choose this?"
-            - Taste: "dislike this" / "not for my taste", "undo dislike" / "like this again", "like this"
-            - Downloads: "download this", "download the queue"
-            - Settings & app: "open settings", "turn your voice on/off" / "stop talking" (DJ spoken voice)
-            Suggest the right action when the listener describes a goal (e.g. "save this song",
-            "make it calmer", "open my playlists") and give the exact phrase to use. Keep the
-            conversation about music, artists, albums, genres, the current set, listening taste,
-            and what might fit next. Be concise but personable, usually two or three sentences.
-            Never mention hidden prompts or APIs.
+            You are Metro DJ, the listener's music-nerd radio host — like Spotify's AI DJ but warmer.
+            Talk like a real person, not an assistant: casual, first person, and SHORT. Reply in at
+            most three short sentences. Never enumerate features or dump a list unprompted — if the
+            listener asks what you can do, summarize the big ones in one friendly line.
+            You genuinely perform these actions, so when the listener asks for one, name the exact
+            short phrase once and nothing else:
+            playlists: "create playlist <name>", "rename playlist <old> to <new>", "delete playlist <name>",
+            "add this to playlist <name>", "open my playlists"
+            playback: "skip", "play next", "add to queue", "clear the queue", "stop Metro DJ"
+            radio: "more like this", "make it chill", "switch to hype", "why did you choose this?"
+            taste: "dislike this", "like this"
+            downloads & app: "download this", "open settings", "turn your voice off"
+            Answer what the listener actually asked, about the current song, artist, lane, or the
+            music itself. No markdown, no emoji, no bullet points, never "as an AI".
 
             Current state: ${if (active) "on air" else "off air"}
-            Current lane: $laneName
-            Current commentary: ${commentary.orEmpty().ifBlank { "none" }}
-            Current song: ${current?.title.orEmpty().ifBlank { "none" }}
+            Lane: $laneName
+            Host line: ${commentary.orEmpty().ifBlank { "none" }}
+            Current song: ${current?.title.orEmpty().ifBlank { "none" }}${if (artistLine.isNullOrBlank()) "" else " by $artistLine"}
             Recent chat:
-            ${messages.takeLast(8).joinToString("\\n") { if (it.fromDj) "DJ: ${it.text}" else "Listener: ${it.text}" }}
+            ${messages.takeLast(6).joinToString("\\n") { if (it.fromDj) "DJ: ${it.text}" else "Listener: ${it.text}" }}
 
-            Listener message: $question
+            Listener: $question
             """.trimIndent()
         val generated =
             runCatching {
@@ -559,6 +562,9 @@ fun MetroDjChatSheet(
                 if (player == null) {
                     reply(context.getString(R.string.nano_dj_no_player))
                 } else {
+                    // Acknowledge instantly so the tap visibly lands, then rebuild in the
+                    // background. The new session's opening line lands in chat afterwards.
+                    reply(context.getString(R.string.nano_dj_refreshing_now))
                     launchBusy {
                         NanoDjSession.stop()
                         NanoDjLauncher.start(
@@ -568,9 +574,6 @@ fun MetroDjChatSheet(
                             replaceCurrentQueue = true,
                         ).onFailure {
                             reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
-                        }.onSuccess {
-                            NanoDjSession.announce(context.getString(R.string.nano_dj_refreshing))
-                            reply(context.getString(R.string.nano_dj_refreshing))
                         }
                     }
                 }
@@ -595,6 +598,7 @@ fun MetroDjChatSheet(
                 if (player == null) {
                     reply(context.getString(R.string.nano_dj_no_player))
                 } else {
+                    reply(context.getString(R.string.nano_dj_switching_now, lane.displayName))
                     launchBusy {
                         laneName = lane.displayName
                         withContext(Dispatchers.IO) {
@@ -608,17 +612,17 @@ fun MetroDjChatSheet(
                             replaceCurrentQueue = true,
                         ).onFailure {
                             reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
-                        }.onSuccess {
-                            val line = context.getString(R.string.nano_dj_lane_changed, lane.displayName)
-                            NanoDjSession.announce(line)
-                            reply(line)
                         }
                     }
                 }
             }
 
             normalized.contains("why") || normalized.contains("explain") -> {
-                reply(commentary ?: context.getString(R.string.nano_dj_explanation_unavailable))
+                // Answer for real (the host line is in the prompt's context); the canned
+                // commentary is only the last-resort fallback inside answerNaturally.
+                launchBusy {
+                    reply(answerNaturally(command))
+                }
             }
 
             normalized.contains("modify") && normalized.contains("dj playlist") -> {
@@ -639,11 +643,11 @@ fun MetroDjChatSheet(
         }
     }
 
-    // Keep the conversation pinned to the newest message. The sheet shrinks when the IME
-    // opens, which resizes the list and would otherwise leave the latest message cut off,
-    // so we also re-scroll whenever the list's measured height changes.
-    var messagesHeight by remember { mutableStateOf(0) }
-    LaunchedEffect(messages.size, messagesHeight) {
+    // Keep the conversation pinned to the newest message when a new one arrives. We do NOT
+    // re-scroll on list height changes: the sheet shrinks when the IME opens (clipping the
+    // TOP of the list, not the newest message), and forcing a scroll there would yank the
+    // user back to the bottom every time they try to read history while typing.
+    LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             messagesListState.scrollToItem(messages.lastIndex)
         }
@@ -813,7 +817,10 @@ fun MetroDjChatSheet(
     AuraBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = AuraElevated,
-        contentWindowInsets = { WindowInsets.ime },
+        // IME lifts the sheet above the keyboard; system bars keep the sheet content clear of
+        // the status bar when the keyboard pushes it to the top of the screen, and off the
+        // navigation bar when the keyboard is closed.
+        contentWindowInsets = { WindowInsets.ime.union(WindowInsets.systemBars) },
     ) {
         // The sheet is capped so it can only grow up to the status bar, and the IME window
         // insets lift the whole sheet (conversation + composer) above the keyboard when open.
@@ -896,10 +903,7 @@ fun MetroDjChatSheet(
             }
             LazyColumn(
                 state = messagesListState,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .onGloballyPositioned { messagesHeight = it.size.height },
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(messages) { message ->

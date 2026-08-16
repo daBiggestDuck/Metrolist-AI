@@ -152,7 +152,7 @@ object NanoDjEngine {
             Artists: ${context.seedArtists.take(8).joinToString(", ")}
             """.trimIndent()
 
-        return runCatching { client.generateContent(prompt) }.getOrNull()?.trim()?.let(::interstitialOnly)?.take(200)
+        return runCatching { client.generateContent(prompt) }.getOrNull()?.trim()?.let(::interstitialOnly)
             ?.ifBlank { null }
             ?: fallback
     }
@@ -202,7 +202,20 @@ object NanoDjEngine {
             Regex("""^(.*?[.!?])(\s|$)""").find(protected)?.groupValues?.getOrNull(1)?.trim()
                 ?.replace('\u0001', '.')
         val result = firstSentence.takeUnless { it.isNullOrBlank() } ?: cleaned.replace('\u0001', '.')
-        return result.take(180)
+        return trimAtWordBoundary(result, 180)
+    }
+
+    /**
+     * Trims to at most [max] chars without cutting a word in half or leaving dangling
+     * punctuation, so host lines never end like "…tracks tha".
+     */
+    private fun trimAtWordBoundary(text: String, max: Int): String {
+        if (text.length <= max) return text
+        val cut = text.take(max + 1)
+        val boundary = cut.lastIndexOf(' ')
+        val trimmed =
+            if (boundary > max / 2) cut.substring(0, boundary) else cut.substring(0, max)
+        return trimmed.trimEnd(' ', ',', ';', '-', '—', ':')
     }
 
     internal fun heuristicPick(context: DjContext, batchSize: Int): DjPick {
