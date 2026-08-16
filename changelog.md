@@ -1,3 +1,8 @@
+---v15.1.2
+# What's new
+- Metro DJ chat now pushes the conversation up when the composer is focused so all messages stay readable above the keyboard
+- The chat popup is capped so it only extends up to the status bar, even with the keyboard open
+
 ---v15.1.1
 # What's new
 - Reverted the Metro DJ on-air pulse rendering change, restoring the previous animated dot look

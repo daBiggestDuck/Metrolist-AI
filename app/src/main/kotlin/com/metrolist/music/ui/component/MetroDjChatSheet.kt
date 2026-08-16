@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -625,14 +627,15 @@ fun MetroDjChatSheet(
     AuraBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = AuraElevated,
-        // The chat input must remain above the IME instead of being covered by it.
-        contentWindowInsets = { WindowInsets.ime },
     ) {
+        // The sheet height is capped so it can only grow up to the status bar, and the IME
+        // padding keeps the composer and conversation above the keyboard when it opens.
         Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 420.dp, max = 640.dp),
+                    .heightIn(max = 640.dp)
+                    .imePadding(),
         ) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -847,7 +850,16 @@ fun MetroDjChatSheet(
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                modifier = Modifier.weight(1f),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .onFocusChanged { state ->
+                            if (state.isFocused && messages.isNotEmpty()) {
+                                scope.launch {
+                                    messagesListState.scrollToItem(messages.lastIndex)
+                                }
+                            }
+                        },
                 placeholder = { Text(stringResource(R.string.nano_dj_chat_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
