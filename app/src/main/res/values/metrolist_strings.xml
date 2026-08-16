@@ -1143,6 +1143,8 @@
     <string name="nano_dj_action_more_like_this">More like this</string>
     <string name="nano_dj_action_change_vibe">Change the vibe</string>
     <string name="nano_dj_action_explain">Why this track?</string>
+    <string name="nano_dj_action_artist">Tell me about this artist</string>
+    <string name="nano_dj_action_next">What should I listen to next?</string>
     <string name="nano_dj_action_refresh">Refresh the next block</string>
     <string name="nano_dj_action_ask_taste">What do you know about my taste?</string>
     <string name="nano_dj_action_ask_categories">What categories can you play?</string>
@@ -1161,6 +1163,9 @@
     <string name="nano_dj_settings_opened">Opening settings for you.</string>
     <string name="nano_dj_liked">Liked “%1$s”.</string>
     <string name="nano_dj_added_queue">Added the current track to the queue</string>
+    <string name="nano_dj_song_added">Added “%1$s” to the queue — it’ll play after the current set.</string>
+    <string name="nano_dj_song_not_found">I couldn’t find “%1$s” to add it.</string>
+    <string name="nano_dj_song_query_needed">Tell me which song to play, like “play bohemian rhapsody”.</string>
     <string name="nano_dj_refreshing">I’ll rebuild the next block for you.</string>
     <string name="nano_dj_refreshing_now">On it — rebuilding your mix, one sec.</string>
     <string name="nano_dj_switching_now">Switching you to the %1$s lane — rebuilding your mix.</string>

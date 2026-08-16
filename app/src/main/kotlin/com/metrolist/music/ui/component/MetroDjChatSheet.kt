@@ -15,11 +15,15 @@ import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,13 +47,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,6 +68,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -79,6 +84,8 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
@@ -617,6 +624,41 @@ fun MetroDjChatSheet(
                 }
             }
 
+            normalized.startsWith("play ") -> {
+                // "play <any song>" searches YouTube Music and adds the result to the queue,
+                // not just songs already in the current set.
+                val query =
+                    command
+                        .substringAfter("play ")
+                        .trim()
+                        .trim('"', '\'')
+                        .removeSuffix(" please")
+                        .removeSuffix(" now")
+                        .removeSuffix(".")
+                        .trim()
+                if (query.length < 2) {
+                    reply(context.getString(R.string.nano_dj_song_query_needed))
+                } else {
+                    launchBusy {
+                        val item =
+                            withContext(Dispatchers.IO) {
+                                runCatching {
+                                    YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
+                                        ?.items?.filterIsInstance<SongItem>()?.firstOrNull()
+                                        ?.toMediaItem()
+                                }.getOrNull()
+                            }
+                        if (item == null) {
+                            reply(context.getString(R.string.nano_dj_song_not_found, query))
+                        } else {
+                            connection?.addToQueue(item)
+                            val title = item.mediaMetadata.title?.toString().orEmpty()
+                            reply(context.getString(R.string.nano_dj_song_added, title.ifBlank { query }))
+                        }
+                    }
+                }
+            }
+
             normalized.contains("why") || normalized.contains("explain") -> {
                 // Answer for real (the host line is in the prompt's context); the canned
                 // commentary is only the last-resort fallback inside answerNaturally.
@@ -643,13 +685,14 @@ fun MetroDjChatSheet(
         }
     }
 
-    // Keep the conversation pinned to the newest message when a new one arrives. We do NOT
-    // re-scroll on list height changes: the sheet shrinks when the IME opens (clipping the
-    // TOP of the list, not the newest message), and forcing a scroll there would yank the
-    // user back to the bottom every time they try to read history while typing.
-    LaunchedEffect(messages.size) {
+    // Keep the conversation pinned to the newest message when a new one arrives (or the typing
+    // indicator while the DJ is busy). We do NOT re-scroll on list height changes: the sheet
+    // shrinks when the IME opens (clipping the TOP of the list, not the newest message), and
+    // forcing a scroll there would yank the user back to the bottom every time they try to read
+    // history while typing.
+    LaunchedEffect(messages.size, busy) {
         if (messages.isNotEmpty()) {
-            messagesListState.scrollToItem(messages.lastIndex)
+            messagesListState.scrollToItem(if (busy) messages.size else messages.lastIndex)
         }
     }
 
@@ -680,11 +723,14 @@ fun MetroDjChatSheet(
 
     val quickActions =
         if (active) {
-            // No "skip" here: the player already has a dedicated skip button.
+            // Complex tasks / conversation starters, not trivial one-tap actions — the player
+            // already has dedicated buttons for skip, like, and the like.
             listOf(
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_more_like_this), "more like this"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_explain), "why did you choose this?"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_more_like_this), "more like this"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_chill), "make it chill"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_artist), "tell me about this artist"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_next), "what should I listen to next?"),
             )
         } else {
             listOf(
@@ -907,64 +953,75 @@ fun MetroDjChatSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(messages) { message ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement =
-                            if (message.fromDj) Arrangement.Start else Arrangement.End,
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
-                        if (message.fromDj) {
-                            AuraIconButton(
-                                onClick = {},
-                                enabled = false,
-                                modifier = Modifier.size(28.dp),
-                                containerColor = AuraSpotifyGreen.copy(alpha = 0.16f),
-                                contentColor = AuraSpotifyGreen,
+                    PopInMessage {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                if (message.fromDj) Arrangement.Start else Arrangement.End,
+                            verticalAlignment = Alignment.Bottom,
+                        ) {
+                            if (message.fromDj) {
+                                AuraIconButton(
+                                    onClick = {},
+                                    enabled = false,
+                                    modifier = Modifier.size(28.dp),
+                                    containerColor = AuraSpotifyGreen.copy(alpha = 0.16f),
+                                    contentColor = AuraSpotifyGreen,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.radio),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                }
+                            }
+                            Column(
+                                modifier = Modifier
+                                    .widthIn(max = 320.dp)
+                                    .padding(horizontal = 6.dp),
+                                horizontalAlignment =
+                                    if (message.fromDj) Alignment.Start else Alignment.End,
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.radio),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(15.dp),
+                                Text(
+                                    text = if (message.fromDj) stringResource(R.string.nano_dj_badge) else stringResource(R.string.nano_dj_you),
+                                    color = if (message.fromDj) AuraSpotifyGreen else Color.White.copy(alpha = 0.55f),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                                Text(
+                                    text = message.text,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier
+                                        .clip(
+                                            RoundedCornerShape(
+                                                topStart = 16.dp,
+                                                topEnd = 16.dp,
+                                                bottomStart = if (message.fromDj) 4.dp else 16.dp,
+                                                bottomEnd = if (message.fromDj) 16.dp else 4.dp,
+                                            ),
+                                        )
+                                        .background(
+                                            if (message.fromDj) AuraSpotifyGreen.copy(alpha = 0.15f)
+                                            else Color.White.copy(alpha = 0.12f),
+                                        )
+                                        .padding(horizontal = 13.dp, vertical = 9.dp),
                                 )
                             }
                         }
-                        Column(
-                            modifier = Modifier
-                                .widthIn(max = 320.dp)
-                                .padding(horizontal = 6.dp),
-                            horizontalAlignment =
-                                if (message.fromDj) Alignment.Start else Alignment.End,
-                        ) {
-                            Text(
-                                text = if (message.fromDj) stringResource(R.string.nano_dj_badge) else stringResource(R.string.nano_dj_you),
-                                color = if (message.fromDj) AuraSpotifyGreen else Color.White.copy(alpha = 0.55f),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                            Text(
-                                text = message.text,
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = 16.dp,
-                                            topEnd = 16.dp,
-                                            bottomStart = if (message.fromDj) 4.dp else 16.dp,
-                                            bottomEnd = if (message.fromDj) 16.dp else 4.dp,
-                                        ),
-                                    )
-                                    .background(
-                                        if (message.fromDj) AuraSpotifyGreen.copy(alpha = 0.15f)
-                                        else Color.White.copy(alpha = 0.12f),
-                                    )
-                                    .padding(horizontal = 13.dp, vertical = 9.dp),
-                            )
-                        }
+                    }
+                }
+                if (busy) {
+                    item(key = "dj_typing") {
+                        DjTypingRow()
                     }
                 }
                 if (messages.lastOrNull()?.fromDj == true && !busy) {
                     item(key = "dj_suggestions") {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            // A little breathing room below the last DJ message.
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
                             quickActions.forEach { action ->
                                 Row(
                                     modifier =
@@ -993,62 +1050,72 @@ fun MetroDjChatSheet(
                     }
                 }
             }
-            // The composer is a fixed footer below the scrollable conversation.
+            // The composer is a fixed footer below the scrollable conversation — a compact pill
+            // in the same spirit (and roughly the same size) as the mini player.
             Row(
                 modifier =
                     Modifier
                     .fillMaxWidth()
                     .auraFloatingIsland(
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(50),
                         color = AuraPlayerChrome,
                         elevation = 6.dp,
                     )
-                    .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = 12.dp, end = 4.dp, top = 3.dp, bottom = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            OutlinedTextField(
+            // Multi-line composer: grows up to a few lines instead of scrolling one line.
+            // BasicTextField keeps the pill compact (Material's field min-height is too tall
+            // for the mini-player-sized composer); everything is transparent anyway.
+            BasicTextField(
                 value = input,
                 onValueChange = { input = it },
                 modifier = Modifier.weight(1f),
-                // Multi-line composer: grows up to a few lines instead of scrolling one line.
                 minLines = 1,
                 maxLines = 4,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                cursorBrush = SolidColor(Color.White.copy(alpha = 0.7f)),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { runCommand(input) }),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                ),
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 9.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        innerTextField()
+                    }
+                },
             )
             AuraIconButton(
                 onClick = { if (isListening) stopListening() else startListening() },
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(36.dp),
                 containerColor = if (isListening) AuraSpotifyGreen.copy(alpha = 0.22f) else Color.Transparent,
                 contentColor = if (isListening) AuraSpotifyGreen else Color.White.copy(alpha = 0.72f),
             ) {
                 if (isListening) {
-                    VoiceWave(voiceRms, Modifier.size(22.dp))
+                    VoiceWave(voiceRms, Modifier.size(20.dp))
                 } else {
                     Icon(
                         painter = painterResource(R.drawable.mic),
                         contentDescription = stringResource(R.string.nano_dj_voice),
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
             AuraPrimaryButton(
                 onClick = { runCommand(input) },
-                modifier = Modifier.height(48.dp),
+                modifier = Modifier.height(40.dp),
                 enabled = input.isNotBlank() && !busy,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.send),
                     contentDescription = stringResource(R.string.send),
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -1076,6 +1143,114 @@ fun MetroDjChatSheet(
                 }) { Text(stringResource(android.R.string.cancel)) }
             },
         )
+    }
+}
+
+/**
+ * iOS-style pop-in for chat bubbles: new messages (from either side) fade in and settle with
+ * a small scale spring on first appearance. Kept subtle so DJ and listener bubbles feel
+ * consistent together.
+ */
+@Composable
+private fun PopInMessage(content: @Composable () -> Unit) {
+    // Named to avoid clashing with GraphicsLayerScope's own scale/alpha properties.
+    val scaleAnim = remember { Animatable(0.92f) }
+    val alphaAnim = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch { alphaAnim.animateTo(1f, tween(durationMillis = 160)) }
+        launch {
+            scaleAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+            )
+        }
+    }
+    Box(
+        modifier =
+            Modifier.graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+                alpha = alphaAnim.value
+            },
+    ) {
+        content()
+    }
+}
+
+/**
+ * "DJ is typing" bubble — three staggered pulsing dots in a regular DJ bubble, shown while a
+ * command is being processed so the chat never looks dead.
+ */
+@Composable
+private fun DjTypingRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        AuraIconButton(
+            onClick = {},
+            enabled = false,
+            modifier = Modifier.size(28.dp),
+            containerColor = AuraSpotifyGreen.copy(alpha = 0.16f),
+            contentColor = AuraSpotifyGreen,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.radio),
+                contentDescription = null,
+                modifier = Modifier.size(15.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .widthIn(max = 320.dp)
+                .padding(horizontal = 6.dp),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                text = stringResource(R.string.nano_dj_badge),
+                color = AuraSpotifyGreen,
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Row(
+                modifier =
+                    Modifier
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 16.dp,
+                                topEnd = 16.dp,
+                                bottomStart = 4.dp,
+                                bottomEnd = 16.dp,
+                            ),
+                        )
+                        .background(AuraSpotifyGreen.copy(alpha = 0.15f))
+                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val transition = rememberInfiniteTransition(label = "djTyping")
+                repeat(3) { i ->
+                    val dotAlpha by transition.animateFloat(
+                        initialValue = 0.25f,
+                        targetValue = 1f,
+                        animationSpec =
+                            infiniteRepeatable(
+                                animation = tween(durationMillis = 420),
+                                repeatMode = RepeatMode.Reverse,
+                                initialStartOffset = StartOffset(i * 160),
+                            ),
+                        label = "djTypingDot$i",
+                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(AuraSpotifyGreen.copy(alpha = dotAlpha)),
+                    )
+                }
+            }
+        }
     }
 }
 

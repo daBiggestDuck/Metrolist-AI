@@ -1,3 +1,12 @@
+---v15.4.2
+# What's new
+- "Play <any song>" now actually finds the song on YouTube Music and adds it to the queue — it no longer says "it's not in my set" for anything outside the current radio queue
+- Quick action links are now complex tasks and conversation starters (Why this track?, Tell me about this artist, What should I listen to next?) instead of simple one-tap actions
+- The DJ shows a typing animation (three pulsing dots) while it's working on your request, so the chat never looks dead
+- Every new chat bubble — yours and the DJ's — pops in with a subtle iOS-style scale-and-fade animation
+- The composer is now a smaller, rounder pill similar in size to the mini player
+- Suggestions sit a little lower below the last DJ message
+
 ---v15.4.1
 # What's new
 - Quick action links (More like this, Why this track?, Make it chill) actually run their command now: the chat sheet stayed mounted to the DJ's on-air state, so restarting the radio from a link tore the sheet down mid-action and cancelled the rebuild
