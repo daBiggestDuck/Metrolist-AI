@@ -917,6 +917,19 @@ class MainActivity : ComponentActivity() {
 
                 val isHomeRouteForInsets =
                     navBackStackEntry?.destination?.route == Screens.Home.route
+                val searchHeaderCollapsed =
+                    currentRoute == Screens.Search.route && searchFieldFocused
+                val animatedTopChrome by
+                    androidx.compose.animation.core.animateDpAsState(
+                        targetValue =
+                            if (isHomeRouteForInsets || searchHeaderCollapsed) {
+                                0.dp
+                            } else {
+                                AppBarHeight
+                            },
+                        animationSpec = androidx.compose.animation.core.tween(durationMillis = 260),
+                        label = "searchHeaderInset",
+                    )
                 val playerAwareWindowInsets =
                     remember(
                         bottomInset,
@@ -924,16 +937,16 @@ class MainActivity : ComponentActivity() {
                         playerBottomSheetState.anchor,
                         showRail,
                         isHomeRouteForInsets,
+                        animatedTopChrome,
                     ) {
                         var bottom = bottomInset
                         if (shouldShowNavigationBar && !showRail) {
                             bottom += NavigationBarHeight
                         }
                         if (playerBottomSheetState.anchor != dismissedAnchor) bottom += MiniPlayerHeight
-                        val topChrome = if (isHomeRouteForInsets) 0.dp else AppBarHeight
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-                            .add(WindowInsets(top = topChrome, bottom = bottom))
+                            .add(WindowInsets(top = animatedTopChrome, bottom = bottom))
                     }
                 val topAppBarScrollBehavior =
                     appBarScrollBehavior(

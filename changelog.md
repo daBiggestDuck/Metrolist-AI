@@ -1,3 +1,14 @@
+---v15.0.1
+# What's new
+- Metro DJ chat sheet redesigned with a floating composer bar and a fixed, scrollable conversation area
+- Search header collapses when the search field is focused, giving results more room
+- Dismissing search now exits search mode instead of leaving an empty result list
+- Metro DJ quick actions cleaned up: removed redundant "change vibe", "refresh block", and "categories" prompts
+- Dislike controls and conservative Metro DJ filtering keep the radio on tracks you actually enjoy
+- Listening taste import and chat surfaces stabilized
+- Main tab transitions (Home / Library / Search) now animate smoothly with floating filter chips and search bars
+- Fixed tab strip compositing issues that caused blank pages on some devices
+
 ---v13.6.11
 # What's new
 - Improved header transitions from Home to Library and Search pages with floating filter chips and search bars

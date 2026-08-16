@@ -340,9 +340,12 @@ fun SearchScreen(
                                 )
                             }
 
-                            if (isSearchActive && query.text.isNotEmpty()) {
+                            if (isSearchActive) {
                                 AuraFloatingChromeButton(
-                                    onClick = { query = TextFieldValue("") },
+                                    onClick = {
+                                        query = TextFieldValue("")
+                                        exitSearchMode()
+                                    },
                                     size = 32.dp,
                                     contentDescription = stringResource(R.string.dismiss),
                                 ) {

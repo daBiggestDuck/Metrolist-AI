@@ -17,13 +17,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,9 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,9 +68,7 @@ import com.metrolist.music.ai.GeminiNanoClient
 import com.metrolist.music.ai.ListeningTasteTracker
 import com.metrolist.music.ai.NanoDjLauncher
 import com.metrolist.music.ai.NanoDjSession
-import com.metrolist.music.constants.ListeningTasteExcludedSongIdsKey
 import com.metrolist.music.db.entities.PlaylistEntity
-import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
@@ -81,6 +77,8 @@ import com.metrolist.music.spotify.SpotifyImportManager
 import com.metrolist.music.ui.component.aura.AuraBottomSheet
 import com.metrolist.music.ui.component.aura.AuraDivider
 import com.metrolist.music.ui.component.aura.AuraElevated
+import com.metrolist.music.ui.component.aura.AuraPlayerChrome
+import com.metrolist.music.ui.component.aura.auraFloatingIsland
 import com.metrolist.music.ui.component.aura.AuraIconButton
 import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
@@ -143,12 +141,6 @@ fun MetroDjChatSheet(
     var confirmationText by remember { mutableStateOf<String?>(null) }
     var pendingConfirmation by remember { mutableStateOf<(() -> Unit)?>(null) }
     val messagesListState = rememberLazyListState()
-    val currentMediaMetadata by
-        connection?.mediaMetadata?.collectAsStateWithLifecycle()
-            ?: remember { mutableStateOf<MediaMetadata?>(null) }
-    val (excludedTasteIds, _) =
-        rememberPreference(ListeningTasteExcludedSongIdsKey, defaultValue = emptySet<String>())
-
     fun reply(text: String) {
         messages += MetroDjMessage(true, text)
     }
@@ -612,15 +604,12 @@ fun MetroDjChatSheet(
         if (active) {
             listOf(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_more_like_this), "more like this"),
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_change_vibe), "what vibes should we try?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_explain), "why did you choose this?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_skip), "skip"),
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_refresh), "refresh the next block"),
             )
         } else {
             listOf(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_taste), "what do you know about my taste?"),
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_categories), "what categories can you play?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_ask_recommendation), "what should I listen to right now?"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_chat_music), "tell me something interesting about music"),
             )
@@ -633,14 +622,16 @@ fun MetroDjChatSheet(
         contentWindowInsets = { WindowInsets.ime },
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 420.dp, max = 640.dp),
         ) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier =
                     Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
+                        .fillMaxSize()
                         .imePadding()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 92.dp),
@@ -713,54 +704,6 @@ fun MetroDjChatSheet(
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
-            currentMediaMetadata?.let { media ->
-                val isEpisode = media.isEpisode
-                val isDisliked = !isEpisode && media.id in excludedTasteIds
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = 0.06f))
-                            .padding(12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.nano_dj_now_playing),
-                        color = AuraSpotifyGreen,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Text(
-                        text = media.title,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 10.dp),
-                    ) {
-                        if (!isEpisode) {
-                            AuraSecondaryAction(
-                                onClick = {
-                                    runCommand(if (isDisliked) "remove dislike" else "dislike this song")
-                                },
-                            ) {
-                                Text(
-                                    stringResource(
-                                        if (isDisliked) R.string.nano_dj_action_undislike else R.string.nano_dj_action_dislike,
-                                    ),
-                                )
-                            }
-                        }
-                        AuraSecondaryAction(onClick = { runCommand("play next") }) {
-                            Text(stringResource(R.string.nano_dj_action_play_next))
-                        }
-                    }
-                }
-            }
             commentary?.let { line ->
                 Column(
                     modifier =
@@ -817,7 +760,7 @@ fun MetroDjChatSheet(
             }
             LazyColumn(
                 state = messagesListState,
-                modifier = Modifier.heightIn(max = 240.dp),
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(messages) { message ->
@@ -879,36 +822,44 @@ fun MetroDjChatSheet(
             }
             // The composer is rendered by the fixed footer below the scrollable conversation.
         }
-        Column(
+        Row(
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(AuraElevated)
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(bottom = 8.dp)
+                    .auraFloatingIsland(
+                        shape = RoundedCornerShape(28.dp),
+                        color = AuraPlayerChrome,
+                        elevation = 6.dp,
+                    )
+                    .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
                 placeholder = { Text(stringResource(R.string.nano_dj_chat_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { runCommand(input) }),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AuraSpotifyGreen,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
                 ),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AuraPrimaryButton(onClick = { runCommand(input) }, enabled = input.isNotBlank() && !busy) {
-                    Text(stringResource(R.string.send))
-                }
-                AuraSecondaryAction(onClick = onDismiss) {
-                    Text(stringResource(android.R.string.cancel))
-                }
+            AuraPrimaryButton(
+                onClick = { runCommand(input) },
+                modifier = Modifier.height(48.dp),
+                enabled = input.isNotBlank() && !busy,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            ) {
+                Text(stringResource(R.string.send))
             }
         }
     }
