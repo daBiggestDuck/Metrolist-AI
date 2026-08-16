@@ -1156,6 +1156,10 @@
     <string name="nano_dj_voice_error">I didn’t catch that. Tap the mic and try again.</string>
     <string name="nano_dj_stopped">Metro DJ is off air</string>
     <string name="nano_dj_skipped">Skipping to the next track</string>
+    <string name="nano_dj_voice_off">I’ll go quiet — say “turn your voice on” to bring me back.</string>
+    <string name="nano_dj_voice_on">I’m talking again.</string>
+    <string name="nano_dj_settings_opened">Opening settings for you.</string>
+    <string name="nano_dj_liked">Liked “%1$s”.</string>
     <string name="nano_dj_added_queue">Added the current track to the queue</string>
     <string name="nano_dj_refreshing">I’ll rebuild the next block for you.</string>
     <string name="nano_dj_lane_changed">Switching to %1$s.</string>

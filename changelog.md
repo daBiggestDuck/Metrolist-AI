@@ -1,3 +1,12 @@
+---v15.4
+# What's new
+- Metro DJ chat no longer resets every time you open it: the conversation stays for the whole radio session and only refreshes when a new radio starts
+- Quick action links now reliably run their command (busy state can no longer get stuck), and the redundant "Skip this" suggestion is gone since the player already has a skip button
+- The chat composer is a multi-line text box (grows to a few lines instead of scrolling one line) and no longer shows placeholder text
+- Metro DJ now knows every action it can take — creating/renaming/deleting playlists, adding tracks to playlists, downloading, disliking, lane changes, play-next, queue, settings, and more — and suggests the exact phrase when you describe a goal
+- New DJ commands: "turn your voice on/off" (or "stop talking"), "open settings", and "like this"
+- The 3-bar voice waveform is centered in the mic button
+
 ---v15.3
 # What's new
 - Metro DJ description no longer says "on-device": it's a general AI radio host that picks music using your configured model and API key

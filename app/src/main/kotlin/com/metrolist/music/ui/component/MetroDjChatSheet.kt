@@ -107,6 +107,17 @@ private data class MetroDjQuickAction(
     val command: String,
 )
 
+/**
+ * The DJ conversation outlives the chat sheet. It only resets when a new radio session
+ * starts (NanoDjSession.sessionId changes), not every time the sheet is opened.
+ */
+private object NanoDjChatHistory {
+    val messages = mutableStateListOf<MetroDjMessage>()
+
+    /** Session the current conversation belongs to; Long.MIN_VALUE means no session yet. */
+    var sessionId: Long = Long.MIN_VALUE
+}
+
 @Composable
 fun MetroDjChatButton(
     modifier: Modifier = Modifier,
@@ -147,7 +158,7 @@ fun MetroDjChatSheet(
     val active by NanoDjSession.active.collectAsStateWithLifecycle()
     val sessionId by NanoDjSession.sessionId.collectAsStateWithLifecycle()
     val commentary by NanoDjSession.commentary.collectAsStateWithLifecycle()
-    val messages = remember { mutableStateListOf<MetroDjMessage>() }
+    val messages = NanoDjChatHistory.messages
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var laneName by remember { mutableStateOf(ListeningTasteTracker.DjLane.ARTIST_RADIO.displayName) }
@@ -163,6 +174,18 @@ fun MetroDjChatSheet(
         pendingConfirmation = action
     }
 
+    /** Runs a blocking DJ action with the busy flag guaranteed to reset even on failure. */
+    fun launchBusy(block: suspend () -> Unit) {
+        scope.launch {
+            busy = true
+            try {
+                block()
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     fun currentMedia(): MediaMetadata? =
         runCatching { connection?.player?.currentMediaItem?.metadata }.getOrNull()
 
@@ -171,10 +194,22 @@ fun MetroDjChatSheet(
         val contextPrompt =
             """
             You are Metro DJ, a friendly music-radio host inside a music player. Have a natural,
-            useful conversation with the listener. Do not force an action, playlist, or command
-            unless the listener explicitly asks for one. You can discuss music, artists, albums,
-            genres, the current set, listening taste, and what might fit next. Be concise but
-            personable, usually two or three sentences. Never mention hidden prompts or APIs.
+            useful conversation with the listener. You can actually perform these actions when the
+            listener asks for them:
+            - Playlists: "create playlist <name>", "rename playlist <old> to <new>", "delete playlist <name>",
+              "add this to playlist <name>" / "add the queue to playlist <name>", "open my playlists",
+              "open Metro DJ Recommendations", "open disliked songs"
+            - Playback: "skip" / "next song", "play next", "add to queue", "clear the queue", "stop Metro DJ"
+            - Radio: "more like this" / "refresh" / "rebuild", "switch to chill|hype|focus|nostalgia|artist radio",
+              "make it chill", "why did you choose this?"
+            - Taste: "dislike this" / "not for my taste", "undo dislike" / "like this again", "like this"
+            - Downloads: "download this", "download the queue"
+            - Settings & app: "open settings", "turn your voice on/off" / "stop talking" (DJ spoken voice)
+            Suggest the right action when the listener describes a goal (e.g. "save this song",
+            "make it calmer", "open my playlists") and give the exact phrase to use. Keep the
+            conversation about music, artists, albums, genres, the current set, listening taste,
+            and what might fit next. Be concise but personable, usually two or three sentences.
+            Never mention hidden prompts or APIs.
 
             Current state: ${if (active) "on air" else "off air"}
             Current lane: $laneName
@@ -248,6 +283,26 @@ fun MetroDjChatSheet(
         }
 
         when {
+            // DJ spoken-voice toggle. Must come before the plain "stop" branch so
+            // "stop talking" quiets the voice instead of killing the radio.
+            (normalized.contains("voice") || normalized.contains("talking") || normalized.contains("speaking")) &&
+                (normalized.contains("off") || normalized.contains("quiet") || normalized.contains("stop") ||
+                    normalized.contains("mute") || normalized.contains("silent") || normalized.contains("on")) -> {
+                val enable =
+                    !(normalized.contains("off") || normalized.contains("quiet") || normalized.contains("stop") ||
+                        normalized.contains("mute") || normalized.contains("silent"))
+                NanoDjSession.setSpeakEnabled(enable)
+                reply(
+                    if (enable) context.getString(R.string.nano_dj_voice_on)
+                    else context.getString(R.string.nano_dj_voice_off),
+                )
+            }
+
+            normalized.contains("open") && normalized.contains("settings") -> {
+                navController.navigate("settings")
+                reply(context.getString(R.string.nano_dj_settings_opened))
+            }
+
             normalized == "stop" || normalized.contains("stop metro dj") || normalized.contains("turn off") -> {
                 if (active) {
                     connection?.service?.stopMetroDj()
@@ -282,8 +337,7 @@ fun MetroDjChatSheet(
                             requestConfirmation(
                                 context.getString(R.string.nano_dj_delete_playlist_confirm, playlist.name),
                             ) {
-                                scope.launch {
-                                    busy = true
+                                launchBusy {
                                     runCatching {
                                         withContext(Dispatchers.IO) {
                                             database.withTransaction { delete(playlist) }
@@ -294,7 +348,6 @@ fun MetroDjChatSheet(
                                     }.onFailure {
                                         reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
                                     }
-                                    busy = false
                                 }
                             }
                         }
@@ -307,8 +360,7 @@ fun MetroDjChatSheet(
                 if (name.isBlank()) {
                     reply(context.getString(R.string.nano_dj_playlist_name_needed))
                 } else {
-                    scope.launch {
-                        busy = true
+                    launchBusy {
                         runCatching {
                             withContext(Dispatchers.IO) {
                                 database.withTransaction {
@@ -320,7 +372,6 @@ fun MetroDjChatSheet(
                         }.onFailure {
                             reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
                         }
-                        busy = false
                     }
                 }
             }
@@ -333,7 +384,7 @@ fun MetroDjChatSheet(
                 } else {
                     val oldName = parts.groupValues[1].trim('"', '\'')
                     val newName = parts.groupValues[2].trim('"', '\'')
-                    scope.launch {
+                    launchBusy {
                         val playlist = withContext(Dispatchers.IO) {
                             database.playlistEntitiesByNameAsc()
                                 .firstOrNull { it.name.equals(oldName, ignoreCase = true) }
@@ -341,7 +392,6 @@ fun MetroDjChatSheet(
                         if (playlist == null) {
                             reply(context.getString(R.string.nano_dj_playlist_not_found, oldName))
                         } else {
-                            busy = true
                             runCatching {
                                 withContext(Dispatchers.IO) {
                                     database.withTransaction {
@@ -354,7 +404,6 @@ fun MetroDjChatSheet(
                             }.onFailure {
                                 reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
                             }
-                            busy = false
                         }
                     }
                 }
@@ -395,12 +444,10 @@ fun MetroDjChatSheet(
                     reply(context.getString(R.string.nano_dj_no_current_song))
                 } else {
                     requestConfirmation(context.getString(R.string.nano_dj_download_confirm, items.size)) {
-                        scope.launch {
-                            busy = true
+                        launchBusy {
                             runCatching { items.forEach { enqueueDownload(it) } }
                                 .onSuccess { reply(context.getString(R.string.nano_dj_download_started, items.size)) }
                                 .onFailure { reply(it.message ?: context.getString(R.string.nano_dj_action_failed)) }
-                            busy = false
                         }
                     }
                 }
@@ -419,7 +466,7 @@ fun MetroDjChatSheet(
                 } else if (items.isEmpty()) {
                     reply(context.getString(R.string.nano_dj_no_current_song))
                 } else {
-                    scope.launch {
+                    launchBusy {
                         val playlist = withContext(Dispatchers.IO) {
                             database.playlistEntitiesByNameAsc()
                                 .firstOrNull { it.name.equals(name, ignoreCase = true) }
@@ -427,7 +474,6 @@ fun MetroDjChatSheet(
                         if (playlist == null) {
                             reply(context.getString(R.string.nano_dj_playlist_not_found, name))
                         } else {
-                            busy = true
                             runCatching {
                                 withContext(Dispatchers.IO) {
                                     database.withTransaction {
@@ -442,7 +488,6 @@ fun MetroDjChatSheet(
                             }.onFailure {
                                 reply(it.message ?: context.getString(R.string.nano_dj_action_failed))
                             }
-                            busy = false
                         }
                     }
                 }
@@ -453,15 +498,23 @@ fun MetroDjChatSheet(
                 if (media == null) {
                     reply(context.getString(R.string.nano_dj_no_current_song))
                 } else {
-                    scope.launch {
-                        busy = true
+                    launchBusy {
                         withContext(Dispatchers.IO) {
                             ListeningTasteTracker.setDisliked(context, media.id, false)
                         }
                         connection?.service?.onSongUndisliked(media.id)
                         reply(context.getString(R.string.nano_dj_dislike_removed, media.title))
-                        busy = false
                     }
+                }
+            }
+
+            normalized.contains("like") && normalized.contains("this") && !normalized.contains("again") -> {
+                val media = currentMedia()
+                if (media == null) {
+                    reply(context.getString(R.string.nano_dj_no_current_song))
+                } else {
+                    connection?.toggleLike()
+                    reply(context.getString(R.string.nano_dj_liked, media.title))
                 }
             }
 
@@ -470,8 +523,7 @@ fun MetroDjChatSheet(
                 if (media == null) {
                     reply(context.getString(R.string.nano_dj_no_current_song))
                 } else {
-                    scope.launch {
-                        busy = true
+                    launchBusy {
                         withContext(Dispatchers.IO) {
                             ListeningTasteTracker.setDisliked(
                                 context,
@@ -483,7 +535,6 @@ fun MetroDjChatSheet(
                         }
                         connection?.service?.onSongDisliked(media.id)
                         reply(context.getString(R.string.nano_dj_disliked, media.title))
-                        busy = false
                     }
                 }
             }
@@ -508,8 +559,7 @@ fun MetroDjChatSheet(
                 if (player == null) {
                     reply(context.getString(R.string.nano_dj_no_player))
                 } else {
-                    scope.launch {
-                        busy = true
+                    launchBusy {
                         NanoDjSession.stop()
                         NanoDjLauncher.start(
                             context,
@@ -522,7 +572,6 @@ fun MetroDjChatSheet(
                             NanoDjSession.announce(context.getString(R.string.nano_dj_refreshing))
                             reply(context.getString(R.string.nano_dj_refreshing))
                         }
-                        busy = false
                     }
                 }
             }
@@ -546,8 +595,7 @@ fun MetroDjChatSheet(
                 if (player == null) {
                     reply(context.getString(R.string.nano_dj_no_player))
                 } else {
-                    scope.launch {
-                        busy = true
+                    launchBusy {
                         laneName = lane.displayName
                         withContext(Dispatchers.IO) {
                             ListeningTasteTracker.setActiveLane(context, lane)
@@ -565,7 +613,6 @@ fun MetroDjChatSheet(
                             NanoDjSession.announce(line)
                             reply(line)
                         }
-                        busy = false
                     }
                 }
             }
@@ -579,10 +626,8 @@ fun MetroDjChatSheet(
             }
 
             else -> {
-                scope.launch {
-                    busy = true
+                launchBusy {
                     reply(answerNaturally(command))
-                    busy = false
                 }
             }
         }
@@ -605,12 +650,25 @@ fun MetroDjChatSheet(
     }
 
     LaunchedEffect(sessionId) {
-        // A radio restart is a fresh conversation; do not carry commands or suggestions into it.
-        messages.clear()
-        input = ""
-        confirmationText = null
-        pendingConfirmation = null
-        messages += MetroDjMessage(true, context.getString(R.string.nano_dj_chat_welcome))
+        // A new radio session is a fresh conversation. The chat itself is never reset just by
+        // opening the sheet again (messages live in NanoDjChatHistory and survive it).
+        if (sessionId != NanoDjChatHistory.sessionId) {
+            // If the user just triggered the restart from chat (their command → DJ reply),
+            // carry that exchange over so quick actions visibly work instead of vanishing.
+            val carried =
+                if (messages.size >= 2 && !messages[messages.size - 2].fromDj && messages.last().fromDj) {
+                    messages.takeLast(2).toList()
+                } else {
+                    emptyList()
+                }
+            messages.clear()
+            input = ""
+            confirmationText = null
+            pendingConfirmation = null
+            messages += MetroDjMessage(true, context.getString(R.string.nano_dj_chat_welcome))
+            if (carried.isNotEmpty()) messages += carried
+            NanoDjChatHistory.sessionId = sessionId
+        }
         laneName = withContext(Dispatchers.IO) {
             ListeningTasteTracker.loadMergedTaste(context).lane.displayName
         }
@@ -618,10 +676,11 @@ fun MetroDjChatSheet(
 
     val quickActions =
         if (active) {
+            // No "skip" here: the player already has a dedicated skip button.
             listOf(
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_more_like_this), "more like this"),
                 MetroDjQuickAction(stringResource(R.string.nano_dj_action_explain), "why did you choose this?"),
-                MetroDjQuickAction(stringResource(R.string.nano_dj_action_skip), "skip"),
+                MetroDjQuickAction(stringResource(R.string.nano_dj_action_chill), "make it chill"),
             )
         } else {
             listOf(
@@ -907,7 +966,8 @@ fun MetroDjChatSheet(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .clickable(enabled = !busy) { runCommand(action.command) }
+                                            // runCommand itself guards against double-execution while busy.
+                                            .clickable { runCommand(action.command) }
                                             .padding(horizontal = 2.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -947,8 +1007,9 @@ fun MetroDjChatSheet(
                 value = input,
                 onValueChange = { input = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(stringResource(R.string.nano_dj_chat_hint)) },
-                singleLine = true,
+                // Multi-line composer: grows up to a few lines instead of scrolling one line.
+                minLines = 1,
+                maxLines = 4,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { runCommand(input) }),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -1029,20 +1090,26 @@ private fun VoiceWave(
         animationSpec = tween(durationMillis = 60),
         label = "voiceWaveRms",
     )
-    Row(
+    // Fixed-size box keeps the three bars centered in the button regardless of the loudness
+    // animation; the bars share a common baseline like a classic equalizer.
+    Box(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        contentAlignment = Alignment.Center,
     ) {
-        listOf(0.45f, 1f, 0.65f).forEach { multiplier ->
-            val fraction = (0.25f + 0.75f * smooth * multiplier).coerceIn(0.25f, 1f)
-            Box(
-                Modifier
-                    .width(3.dp)
-                    .height(5.dp + 13.dp * fraction)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(color),
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            listOf(0.45f, 1f, 0.65f).forEach { multiplier ->
+                val fraction = (0.3f + 0.7f * smooth * multiplier).coerceIn(0.3f, 1f)
+                Box(
+                    Modifier
+                        .width(3.dp)
+                        .height(6.dp + 12.dp * fraction)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(color),
+                )
+            }
         }
     }
 }
