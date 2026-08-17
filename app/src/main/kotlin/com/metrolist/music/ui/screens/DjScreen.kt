@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -317,7 +318,8 @@ fun DjScreen(navController: NavController) {
                     )
                     .imePadding(),
         ) {
-            // Top bar: sidebar (recent chats) toggle on the left, Gemini-style.
+            // Top bar: profile button on the LEFT (per request), title in the middle,
+            // and the recent-chats bubble on the RIGHT.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
@@ -328,7 +330,29 @@ fun DjScreen(navController: NavController) {
                         )
                         .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                AuraFloatingTitleIsland(modifier = Modifier.widthIn(max = 320.dp)) {
+                AuraFloatingChromeButton(
+                    onClick = { showProfileMenu = true },
+                    contentDescription = stringResource(R.string.your_profile),
+                ) {
+                    if (accountImageUrl != null) {
+                        AsyncImage(
+                            model = accountImageUrl,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape),
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.account),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                AuraFloatingTitleIsland(modifier = Modifier.weight(1f, fill = false).widthIn(max = 280.dp)) {
                     Text(
                         text = stringResource(R.string.dj_page_title),
                         style = MaterialTheme.typography.titleLarge,
@@ -348,28 +372,6 @@ fun DjScreen(navController: NavController) {
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )
-                }
-                AuraFloatingChromeButton(
-                    onClick = { showProfileMenu = true },
-                    contentDescription = stringResource(R.string.your_profile),
-                    modifier = Modifier.padding(start = 8.dp),
-                ) {
-                    if (accountImageUrl != null) {
-                        AsyncImage(
-                            model = accountImageUrl,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(22.dp)
-                                    .clip(CircleShape),
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(R.drawable.account),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
                 }
             }
 

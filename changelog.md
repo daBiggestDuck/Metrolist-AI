@@ -1,3 +1,11 @@
+---v15.8
+# What's new
+- Metro DJ now actually knows your taste: the planner and natural-reply prompts are seeded with your real taste summary, top artists, top tracks, genres, and recent play history, so it can answer "what do you know about my taste?" and pick favorites for "make a playlist of what I like" without making things up
+- Main player: the share / like / dislike row sits lower (a touch of breathing room below the title) and the buttons are now 36dp tall with 20dp icons instead of the cramped 32dp / 18dp
+- Mini player like/dislike combined button is widened to 68dp (~30% wider than before) so the heart, divider, and thumbs-down breathe instead of being squished together
+- Metro DJ page: the profile button moves to the top-left of the header so the history bubble can take the right side cleanly
+- Metro DJ popup (opened from the mini player): now shows a "Metro DJ" title bar at the top so it's clear what the sheet is for
+
 ---v15.7
 # What's new
 - Mini player like/dislike: the diagonal divider is now a clean vertical line, and pulling up makes the heart grow, color in, and slide toward the center (same for the thumbs-down when you pull down)

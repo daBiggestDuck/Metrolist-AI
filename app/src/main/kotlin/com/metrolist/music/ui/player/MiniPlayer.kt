@@ -1346,7 +1346,9 @@ private fun LikeDislikeSwipeButton(
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .size(width = 52.dp, height = 40.dp)
+                // ~30% wider than the old 52dp so the heart + thumbs-down pair stops looking
+                // cramped against the other mini player buttons.
+                .size(width = 68.dp, height = 40.dp)
                 .clip(RoundedCornerShape(percent = 50))
                 .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(percent = 50))
                 .background(Color.Transparent, RoundedCornerShape(percent = 50))
@@ -1406,7 +1408,7 @@ private fun LikeDislikeSwipeButton(
                     painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
                     contentDescription = stringResource(if (isLiked) R.string.unlike_cd else R.string.like_cd),
                     tint = heartColor,
-                    modifier = Modifier.size(15.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
             // Dislike (thumbs-down) — right half. As it's pulled down it grows, reddens,
@@ -1436,7 +1438,7 @@ private fun LikeDislikeSwipeButton(
                         if (isDisliked) R.string.undislike_cd else R.string.dislike_cd,
                     ),
                     tint = dislikeColor,
-                    modifier = Modifier.size(15.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
             // Vertical divider separating the like and dislike halves.

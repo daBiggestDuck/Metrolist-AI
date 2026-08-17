@@ -118,6 +118,7 @@ import com.metrolist.music.ui.component.aura.AuraPrimaryButton
 import com.metrolist.music.ui.component.aura.AuraSecondaryAction
 import com.metrolist.music.ui.component.aura.AuraSpotifyGreen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -352,6 +353,57 @@ fun MetroDjChatSheet(
         val current = currentMedia()
         val artistLine =
             current?.artists?.map { it.name }?.take(2)?.joinToString(", ")
+
+        // Pull listener taste so the DJ can actually answer taste / listening-history questions.
+        val taste =
+            runCatching {
+                withContext(Dispatchers.IO) { ListeningTasteTracker.loadMergedTaste(context) }
+            }.getOrNull()
+        val tasteSummary = taste?.summary?.trim().orEmpty().take(280)
+        val tasteArtists = taste?.seedArtists.orEmpty().take(10)
+        val tasteTracks = taste?.seedTracks.orEmpty().take(8)
+        val tasteCategories = taste?.categories.orEmpty().take(6)
+
+        val recentPlays: List<com.metrolist.music.db.entities.EventWithSong> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    database.events().first()
+                }
+            }.getOrNull().orEmpty().take(6)
+        val recentPlaysText =
+            recentPlays.joinToString(", ") { ev ->
+                val artistNames =
+                    ev.song.artists.joinToString(", ") { it.name }.ifBlank { "?" }
+                "${ev.song.title} — $artistNames"
+            }
+
+        val tasteBlock =
+            buildString {
+                if (tasteSummary.isNotBlank()) {
+                    append("Taste summary: ").append(tasteSummary).append('\n')
+                }
+                if (tasteArtists.isNotEmpty()) {
+                    append("Top artists the listener likes: ")
+                        .append(tasteArtists.joinToString(", "))
+                        .append('\n')
+                }
+                if (tasteTracks.isNotEmpty()) {
+                    append("Tracks the listener has been playing a lot: ")
+                        .append(tasteTracks.joinToString("; "))
+                        .append('\n')
+                }
+                if (tasteCategories.isNotEmpty()) {
+                    append("Genres/categories the listener tends to like: ")
+                        .append(tasteCategories.joinToString(", "))
+                        .append('\n')
+                }
+                if (recentPlaysText.isNotBlank()) {
+                    append("Recent play history (most recent first): ")
+                        .append(recentPlaysText)
+                        .append('\n')
+                }
+            }
+
         val contextPrompt =
             """
             You are Metro DJ, the listener's music-nerd radio host — like Spotify's AI DJ but warmer.
@@ -364,10 +416,14 @@ fun MetroDjChatSheet(
             current song, artist, lane, or the music itself. If they asked for something you can't
             answer, say so briefly. No markdown, no emoji, no bullet points, never "as an AI".
 
+            Use the listener's real taste and recent listen history below to ground your answers —
+            favorite artists, recent tracks, genres — instead of guessing.
+
             Current state: ${if (active) "on air" else "off air"}
             Lane: $laneName
             Host line: ${commentary.orEmpty().ifBlank { "none" }}
             Current song: ${current?.title.orEmpty().ifBlank { "none" }}${if (artistLine.isNullOrBlank()) "" else " by $artistLine"}
+            $tasteBlock
             Recent chat:
             ${messages.takeLast(6).joinToString("\\n") { if (it.fromDj) "DJ: ${it.text}" else "Listener: ${it.text}" }}
 
@@ -469,8 +525,13 @@ fun MetroDjChatSheet(
         return context.getString(R.string.nano_dj_action_failed_reason, reason)
     }
 
-    /** Snapshot of the live DJ state, fed to the AI planner so it can reason about context. */
-    fun currentState(): String {
+    /**
+     * Snapshot of the live DJ state, fed to the AI planner so it can reason about context.
+     * Now includes listener taste (summary, top artists, top tracks, categories) and recent
+     * play history so the DJ can answer questions like "what do you know about my taste" or
+     * "what have I been listening to" honestly without making it up.
+     */
+    suspend fun currentState(): String {
         val current = currentMedia()
         val artistLine = current?.artists?.map { it.name }?.take(2)?.joinToString(", ")
         val queueSize = runCatching { connection?.player?.mediaItemCount ?: 0 }.getOrDefault(0)
@@ -478,14 +539,68 @@ fun MetroDjChatSheet(
             messages.takeLast(12).joinToString("\n") { m ->
                 if (m.fromDj) "DJ: ${m.text}" else "Listener: ${m.text}"
             }
+
+        // Pull the listener's taste profile so the planner has actual ground truth.
+        val taste =
+            runCatching {
+                withContext(Dispatchers.IO) { ListeningTasteTracker.loadMergedTaste(context) }
+            }.getOrNull()
+        val topArtists = taste?.seedArtists.orEmpty().take(10)
+        val topTracksList = taste?.seedTracks.orEmpty().take(8)
+        val categories = taste?.categories.orEmpty()
+        val tasteLane = taste?.lane?.displayName.orEmpty()
+
+        // Pull recent play history so the DJ can reference what the listener actually played.
+        val recentPlays: List<com.metrolist.music.db.entities.EventWithSong> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    database.events().first()
+                }
+            }.getOrNull().orEmpty().take(8)
+
+        val recentPlaysText =
+            recentPlays.joinToString(", ") { ev ->
+                val artistNames =
+                    ev.song.artists.joinToString(", ") { it.name }.ifBlank { "?" }
+                "${ev.song.title} — $artistNames"
+            }
+
         return buildString {
             append("on air: ").append(active).append('\n')
             append("lane: ").append(laneName).append('\n')
+            if (tasteLane.isNotBlank() && tasteLane != laneName) {
+                append("taste-derived lane: ").append(tasteLane).append('\n')
+            }
             append("current song: ").append(current?.title.orEmpty().ifBlank { "none" })
             if (!artistLine.isNullOrBlank()) append(" by ").append(artistLine)
             append('\n')
             append("host line: ").append(commentary.orEmpty().ifBlank { "none" }).append('\n')
             append("queue size: ").append(queueSize).append('\n')
+            if (taste?.summary?.isNotBlank() == true) {
+                append("taste summary: ")
+                    .append(taste.summary.trim().take(280))
+                    .append('\n')
+            }
+            if (topArtists.isNotEmpty()) {
+                append("top artists the listener gravitates toward: ")
+                    .append(topArtists.joinToString(", "))
+                    .append('\n')
+            }
+            if (topTracksList.isNotEmpty()) {
+                append("tracks the listener has been playing a lot: ")
+                    .append(topTracksList.joinToString("; "))
+                    .append('\n')
+            }
+            if (categories.isNotEmpty()) {
+                append("genres/categories the listener tends to like: ")
+                    .append(categories.take(6).joinToString(", "))
+                    .append('\n')
+            }
+            if (recentPlaysText.isNotBlank()) {
+                append("recent play history (most recent first): ")
+                    .append(recentPlaysText)
+                    .append('\n')
+            }
             append("recent conversation (last messages, oldest first):\n")
             append(recentChat.ifBlank { "(none)" })
         }
@@ -1639,6 +1754,35 @@ fun MetroDjChatSheet(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
         ) {
+            // Title header for the bottom-sheet popup variant. The full-screen DjScreen
+            // already provides its own header in the top bar, so skip it there.
+            if (!fullScreen) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                ) {
+                    AuraIconButton(
+                        onClick = {},
+                        enabled = false,
+                        modifier = Modifier.size(28.dp),
+                        containerColor = AuraSpotifyGreen.copy(alpha = 0.16f),
+                        contentColor = AuraSpotifyGreen,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.radio),
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.dj_page_title),
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
             LazyColumn(
                 state = messagesListState,
                 modifier = Modifier.weight(1f),

@@ -1023,6 +1023,10 @@ fun BottomSheetPlayer(
                 MetroDjChatButton(tint = iconButtonColor)
             }
 
+            // A little breathing room between the song title block and the
+            // share / like / dislike row so the buttons aren't crammed against it.
+            Spacer(modifier = Modifier.height(if (useNewPlayerDesign) 14.dp else 0.dp))
+
             if (useNewPlayerDesign) {
                     val shareShape =
                         RoundedCornerShape(
@@ -1055,11 +1059,11 @@ fun BottomSheetPlayer(
                                 AuraIconButton(onClick = { isFullScreen = !isFullScreen },
                                     shape = shareShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                    modifier = Modifier.size(32.dp)) {
+                                    modifier = Modifier.size(36.dp)) {
                                     Icon(
                                         painter = painterResource(R.drawable.fullscreen),
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
                             } else {
@@ -1077,11 +1081,11 @@ fun BottomSheetPlayer(
                                     },
                                     shape = shareShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                    modifier = Modifier.size(32.dp)) {
+                                    modifier = Modifier.size(36.dp)) {
                                     Icon(
                                         painter = painterResource(R.drawable.share),
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
                             }
@@ -1109,11 +1113,11 @@ fun BottomSheetPlayer(
                                     },
                                     shape = favShape, containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                    modifier = Modifier.size(32.dp)) {
+                                    modifier = Modifier.size(36.dp)) {
                                     Icon(
                                         painter = painterResource(R.drawable.more_horiz),
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
                             } else {
@@ -1141,7 +1145,7 @@ fun BottomSheetPlayer(
                                         shape = if (isEpisode) favShape else middleShape,
                                         containerColor = textButtonColor,
                                         contentColor = iconButtonColor,
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(36.dp),
                                     ) {
                                         Icon(
                                             painter =
@@ -1154,7 +1158,7 @@ fun BottomSheetPlayer(
                                                 ),
                                             contentDescription =
                                                 stringResource(if (isFavorite) R.string.unlike_cd else R.string.like_cd),
-                                            modifier = Modifier.size(18.dp),
+                                            modifier = Modifier.size(20.dp),
                                         )
                                     }
                                     if (!isEpisode) {
@@ -1182,7 +1186,7 @@ fun BottomSheetPlayer(
                                             shape = favShape,
                                             containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
-                                            modifier = Modifier.size(32.dp),
+                                            modifier = Modifier.size(36.dp),
                                         ) {
                                             Icon(
                                                 painter =
@@ -1197,7 +1201,7 @@ fun BottomSheetPlayer(
                                                     stringResource(
                                                         if (isDisliked) R.string.undislike_cd else R.string.dislike_cd,
                                                     ),
-                                                modifier = Modifier.size(18.dp),
+                                                modifier = Modifier.size(20.dp),
                                             )
                                         }
                                     }
