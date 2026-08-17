@@ -120,6 +120,17 @@ object NanoDjLauncher {
                     dislikedSignals = dislikedSignals,
                 )
             if (replaceCurrentQueue) {
+                // Preflight: build the first page NOW, before clearing current playback. If the
+                // DJ cannot resolve any playable tracks (empty taste, AI/search failures), the
+                // old queue keeps playing and the caller gets a real failure instead of the
+                // player silently dying (mini player vanishing) with a bogus "done" reply.
+                // getInitialStatus() caches its result, so playQueue below reuses it instead of
+                // re-running the AI and re-starting the DJ session.
+                val initialStatus =
+                    withContext(Dispatchers.IO) { queue.getInitialStatus() }
+                if (initialStatus.items.isEmpty()) {
+                    error("Metro DJ could not resolve any playable tracks from your taste profile.")
+                }
                 playerConnection.service.clearAutomix()
                 playerConnection.player.stop()
                 playerConnection.player.clearMediaItems()

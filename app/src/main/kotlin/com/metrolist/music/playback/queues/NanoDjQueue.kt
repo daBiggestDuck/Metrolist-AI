@@ -40,6 +40,12 @@ class NanoDjQueue(
     override val preloadItem: MediaMetadata? = null
 
     private val excludedIds = ConcurrentHashMap.newKeySet<String>().apply { addAll(excludedSongIds) }
+
+    // Queue bookkeeping below is guarded by [stateLock]: fetchBatch/getInitialStatus run on the
+    // IO dispatcher while recordSkip/excludeSong are called from the playback service (main
+    // thread). Unsynchronized collections would race between those threads and could corrupt the
+    // queue or crash the app, so every read/write takes the lock.
+    private val stateLock = Any()
     private val playedIds = LinkedHashSet<String>()
     private val playedTitles = ArrayDeque<String>()
     private val titleById = HashMap<String, String>()
@@ -50,8 +56,16 @@ class NanoDjQueue(
     private val sessionSeed = System.nanoTime()
     private val random = Random(sessionSeed)
 
+    /**
+     * First resolved page, cached so a preflight check in the launcher and the actual
+     * [getInitialStatus] call from playback only do the heavy AI/search work once (and the
+     * DJ session is started exactly one time per queue).
+     */
+    @Volatile
+    private var cachedInitialStatus: Queue.Status? = null
+
     override suspend fun getInitialStatus(): Queue.Status =
-        withContext(Dispatchers.IO) {
+        cachedInitialStatus ?: withContext(Dispatchers.IO) {
             // A new queue is a new DJ session: clear stale commentary and pending speech before
             // composing the opening line, otherwise replacing a queue can replay the old block.
             NanoDjSession.stop()
@@ -65,9 +79,10 @@ class NanoDjQueue(
 
             // Use at most one taste seed and fill the rest from a newly shuffled category
             // block. Returning the same imported favorites first made every DJ session identical.
+            val playedSnapshot = synchronized(stateLock) { playedIds.toSet() }
             val seeded =
                 initialItems
-                    .filterNot { it.mediaId in playedIds || it.mediaId in excludedIds }
+                    .filterNot { it.mediaId in playedSnapshot || it.mediaId in excludedIds }
                     .shuffled(random)
                     .take(1)
             seeded.forEach { remember(it) }
@@ -86,7 +101,7 @@ class NanoDjQueue(
                 title = QUEUE_TITLE,
                 items = items,
                 mediaItemIndex = 0,
-            )
+            ).also { cachedInitialStatus = it }
         }
 
     override fun hasNextPage(): Boolean = !exhausted && pagesLoaded < MAX_PAGES
@@ -111,6 +126,10 @@ class NanoDjQueue(
                 client = client,
             )
 
+        // Snapshot the seen-state once: fetchBatch runs on the IO dispatcher while
+        // recordSkip/excludeSong may run on the playback thread.
+        val (seenIds, seenTitles) =
+            synchronized(stateLock) { playedIds.toSet() to playedTitles.toList() }
         val resolved = ArrayList<MediaItem>(batchSize)
         for (query in pick.queries) {
             if (resolved.size >= batchSize) break
@@ -118,23 +137,25 @@ class NanoDjQueue(
             val title = item.mediaMetadata.title?.toString().orEmpty().trim()
             if (
                 title.isBlank() ||
-                    item.mediaId in playedIds ||
+                    item.mediaId in seenIds ||
                     item.mediaId in excludedIds ||
-                    title in playedTitles ||
+                    title in seenTitles ||
                     resolved.any { it.mediaMetadata.title?.toString().equals(title, ignoreCase = true) }
             ) continue
             remember(item)
             resolved += item
         }
 
-        if (resolved.isEmpty() && playedIds.isNotEmpty()) {
-            val seedId = playedIds.last()
+        val hasPlayed = synchronized(stateLock) { playedIds.isNotEmpty() }
+        if (resolved.isEmpty() && hasPlayed) {
+            val seedId = synchronized(stateLock) { playedIds.last() }
             runCatching {
                 val next = YouTube.next(com.metrolist.innertube.models.WatchEndpoint(videoId = seedId)).getOrNull()
                 next?.items?.filterIsInstance<SongItem>()?.forEach { song ->
                     if (
-                        song.id !in playedIds &&
+                        song.id !in seenIds &&
                         song.id !in excludedIds &&
+                        resolved.none { it.mediaId == song.id } &&
                         resolved.size < batchSize
                     ) {
                         val media = song.toMediaItem()
@@ -155,10 +176,12 @@ class NanoDjQueue(
             pick.commentary,
             usedAi = pick.usedAi,
         )
-        if (skipPressure >= 2 && resolved.isNotEmpty()) {
-            // The changed block has acknowledged the feedback; future skips can build pressure
-            // again instead of permanently forcing discovery mode.
-            skipPressure = 0
+        synchronized(stateLock) {
+            if (skipPressure >= 2 && resolved.isNotEmpty()) {
+                // The changed block has acknowledged the feedback; future skips can build
+                // pressure again instead of permanently forcing discovery mode.
+                skipPressure = 0
+            }
         }
 
         Timber.tag(TAG).i(
@@ -179,10 +202,12 @@ class NanoDjQueue(
     /** Records an explicit skip so the next block can deliberately change its angle. */
     fun recordSkip(songId: String?) {
         if (songId.isNullOrBlank()) return
-        skipPressure++
-        titleById[songId]?.let {
-            skippedTitles.addLast(it)
-            while (skippedTitles.size > 12) skippedTitles.removeFirst()
+        synchronized(stateLock) {
+            skipPressure++
+            titleById[songId]?.let {
+                skippedTitles.addLast(it)
+                while (skippedTitles.size > 12) skippedTitles.removeFirst()
+            }
         }
     }
 
@@ -193,26 +218,28 @@ class NanoDjQueue(
     }
 
     private fun remember(item: MediaItem) {
-        playedIds += item.mediaId
-        val title = item.mediaMetadata.title?.toString().orEmpty()
-        titleById[item.mediaId] = title
-        if (title.isNotBlank()) {
-            playedTitles.addLast(title)
-            while (playedTitles.size > 30) playedTitles.removeFirst()
+        synchronized(stateLock) {
+            playedIds += item.mediaId
+            val title = item.mediaMetadata.title?.toString().orEmpty()
+            titleById[item.mediaId] = title
+            if (title.isNotBlank()) {
+                playedTitles.addLast(title)
+                while (playedTitles.size > 30) playedTitles.removeFirst()
+            }
         }
     }
 
     private fun currentContext() =
         NanoDjEngine.DjContext(
             tasteSummary = tasteSummary,
-            recentTitles = playedTitles.toList(),
+            recentTitles = synchronized(stateLock) { playedTitles.toList() },
             seedArtists = seedArtists,
             seedTracks = seedTracks,
             dislikedSignals = dislikedSignals,
-            avoidTitles = (playedTitles + skippedTitles).toList(),
+            avoidTitles = synchronized(stateLock) { (playedTitles + skippedTitles).toList() },
             categories = categories,
             lane = lane,
-            skipPressure = skipPressure,
+            skipPressure = synchronized(stateLock) { skipPressure },
             randomSeed = sessionSeed,
         )
 

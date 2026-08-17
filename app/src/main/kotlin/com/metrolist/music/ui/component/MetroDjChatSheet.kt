@@ -101,7 +101,6 @@ import com.metrolist.music.ai.DjPlan
 import com.metrolist.music.ai.DjPlannedAction
 import com.metrolist.music.ai.DjActionResult
 import com.metrolist.music.constants.NanoDjHoldToVoiceKey
-import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
@@ -510,9 +509,8 @@ fun MetroDjChatSheet(
                         fail(context.getString(R.string.nano_dj_playlist_name_needed))
                     } else {
                         withContext(Dispatchers.IO) {
-                            database.withTransaction {
-                                insert(PlaylistEntity(name = name, isEditable = true, isLocal = true))
-                            }
+                            // Bookmark the new playlist so it appears in the library right away.
+                            database.ensureLocalPlaylist(name)
                         }
                         ok(context.getString(R.string.nano_dj_playlist_created, name))
                     }
@@ -877,6 +875,10 @@ fun MetroDjChatSheet(
 
                 else -> fail(context.getString(R.string.nano_dj_action_failed))
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Never swallow cancellation: it means the chat/sheet was dismissed mid-action, so
+            // the remaining steps must not keep running as if nothing happened.
+            throw e
         } catch (e: Throwable) {
             fail(failureText(e))
         }
@@ -988,9 +990,8 @@ fun MetroDjChatSheet(
                     launchBusy {
                         runCatching {
                             withContext(Dispatchers.IO) {
-                                database.withTransaction {
-                                    insert(PlaylistEntity(name = name, isEditable = true, isLocal = true))
-                                }
+                                // Bookmark the new playlist so it appears in the library right away.
+                                database.ensureLocalPlaylist(name)
                             }
                         }.onSuccess {
                             reply(context.getString(R.string.nano_dj_playlist_created, name))
@@ -1328,16 +1329,14 @@ fun MetroDjChatSheet(
         launchBusy {
             runCatching {
                 withContext(Dispatchers.IO) {
+                    // ensureLocalPlaylist bookmarks the playlist so it actually shows up in
+                    // the library (plain inserts without bookmarkedAt stay invisible there).
+                    val playlist = database.ensureLocalPlaylist(preview.name)
                     database.withTransaction {
-                        insert(PlaylistEntity(name = preview.name, isEditable = true, isLocal = true))
                         preview.songs.forEach { upsert(it.toSongEntity()) }
-                        playlistEntitiesByNameAsc()
-                            .firstOrNull { it.name == preview.name }
-                            ?.let { playlist ->
-                                playlistBlocking(playlist.id)?.let { local ->
-                                    addSongsToPlaylist(local, preview.songs.map { it.id to null })
-                                }
-                            }
+                        playlistBlocking(playlist.id)?.let { local ->
+                            addSongsToPlaylist(local, preview.songs.map { it.id to null })
+                        }
                     }
                 }
             }.onSuccess {
@@ -1440,13 +1439,17 @@ fun MetroDjChatSheet(
         // A new radio session is a fresh conversation. The chat itself is never reset just by
         // opening the sheet again (messages live in NanoDjChatHistory and survive it).
         if (sessionId != NanoDjChatHistory.sessionId) {
-            // If the user just triggered the restart from chat (their command → DJ reply),
-            // carry that exchange over so quick actions visibly work instead of vanishing.
+            // If the user just triggered the restart from chat, carry that exchange over so
+            // quick actions visibly work instead of vanishing. The session id can bump while
+            // the command is still being executed (the DJ's reply lands afterwards), so an
+            // in-flight listener message is carried too, not only complete user → DJ pairs.
             val carried =
-                if (messages.size >= 2 && !messages[messages.size - 2].fromDj && messages.last().fromDj) {
-                    messages.takeLast(2).toList()
-                } else {
-                    emptyList()
+                when {
+                    messages.isEmpty() -> emptyList()
+                    !messages.last().fromDj -> messages.takeLast(1).toList()
+                    messages.size >= 2 && !messages[messages.size - 2].fromDj ->
+                        messages.takeLast(2).toList()
+                    else -> emptyList()
                 }
             messages.clear()
             input = ""

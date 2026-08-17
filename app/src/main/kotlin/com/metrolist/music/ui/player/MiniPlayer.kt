@@ -1263,10 +1263,12 @@ private fun FavoriteButton(
 }
 
 /**
- * Combined like/dislike control: a heart on one side of a diagonal divider, thumbs-down on the
- * other. Swipe UP to like (heart grows, reddens, the rest fades away), swipe DOWN to dislike
- * (thumbs-down grows while the heart and divider fade). Releasing past the threshold commits the
- * action — and the gesture keeps working even when the song is already liked or disliked.
+ * Combined like/dislike control: a heart on the left of a vertical divider, thumbs-down on the
+ * right. Swipe UP to like (the heart grows, reddens, and slides toward the center while the
+ * thumb and divider fade away), swipe DOWN to dislike (the thumbs-down grows, reddens, and
+ * slides toward the center while the heart and divider fade). Releasing past the threshold
+ * commits the action — and the gesture keeps working even when the song is already liked or
+ * disliked.
  *
  * The vertical drag is consumed here so it never conflicts with pulling up the main player page.
  */
@@ -1296,7 +1298,7 @@ private fun LikeDislikeSwipeButton(
     val heartColor = lerp(if (isLiked) activeTint else tint, activeTint, likeProgress)
     val heartAlpha = (1f - dislikeProgress).coerceIn(0f, 1f)
     val heartScale = 1f + 1.35f * likeProgress
-    val dislikeColor = if (isDisliked) activeTint else tint.copy(alpha = 0.7f)
+    val dislikeColor = lerp(if (isDisliked) activeTint else tint.copy(alpha = 0.7f), activeTint, dislikeProgress)
     val dislikeAlpha = (1f - likeProgress).coerceIn(0f, 1f)
     val dislikeScale = 1f + 1.35f * dislikeProgress
     val dividerAlpha = (1f - likeProgress - dislikeProgress).coerceIn(0f, 1f)
@@ -1337,6 +1339,8 @@ private fun LikeDislikeSwipeButton(
     }
 
     val thresholdPx = with(density) { 90.dp.toPx() }
+    // How far each icon slides toward the center of the button as its side is pulled.
+    val centerOffsetPx = with(density) { 8.dp.toPx() }
 
     Box(
         contentAlignment = Alignment.Center,
@@ -1383,16 +1387,19 @@ private fun LikeDislikeSwipeButton(
                 },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // Like (heart) — left half. As it's pulled up it grows, reddens, and slides
+            // toward the center of the button.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 11.dp, top = 10.dp)
+                        .align(Alignment.CenterStart)
+                        .padding(start = 10.dp)
                         .graphicsLayer {
                             scaleX = heartScale
                             scaleY = heartScale
                             alpha = heartAlpha
+                            translationX = likeProgress * centerOffsetPx
                         },
             ) {
                 Icon(
@@ -1402,16 +1409,19 @@ private fun LikeDislikeSwipeButton(
                     modifier = Modifier.size(15.dp),
                 )
             }
+            // Dislike (thumbs-down) — right half. As it's pulled down it grows, reddens,
+            // and slides toward the center of the button.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 11.dp, bottom = 10.dp)
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 10.dp)
                         .graphicsLayer {
                             scaleX = dislikeScale
                             scaleY = dislikeScale
                             alpha = dislikeAlpha
+                            translationX = -dislikeProgress * centerOffsetPx
                         },
             ) {
                 Icon(
@@ -1429,13 +1439,13 @@ private fun LikeDislikeSwipeButton(
                     modifier = Modifier.size(15.dp),
                 )
             }
+            // Vertical divider separating the like and dislike halves.
             Box(
                 modifier =
                     Modifier
                         .align(Alignment.Center)
                         .size(width = 1.5.dp, height = 30.dp)
                         .graphicsLayer {
-                            rotationZ = 20f
                             alpha = dividerAlpha
                         }
                         .background(outlineColor.copy(alpha = 0.45f)),

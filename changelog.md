@@ -1,3 +1,10 @@
+---v15.7
+# What's new
+- Mini player like/dislike: the diagonal divider is now a clean vertical line, and pulling up makes the heart grow, color in, and slide toward the center (same for the thumbs-down when you pull down)
+- Main player: share / like / dislike buttons are smaller and sit on the left, right under the song title
+- "Add to library" on a DJ-made playlist now actually saves it to the library (DJ-made playlists also appear in the library when you create them in chat)
+- Metro DJ reliability: refresh / lane-switch actions no longer kill playback when the new queue can't be built (the old music keeps playing and the DJ reports the failure instead of the mini player vanishing), queue bookkeeping is thread-safe, and dismissing the chat mid-action cancels the rest of the command cleanly
+
 ---v16.6
 # What's new
 - Metro DJ now remembers the conversation: the last few exchanges are sent with each request so the DJ knows what you're talking about, and its replies are shorter and brisker
